@@ -87,18 +87,19 @@ const HowItWorksSection: React.FC = () => {
   return (
     <section className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 py-20 px-6 lg:px-12 overflow-hidden">
       {/* Decorative ruler - top right */}
-      <div className="absolute top-16 right-12 hidden lg:block">
+      <div className="absolute top-5 md:top-4 -right-27 md:right-6 z-20">
+        <img src="./scale 1.png" alt="" className='w-1/2 md:w-2/3' />
       </div>
 
       {/* Decorative paperclip - bottom left */}
-      <div className="absolute bottom-16 left-8 hidden lg:block">
-       
+      <div className="absolute bottom-40 md:bottom-16 left-0">
+       <img src="./clip 1.png" alt="" className='w-1/2 md:w-2/3' />
       </div>
 
       <div className="max-w-[1400px] mx-auto relative z-10">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
             {/* Left side */}
-          <div className='flex items-center gap-16 h-full'>
+          <div className='flex flex-col md:flex-row items-center gap-16 h-full'>
 
             {/* Steps */}
             <div className="space-y-8 relative">
@@ -139,15 +140,15 @@ const HowItWorksSection: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className='relative ml-8 flex items-center justify-center relative h-full w-fit '>
-              <div className='absolute z-10 flex flex-col items-center gap-8'>
+            <div className='relative md:ml-8 flex items-center justify-center relative h-full md:w-fit w-full'>
+              <div className='absolute w-full z-10 flex md:flex-col items-center justify-between md:justify-center gap-8'>
                 {
                   Array.from({ length: steps.length }).map((_, index) => (
-                    <div key={index} className={`h-20 w-20 rounded-full border-8 border-[#1F4FD8] flex items-center justify-center text-[48px] font-poppins font-semibold text-[#1F4FD8] font-bold ${isActiveIndex === index ? "bg-[#1F4FD8] text-white" : "bg-white"}`}>{index+1}</div>
+                    <div key={index} className={`h-10 w-10 md:h-20 md:w-20 rounded-full border-4 md:border-8 border-[#1F4FD8] flex items-center justify-center text-[20px] md:text-[48px] font-poppins font-semibold text-[#1F4FD8] font-bold ${isActiveIndex === index ? "bg-[#1F4FD8] text-white" : "bg-white"}`}>{index+1}</div>
                   ))
                 }
-              </div>
-                <div className='absolute  h-full w-1 bg-gradient-to-b from-[#2C52BF00] via-[#2C52BF] to-[#2C52BF00]'></div>
+                  </div>
+                    <div className=' w-full h-1  md:h-full md:w-1 bg-gradient-to-r from-[#2C52BF00] via-[#2C52BF] to-[#2C52BF00] md:bg-gradient-to-b from-[#2C52BF00] via-[#2C52BF] to-[#2C52BF00]'></div>
               </div>
           </div>
 

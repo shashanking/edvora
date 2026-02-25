@@ -280,7 +280,7 @@ export default function ContactSection() {
                     <img src="./phone-fill.png" alt="" />
                   </div>
                   <span className="text-[#1F4FD8]">
-                    {content?.phone ?? FALL_BACK_CONTENT?.phone}
+                    {FALL_BACK_CONTENT?.phone}
                   </span>
                 </a>
               </div>

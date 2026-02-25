@@ -43,7 +43,7 @@ const testimonials: Testimonial[] = [
     rating: 4,
     category: "Science",
     description:
-      "Edvora's chemistry tutor made complex concepts so simple. I finally understood stoichiometry and aced my GCSE!",
+      "Addify Academy's chemistry tutor made complex concepts so simple. I finally understood stoichiometry and aced my GCSE!",
     subtitle: "Amir K., Student, Age 15",
   },
   {

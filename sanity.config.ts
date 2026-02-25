@@ -10,7 +10,7 @@ const apiVersion = process.env.NEXT_PUBLIC_SANITY_API_VERSION || "2021-10-21";
 
 export default defineConfig({
   name: "default",
-  title: "Brain Meets Studio",
+  title: "Addify Academy",
 
   projectId,
   dataset,

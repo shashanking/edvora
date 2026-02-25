@@ -14,7 +14,7 @@ const Fall_BACK_CONTENT: homeHero = {
   _id: "",
   mainTag:
     "Certified Educators Across All Subjects | 500+ Students Transformed Globally",
-  heading: "EDVORA INTERNATIONAL ACADEMY: Your Global Learning Partner",
+  heading: "ADDIFY ACADEMY: Your Global Learning Partner",
   tag: "Master Any Subject with Expert-Led, Personalized 1-on-1 Learning",
   images: [
     { url: "./image 01.png" },
@@ -38,7 +38,7 @@ const FeaturesBar = () => {
                 <img src="./graduation-cap-solid.png" alt="" />
               </div>
             </div>
-            <h3 className="font-bold text-center text-[12px] md:text-[20px] leading-none tracking-normal">
+            <h3 className="font-bold text-center text-[12px] md:text-[20px] leading-none tracking-normal text-white">
               Academic Excellence
             </h3>
           </div>
@@ -54,7 +54,7 @@ const FeaturesBar = () => {
                 <img src="./tabler_briefcase-filled.png" alt="" />
               </div>
             </div>
-            <h3 className="font-bold text-center text-[12px] md:text-[20px] leading-none tracking-normal">
+            <h3 className="font-bold text-center text-[12px] md:text-[20px] leading-none tracking-normal text-white">
               Career Advancement
             </h3>
           </div>
@@ -70,7 +70,7 @@ const FeaturesBar = () => {
                 <img src="./health-care-2-remix.png" alt="" />
               </div>
             </div>
-            <h3 className="font-bold text-center text-[12px] md:text-[20px] leading-none tracking-normal">
+            <h3 className="font-bold text-center text-[12px] md:text-[20px] leading-none tracking-normal text-white">
               Personality Development
             </h3>
           </div>
@@ -112,7 +112,7 @@ const Hero = () => {
     };
   }, []);
   return (
-    <section className="relative min-h-screen overflow-hidden  px-8 lg:px-16">
+    <section id="home" className="relative min-h-screen overflow-hidden  px-8 lg:px-16">
       {/* Navbar */}
       <div className="absolute top-0 left-0 right-0 z-20">
         <Navbar />
@@ -189,13 +189,13 @@ const Hero = () => {
             </div>
             <h1 className="leading-tight text-[20px] md:text-[56px] w-fit">
               <div
-                className="font-poppins font-extrabold leading-none tracking-normal
+                className="font-poppins font-extrabold leading-none tracking-normal text-white
 "
               >
                 {content?.heading?.split(" ")?.map((word, index) => (
                   <span
                     key={index}
-                    className={`${index >= 4 ? "text-[#E2531F]" : ""}`}
+                    className={`${index >= 4 ? "text-[#E2531F]" : "text-white"}`}
                   >
                     {word}{" "}
                   </span>
@@ -203,7 +203,7 @@ const Hero = () => {
                   Fall_BACK_CONTENT?.heading?.split(" ")?.map((word, index) => (
                     <span
                       key={index}
-                      className={`${index >= 4 ? "text-[#E2531F]" : ""}`}
+                      className={`${index >= 4 ? "text-[#E2531F]" : "text-white"}`}
                     >
                       {word}{" "}
                     </span>
@@ -216,7 +216,8 @@ const Hero = () => {
             </p>
 
             <div className="flex flex-wrap gap-4 pt-2">
-              <button
+              <a
+                href="#contact"
                 className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#1F4FD8] hover:bg-[#1D4ED8] text-white rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 "
               >
@@ -224,14 +225,15 @@ const Hero = () => {
                 <div className="w-6.5 h-6.5 transition-transform group-hover:translate-x-1 bg-[#FFFFFF] rounded-full flex items-center justify-center">
                   <img src="./arrow-up-line.png" alt="" />
                 </div>
-              </button>
+              </a>
 
-              <button
+              <a
+                href="#young-learners"
                 className="inline-flex items-center justify-center px-7 py-3.5 bg-[#FFC83D] hover:bg-[#FBBF24] text-gray-900 rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 "
               >
                 Explore Programs
-              </button>
+              </a>
             </div>
           </div>
 

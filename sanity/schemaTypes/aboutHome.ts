@@ -13,7 +13,7 @@ export const aboutHome = defineType({
       name: "heading",
       title: "Heading",
       type: "string",
-      initialValue: "ABOUT EDVORA",
+      initialValue: "ABOUT ADDIFY ACADEMY",
     }),
     defineField({
       name: "description",

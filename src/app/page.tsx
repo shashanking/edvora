@@ -1,16 +1,15 @@
-import Image from "next/image";
 import Navbar from "../components/core/NavBar";
 import Footer from "../components/core/Footer";
 import Hero from "../components/Home/Hero";
 import AboutSection from "../components/Home/About";
 import AdvantageSection from "../components/Home/Advantage";
 import ProgramsOverviewSection from "../components/Home/ProgrammeOverviewSection";
+import AdultLearnersSection from "../components/Home/AdultLearnersSection";
 import HowItWorksSection from "../components/Home/WorkSection";
 import OurEducatorsSection from "../components/Home/Educators";
 import DemoCardSection from "../components/Home/Demo";
 import TestimonialSection from "../components/Home/SuccessStory";
 import LearningResourcesSection from "../components/Home/ResourceSection";
-import BlogSection from "../components/Home/InsightSection";
 import FAQSection from "../components/Home/FAQSection";
 import PricingSection from "../components/Home/PricingSection";
 import ContactSection from "../components/Home/ContactSection";
@@ -25,12 +24,12 @@ export default function Home() {
         <AboutSection />
         <AdvantageSection />
         <ProgramsOverviewSection />
+        <AdultLearnersSection />
         <HowItWorksSection />
         <OurEducatorsSection />
         <DemoCardSection />
         <TestimonialSection />
         <LearningResourcesSection />
-        <BlogSection />
         <FAQSection />
         <PricingSection />
         <ContactSection />

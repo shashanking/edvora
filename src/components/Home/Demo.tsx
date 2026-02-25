@@ -114,7 +114,7 @@ const DemoCardSection: React.FC = () => {
 
                 {/* CTA Button */}
                 <div className="pt-2">
-                  <button className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#1F4FD8] hover:bg-[#1D4ED8] text-white rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
+                  <a href="#contact" className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#1F4FD8] hover:bg-[#1D4ED8] text-white rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 ">
                 <span>Book Free Assessment</span>
                 <div
@@ -122,7 +122,7 @@ const DemoCardSection: React.FC = () => {
                 >
                   <img src="./arrow-up-line.png" alt="" />
                 </div>
-              </button>
+              </a>
                 </div>
               </div>
             </div>

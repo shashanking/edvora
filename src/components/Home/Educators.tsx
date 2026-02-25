@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 
 type ourEducators = {
   heading: string;
@@ -30,7 +30,7 @@ const FALL_BACK_CONTENT = {
   heading: "OUR EDUCATORS",
   description: "Learn from Subject-Matter Experts",
   imageUrl: "./educators.png",
-  qualificationTitle: "Every Edvora instructor is",
+  qualificationTitle: "Every Addify Academy instructor is",
   qualification: qualifications,
   criteriaTitle: "Matching Criteria",
   criteria: matchingCriteria,
@@ -152,10 +152,19 @@ const OurEducatorsSection: React.FC = () => {
             </div>
 
             {/* CTA Button */}
-            <div className="md:pt-4 w-full">
-              <button className="w-full md:w-auto px-10 py-4 bg-[#FFC83D] hover:bg-[#FBBF24] text-gray-900 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-sm leading-none leading-100% tracking-normal">
+            <div className="md:pt-4 w-full relative">
+              <button
+                onClick={() => {
+                  const el = document.getElementById('coming-soon-educators');
+                  if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000); }
+                }}
+                className="w-full md:w-auto px-10 py-4 bg-[#FFC83D] hover:bg-[#FBBF24] text-gray-900 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-sm leading-none leading-100% tracking-normal"
+              >
                 Get Started Today
               </button>
+              <div id="coming-soon-educators" className="hidden absolute left-1/2 -translate-x-1/2 -top-12 bg-[#1C1C28] text-white text-sm font-poppins font-semibold px-5 py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
+                🚀 Coming Soon!
+              </div>
             </div>
           </div>
 

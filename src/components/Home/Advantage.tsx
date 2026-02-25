@@ -13,7 +13,7 @@ type AdvantageContent = {
 };
 
 const Fall_BACK_CONTENT: AdvantageContent = {
-  heading: "The Edvora Advantage",
+  heading: "The Addify Academy Advantage",
   description: `Join us and unlock your full potential. With our personalized learning experience, you'll master any subject and become a confident expert in no time. `,
   card: [
     {

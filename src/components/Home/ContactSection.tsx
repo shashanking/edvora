@@ -11,6 +11,7 @@ interface ContactFormData {
   lastName: string;
   phone: string;
   email: string;
+  age: string;
   subject: string;
   message: string;
 }
@@ -39,7 +40,7 @@ const FALL_BACK_CONTENT = {
     "Contact us to share your thoughts, ask questions, or explore opportunities to work and grow together.",
   callDescription:
     "Contact us to share your thoughts, ask questions, or explore opportunities to work and grow together.",
-  phone: "+1-323-453-5817",
+  phone: "+91 93303 88153",
   emailDescription:
     "Contact us to share your thoughts, ask questions, or explore opportunities to work and grow together.",
   email: "Example@gmail.com",
@@ -51,6 +52,7 @@ export default function ContactSection() {
     lastName: "",
     phone: "",
     email: "",
+    age: "",
     subject: "",
     message: "",
   });
@@ -115,6 +117,7 @@ export default function ContactSection() {
         lastName: "",
         phone: "",
         email: "",
+        age: "",
         subject: "",
         message: "",
       });
@@ -129,7 +132,7 @@ export default function ContactSection() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-gray-50 to-white py-20 px-4">
+    <div id="contact" className="w-full min-h-screen bg-gradient-to-b from-gray-50 to-white py-20 px-4">
       <div className="max-w-7xl mx-auto border-2 bg-gradient-to-r from-[#2C52BF] to-[#3CA7E9] rounded-[3rem] p-1">
         <div className="bg-white  rounded-[3rem] p-8 md:p-12 lg:p-16 shadow-lg">
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
@@ -197,6 +200,18 @@ export default function ContactSection() {
                     required
                   />
                 </div>
+
+                <input
+                  name="age"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={formData.age}
+                  onChange={handleChange}
+                  placeholder="Age"
+                  className="input-field border border-[#D4D4D4] rounded-full outline-none py-2 pl-5 pr-1.5 font-nunito-sans text-sm leading-none text-[#4D4D4D] w-full"
+                  required
+                />
 
                 <select
                   name="subject"

@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import Image from 'next/image';
 
 export default function Navbar() {
@@ -12,46 +11,46 @@ export default function Navbar() {
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center gap-12">
-          <Link 
-            href="/" 
+          <a 
+            href="#home" 
             className="text-white font-medium text-base hover:text-gray-300 transition-colors"
           >
             Home
-          </Link>
-          <Link 
-            href="/services" 
+          </a>
+          <a 
+            href="#young-learners" 
             className="text-gray-400 font-medium text-base hover:text-gray-300 transition-colors"
           >
-            Services
-          </Link>
-          <Link 
-            href="/blogs" 
+            Young Learners
+          </a>
+          <a 
+            href="#adult-learners" 
             className="text-gray-400 font-medium text-base hover:text-gray-300 transition-colors"
           >
-            Blogs
-          </Link>
-          <Link 
-            href="/contact" 
+            Adult Learners
+          </a>
+          <a 
+            href="#about" 
+            className="text-gray-400 font-medium text-base hover:text-gray-300 transition-colors"
+          >
+            About
+          </a>
+          <a 
+            href="#contact" 
             className="text-gray-400 font-medium text-base hover:text-gray-300 transition-colors"
           >
             Contact Us
-          </Link>
-          <Link 
-            href="/demo-form" 
-            className="text-gray-400 font-medium text-base hover:text-gray-300 transition-colors"
-          >
-            Demo Form
-          </Link>
+          </a>
         </div>
 
         {/* CTA Button */}
         <div className="hidden md:flex-shrink-0">
-          <Link 
-            href="/book-demo"
+          <a 
+            href="#contact"
             className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-8 py-3.5 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-xl inline-block"
           >
             Book a Free Demo
-          </Link>
+          </a>
         </div>
         <div className="md:hidden">
           <button className="flex items-center justify-center text-white">

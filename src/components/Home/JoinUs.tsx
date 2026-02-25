@@ -63,7 +63,7 @@ export default function CTASection() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               {/* Primary Button - Book Free Assessment */}
-              <button className="group bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3">
+              <a href="#contact" className="group bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3">
                 <span className="text-lg">Book Free Assessment</span>
                 <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center group-hover:rotate-45 transition-transform duration-300">
                   <svg
@@ -82,12 +82,12 @@ export default function CTASection() {
                     />
                   </svg>
                 </div>
-              </button>
+              </a>
 
               {/* Secondary Button - Contact Us */}
-              <button className="bg-transparent hover:bg-white hover:bg-opacity-10 text-white font-bold px-8 py-4 rounded-full border-2 border-white shadow-lg hover:shadow-xl transition-all duration-300">
+              <a href="#contact" className="bg-transparent hover:bg-white hover:bg-opacity-10 text-white font-bold px-8 py-4 rounded-full border-2 border-white shadow-lg hover:shadow-xl transition-all duration-300">
                 <span className="text-lg">Contact Us!</span>
-              </button>
+              </a>
             </div>
           </div>
         </div>

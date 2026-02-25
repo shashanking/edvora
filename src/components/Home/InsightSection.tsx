@@ -135,7 +135,7 @@ export default function BlogSection() {
         };
       }, []);
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-white to-gray-50 py-20 px-4">
+    <div id="blog" className="w-full min-h-screen bg-gradient-to-b from-white to-gray-50 py-20 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center md:mb-16">

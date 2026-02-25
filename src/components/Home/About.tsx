@@ -8,8 +8,8 @@ type AboutHome = {
 };
 
 const Fall_BACK_CONTENT: AboutHome = {
-  heading: "ABOUT EDVORA",
-  description: `Edvora International Academy is your dedicated partner in academic and professional growth. We specialize in closing learning gaps across multiple subjects and unlocking the most confident version of you through customized, one-on-one instruction. 
+  heading: "ABOUT ADDIFY ACADEMY",
+  description: `Addify Academy is your dedicated partner in academic and professional growth. We specialize in closing learning gaps across multiple subjects and unlocking the most confident version of you through customized, one-on-one instruction. 
 
 Whether you're mastering English, Mathematics, Science, refining your communication skills, building executive presence, or preparing for critical exams—we provide expert guidance tailored to your unique learning needs at every milestone of your educational journey. 
 
@@ -49,7 +49,7 @@ const AboutSection: React.FC = () => {
       };
     }, []);
   return (
-    <section className="relative w-full min-h-screen bg-[#1F4FD8] overflow-hidden py-10 md:py-20 px-6 lg:px-16">
+    <section id="about" className="relative w-full min-h-screen bg-[#1F4FD8] overflow-hidden py-10 md:py-20 px-6 lg:px-16">
       {/* Decorative Elements */}
       {/* Top-left puzzle pieces */}
       <div className="absolute top-0 left-0">
@@ -143,12 +143,13 @@ const AboutSection: React.FC = () => {
             </div>
 
             <div className="pt-4">
-              <button
-                className="w-full md:w-auto px-9 py-4 bg-[#FFC83D] hover:bg-[#FBBF24] text-[#2B2B2B] rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 font-poppins font-semibold text-[12px] md:text-[20px] leading-none tracking-normal
+              <a
+                href="#contact"
+                className="inline-block w-full md:w-auto px-9 py-4 bg-[#FFC83D] hover:bg-[#FBBF24] text-[#2B2B2B] rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 font-poppins font-semibold text-[12px] md:text-[20px] leading-none tracking-normal text-center
 "
               >
                 Learn More
-              </button>
+              </a>
             </div>
           </div>
         </div>

@@ -19,7 +19,7 @@ export const homeHero = defineType({
       name: "heading",
       title: "Heading",
       type: "string",
-      initialValue: "EDVORA INTERNATIONAL ACADEMY: Your Global Learning Partner",
+      initialValue: "ADDIFY ACADEMY: Your Global Learning Partner",
     }),
     defineField({
       name: "tag",

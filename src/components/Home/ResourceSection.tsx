@@ -250,10 +250,19 @@ export default function LearningResourcesSection() {
         </div>
 
         {/* View All Button */}
-        <div className="flex justify-center">
-          <button className="bg-[#FFC83D] hover:bg-yellow-500 text-[#2B2B2B] px-10 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 font-poppins font-semibold text-sm leading-cap leading-100% tracking-normal">
+        <div className="flex justify-center relative">
+          <button
+            onClick={() => {
+              const el = document.getElementById('coming-soon-resource');
+              if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000); }
+            }}
+            className="bg-[#FFC83D] hover:bg-yellow-500 text-[#2B2B2B] px-10 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 font-poppins font-semibold text-sm leading-cap leading-100% tracking-normal"
+          >
             View All
           </button>
+          <div id="coming-soon-resource" className="hidden absolute left-1/2 -translate-x-1/2 -top-12 bg-[#1C1C28] text-white text-sm font-poppins font-semibold px-5 py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
+            🚀 Coming Soon!
+          </div>
         </div>
       </div>
     </div>

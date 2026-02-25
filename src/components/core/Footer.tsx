@@ -31,7 +31,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
             <ul className="space-y-4">
               <li>
                 <a 
-                  href="/" 
+                  href="#home" 
                   className="text-yellow-300 hover:text-yellow-200 transition-colors text-[12px] md:text-sm font-medium"
                 >
                   Home
@@ -39,34 +39,34 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               </li>
               <li>
                 <a 
-                  href="/services" 
+                  href="#young-learners" 
                   className="text-white/80 hover:text-white transition-colors text-sm"
                 >
-                  Services
+                  Young Learners
                 </a>
               </li>
               <li>
                 <a 
-                  href="/blogs" 
+                  href="#adult-learners" 
                   className="text-white/80 hover:text-white transition-colors text-sm"
                 >
-                  Blogs
+                  Adult Learners
                 </a>
               </li>
               <li>
                 <a 
-                  href="/contact" 
+                  href="#about" 
+                  className="text-white/80 hover:text-white transition-colors text-sm"
+                >
+                  About
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="#contact" 
                   className="text-white/80 hover:text-white transition-colors text-sm"
                 >
                   Contact Us
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="/demo-form" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
-                >
-                  Demo Form
                 </a>
               </li>
             </ul>
@@ -117,11 +117,11 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
             <ul className="space-y-4">
               <li>
                 <a 
-                  href="tel:1234567890" 
+                  href="tel:+919330388153" 
                   className="flex items-center gap-3 text-white/80 hover:text-white transition-colors text-sm group"
                 >
                   <Phone className="w-5 h-5 text-yellow-300 flex-shrink-0" />
-                  <span>(123) 456 - 7890</span>
+                  <span>+91 93303 88153</span>
                 </a>
               </li>
               <li>

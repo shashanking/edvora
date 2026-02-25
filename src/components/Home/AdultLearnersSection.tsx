@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 
-type ProgramCategory = "core" | "specialized" | "exam";
+type AdultCategory = "professional" | "academic";
 
 type CourseItem = {
   program: string;
@@ -12,27 +12,21 @@ type CourseItem = {
   rating: number;
 };
 
-const YOUNG_CORE: CourseItem[] = [
-  { program: "Mathematics", duration: "Flexible", gain: "Master concepts from basic arithmetic to advanced algebra and geometry", image: "./Mathematics.png", rating: 4 },
-  { program: "Science (KS1-KS3)", duration: "Flexible", gain: "Build curiosity across Biology, Chemistry, and Physics", image: "./Image 01.png", rating: 4 },
-  { program: "English Language", duration: "1 year", gain: "Complete grammar, vocabulary, reading, and comprehension skills", image: "./english_class.png", rating: 4 },
+const ADULT_PROFESSIONAL: CourseItem[] = [
+  { program: "Spoken English & Personality Development", duration: "9 months", gain: "Speak fluently, command attention, and lead with charisma", image: "./DemoImage.png", rating: 4 },
+  { program: "Business Communication", duration: "3 months", gain: "Write professional emails, reports, and presentations", image: "./Educators.png", rating: 4 },
+  { program: "Interview Preparation", duration: "3 months", gain: "Land your dream job with proven interview strategies", image: "./About.jpg", rating: 4 },
 ];
 
-const YOUNG_SPECIALIZED: CourseItem[] = [
-  { program: "Phonics Mastery", duration: "3 months", gain: "Decode words confidently and read fluently", image: "./Image 02.png", rating: 4 },
-  { program: "Creative Writing", duration: "40 weeks", gain: "Express ideas clearly and imaginatively", image: "./Image 03.png", rating: 4 },
-  { program: "Public Speaking", duration: "1 year", gain: "Present with confidence and poise", image: "./Image 04.png", rating: 4 },
+const ADULT_ACADEMIC: CourseItem[] = [
+  { program: "Advanced Mathematics", duration: "Flexible", gain: "Master calculus, statistics, and higher-level concepts", image: "./Mathematics.png", rating: 4 },
+  { program: "Science Subjects", duration: "Flexible", gain: "University-level support in Biology, Chemistry, Physics", image: "./Image 01.png", rating: 4 },
+  { program: "English Literature & Writing", duration: "Flexible", gain: "Critical analysis, essay writing, and academic communication", image: "./english_class.png", rating: 4 },
 ];
 
-const YOUNG_EXAM: CourseItem[] = [
-  { program: "SAT Preparation", duration: "1 year", gain: "Score higher and unlock university opportunities", image: "./kids_class.png", rating: 4 },
-  { program: "11+ Exam Preparation", duration: "1 year", gain: "Ace selective school entrance exams", image: "./IMG.png", rating: 4 },
-];
-
-const CATEGORY_MAP: Record<ProgramCategory, CourseItem[]> = {
-  core: YOUNG_CORE,
-  specialized: YOUNG_SPECIALIZED,
-  exam: YOUNG_EXAM,
+const CATEGORY_MAP: Record<AdultCategory, CourseItem[]> = {
+  professional: ADULT_PROFESSIONAL,
+  academic: ADULT_ACADEMIC,
 };
 
 const StarIcon = ({ filled }: { filled: boolean }) => (
@@ -77,12 +71,12 @@ const CourseCard = ({ item }: { item: CourseItem }) => (
   </div>
 );
 
-const ProgramsOverviewSection: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<ProgramCategory>("core");
+const AdultLearnersSection: React.FC = () => {
+  const [selectedCategory, setSelectedCategory] = useState<AdultCategory>("professional");
   const courses = CATEGORY_MAP[selectedCategory];
 
   return (
-    <section id="young-learners" className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-20 px-6 lg:px-12 overflow-hidden">
+    <section id="adult-learners" className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-20 px-6 lg:px-12 overflow-hidden">
       {/* Decorative yellow swirl - left */}
       <div className="absolute top-20 md:top-40 left-0 opacity-60">
         <img src="./overviewSpiral.png" alt="" className="h-10 w-10 md:h-[145px] md:w-[145px]" />
@@ -100,11 +94,11 @@ const ProgramsOverviewSection: React.FC = () => {
           <div>
             <h2 className="md:mb-1 font-poppins font-extrabold text-[20px] md:text-[48px] leading-15 tracking-normal flex gap-4">
               <span className="text-[#1F4FD8]">FOR</span>
-              <span className="text-[#2B2B2B]">YOUNG LEARNERS</span>
+              <span className="text-[#2B2B2B]">ADULT LEARNERS</span>
             </h2>
-            <p className="text-[#4D4D4D] font-poppins font-semibold text-[14px] md:text-[28px] leading-none tracking-normal mb-2">(Ages 4-15)</p>
+            <p className="text-[#4D4D4D] font-poppins font-semibold text-[14px] md:text-[28px] leading-none tracking-normal mb-2">(Ages 16+)</p>
             <p className="text-[#4D4D4D] font-nunito font-semibold text-[12px] md:text-[20px] leading-none tracking-normal">
-              Building Strong Academic Foundations
+              Advancing Your Skills &amp; Career
             </p>
           </div>
 
@@ -112,34 +106,24 @@ const ProgramsOverviewSection: React.FC = () => {
           <div className="w-full lg:w-auto flex flex-col items-center justify-center md:py-3">
             <div className="flex md:gap-2">
               <button
-                onClick={() => setSelectedCategory("core")}
+                onClick={() => setSelectedCategory("professional")}
                 className={`px-4 md:px-6 py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[10px] md:text-[16px] leading-none tracking-normal ${
-                  selectedCategory === "core"
+                  selectedCategory === "professional"
                     ? "bg-[#1F4FD8] text-white shadow-lg"
                     : "bg-white text-[#2B2B2B] hover:bg-gray-100 border border-gray-200"
                 }`}
               >
-                CORE ACADEMICS
+                PROFESSIONAL DEVELOPMENT
               </button>
               <button
-                onClick={() => setSelectedCategory("specialized")}
+                onClick={() => setSelectedCategory("academic")}
                 className={`px-4 md:px-6 py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[10px] md:text-[16px] leading-none tracking-normal ${
-                  selectedCategory === "specialized"
+                  selectedCategory === "academic"
                     ? "bg-[#1F4FD8] text-white shadow-lg"
                     : "bg-white text-[#2B2B2B] hover:bg-gray-100 border border-gray-200"
                 }`}
               >
-                SPECIALIZED PROGRAMS
-              </button>
-              <button
-                onClick={() => setSelectedCategory("exam")}
-                className={`px-4 md:px-6 py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[10px] md:text-[16px] leading-none tracking-normal ${
-                  selectedCategory === "exam"
-                    ? "bg-[#1F4FD8] text-white shadow-lg"
-                    : "bg-white text-[#2B2B2B] hover:bg-gray-100 border border-gray-200"
-                }`}
-              >
-                EXAM PREPARATION
+                ACADEMIC SUPPORT
               </button>
             </div>
           </div>
@@ -163,4 +147,4 @@ const ProgramsOverviewSection: React.FC = () => {
   );
 };
 
-export default ProgramsOverviewSection;
+export default AdultLearnersSection;

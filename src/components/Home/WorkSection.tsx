@@ -174,10 +174,19 @@ const HowItWorksSection: React.FC = () => {
                 </p>
               </div>
 
-              <div className='w-full'>
-                <button className="px-10 py-4 w-full md:w-auto bg-[#FFC83D] hover:bg-[#FBBF24] text-[#2B2B2B] rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-[12px] md:text-sm leading-none leading-100% tracking-normal">
+              <div className='w-full relative'>
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('coming-soon-work');
+                    if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000); }
+                  }}
+                  className="px-10 py-4 w-full md:w-auto bg-[#FFC83D] hover:bg-[#FBBF24] text-[#2B2B2B] rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-[12px] md:text-sm leading-none leading-100% tracking-normal"
+                >
                   Get Started Today
                 </button>
+                <div id="coming-soon-work" className="hidden absolute left-1/2 -translate-x-1/2 -top-12 bg-[#1C1C28] text-white text-sm font-poppins font-semibold px-5 py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
+                  🚀 Coming Soon!
+                </div>
               </div>
             </div>
           </div>

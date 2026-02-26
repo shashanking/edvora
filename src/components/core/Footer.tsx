@@ -151,14 +151,14 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
                   Terms & Conditions
                 </a>
               </li>
-              <li>
+              {/* <li>
                 <a 
                   href="/forum-terms" 
                   className="text-white/80 hover:text-white transition-colors text-sm"
                 >
                   Forum terms
                 </a>
-              </li>
+              </li> */}
             </ul>
           </div>
 
@@ -224,7 +224,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
             >
               <Facebook className="w-6 h-6 text-[#2B5FD9]" />
             </a>
-            <a
+            {/* <a
               href={content?.xlink ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
@@ -247,7 +247,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               aria-label="LinkedIn"
             >
               <Linkedin className="w-6 h-6 text-[#2B5FD9]" />
-            </a>
+            </a> */}
           </div>
         </div>
       </div>

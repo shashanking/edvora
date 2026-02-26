@@ -95,7 +95,7 @@ const AboutSection: React.FC = () => {
           {/* Right side - Content */}
           <div className="md:space-y-6 lg:space-y-8">
             <h2
-              className=" font-poppins font-extrabold text-[20px] md:text-[48px] leading-15 tracking-normal flex gap-4
+              className=" font-poppins font-extrabold text-[20px] md:text-[46px] leading-15 tracking-normal flex gap-4
 "
             >
               {

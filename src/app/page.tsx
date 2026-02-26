@@ -29,7 +29,7 @@ export default function Home() {
         <OurEducatorsSection />
         <DemoCardSection />
         <TestimonialSection />
-        <LearningResourcesSection />
+        {/* <LearningResourcesSection /> */}
         <FAQSection />
         <PricingSection />
         <ContactSection />

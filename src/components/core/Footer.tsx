@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { Instagram, Facebook, Linkedin } from 'lucide-react';
 
@@ -6,7 +8,56 @@ interface FooterProps {
   className?: string;
 }
 
+type Content = {
+  description: string;
+  phone: string;
+  email: string;
+  address: string;
+  instalink: string;
+  xlink: string;
+  facebooklink: string;
+  linkedinlink: string;
+}
+
+const FALL_BACK_CONTENT: Content = {
+  description: "Addify Academy is a modern learning platform helping students build strong skills, confidence, and knowledge through interactive lessons and expert guidance.",
+  phone: "+91 93303 88153",
+  email: "contact@addifyacademy.com",
+  address: "KUNJAMONI,2ND FLOOR, PANCHPOTA, RAJPUR SONARPUR (M) Kolkata West Bengal 700152 South 24 Parganas India ",
+  instalink: "#",
+  xlink: "#",
+  facebooklink: "#",
+  linkedinlink: "#",
+}
 const Footer: React.FC<FooterProps> = ({ className = '' }) => {
+  const [content, setContent] = useState<Content | null>(null);
+
+  useEffect(() => {
+        let mounted = true;
+    
+        const load = async () => {
+          try {
+            const contentRes = await fetch("/api/footer");
+            if (!contentRes.ok) {
+              throw new Error("Failed to load footer content");
+            }
+    
+            const contentData = (await contentRes.json()) as Content;
+    
+            if (!mounted) return;
+            setContent(contentData);
+          } catch (e: any) {
+            if (!mounted) return;
+            setContent(null);
+          }
+        };
+    
+        void load();
+    
+        return () => {
+          mounted = false;
+        };
+      }, []);
   return (
     <footer className={`bg-[#1F4FD8] text-white px-4 py-7 md:px-40 md:py-15 ${className}`}>
       <div className="md:*:max-w-[1600px] mx-auto  md:gap-[48px]">
@@ -21,7 +72,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
         </div>
             </div>
             <p className="text-white/90 text-[12px] md:text-sm leading-relaxed max-w-xs">
-              Addify Academy is a modern learning platform helping students build strong skills, confidence, and knowledge through interactive lessons and expert guidance.
+              {content?.description ?? FALL_BACK_CONTENT?.description}
             </p>
           </div>
 
@@ -117,27 +168,27 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
             <ul className="space-y-4">
               <li>
                 <a 
-                  href="tel:+919330388153" 
+                  href={`tel:${content?.phone ?? "#"}`} 
                   className="flex items-center gap-3 text-white/80 hover:text-white transition-colors text-sm group"
                 >
                   <Phone className="w-5 h-5 text-yellow-300 flex-shrink-0" />
-                  <span>+91 93303 88153</span>
+                  <span>{content?.phone ?? FALL_BACK_CONTENT?.phone}</span>
                 </a>
               </li>
               <li>
                 <a 
-                  href="mailto:example@email.com" 
+                  href={`mailto:${content?.email ?? "#"}`}
                   className="flex items-center gap-3 text-white/80 hover:text-white transition-colors text-sm group"
                 >
                   <Mail className="w-5 h-5 text-yellow-300 flex-shrink-0" />
-                  <span>Example@email.com</span>
+                  <span>{content?.email ?? FALL_BACK_CONTENT?.email}</span>
                 </a>
               </li>
               <li>
                 <div className="flex items-start gap-3 text-white/80 text-sm">
                   <MapPin className="w-5 h-5 text-yellow-300 flex-shrink-0 mt-0.5" />
                   <span className="leading-relaxed">
-                    23 Blue Orchid Street, Sunrise Heights, Patna, Bihar, India
+                    {content?.address ?? FALL_BACK_CONTENT?.address}
                   </span>
                 </div>
               </li>
@@ -156,7 +207,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
           
           <div className="flex items-center gap-4">
             <a
-              href="https://instagram.com"
+              href={content?.instalink ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors group"
@@ -165,7 +216,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <Instagram className="w-6 h-6 text-[#2B5FD9]" />
             </a>
             <a
-              href="https://facebook.com"
+              href={content?.facebooklink ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors group"
@@ -174,7 +225,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <Facebook className="w-6 h-6 text-[#2B5FD9]" />
             </a>
             <a
-              href="https://twitter.com"
+              href={content?.xlink ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors group"
@@ -189,7 +240,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               </svg>
             </a>
             <a
-              href="https://linkedin.com"
+              href={content?.linkedinlink ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors group"

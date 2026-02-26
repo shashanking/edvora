@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { title } from 'process';
-import React, { useEffect, useState } from 'react';
+import { title } from "process";
+import React, { useEffect, useState } from "react";
 
 interface FAQItem {
   question: string;
@@ -12,33 +12,33 @@ type FAQ = {
   title: string;
   description: string;
   questionCard: FAQItem[];
-}
+};
 
 const faqs: FAQItem[] = [
   {
-    question: 'Can you help with multiple subjects simultaneously?',
+    question: "Can you help with multiple subjects simultaneously?",
     answer:
-      'Yes, we offer comprehensive support across multiple subjects. Our tutors are qualified to help with various subjects including Math, Science, English, and more. You can schedule sessions for different subjects based on your needs.',
+      "Yes, we offer comprehensive support across multiple subjects. Our tutors are qualified to help with various subjects including Math, Science, English, and more. You can schedule sessions for different subjects based on your needs.",
   },
   {
-    question: 'Do you follow specific curricula?',
+    question: "Do you follow specific curricula?",
     answer:
-      'We align our teaching with major curricula including Common Core, IB, GCSE, and state-specific standards. Our tutors customize lessons to match your school curriculum and learning objectives.',
+      "We align our teaching with major curricula including Common Core, IB, GCSE, and state-specific standards. Our tutors customize lessons to match your school curriculum and learning objectives.",
   },
   {
-    question: 'What if my child needs help with homework?',
+    question: "What if my child needs help with homework?",
     answer:
-      'Our tutors provide dedicated homework help sessions. They guide students through challenging assignments, explain concepts, and ensure understanding rather than just providing answers.',
+      "Our tutors provide dedicated homework help sessions. They guide students through challenging assignments, explain concepts, and ensure understanding rather than just providing answers.",
   },
   {
-    question: 'How do you assess progress?',
+    question: "How do you assess progress?",
     answer:
-      'We track progress through regular assessments, practice tests, and continuous feedback. Parents receive detailed progress reports showing improvements in understanding, grades, and confidence levels.',
+      "We track progress through regular assessments, practice tests, and continuous feedback. Parents receive detailed progress reports showing improvements in understanding, grades, and confidence levels.",
   },
   {
-    question: 'What technology do I need?',
+    question: "What technology do I need?",
     answer:
-      'You need a computer or tablet with a stable internet connection, a webcam, and a microphone. We recommend using Chrome or Safari browsers for the best experience. All our learning tools are web-based.',
+      "You need a computer or tablet with a stable internet connection, a webcam, and a microphone. We recommend using Chrome or Safari browsers for the best experience. All our learning tools are web-based.",
   },
 ];
 
@@ -46,61 +46,68 @@ const FALL_BACK_CONTENT: FAQ = {
   title: "FAQ SECTION",
   description: "Explore FAQs for quick support, guidance, and information",
   questionCard: faqs,
-}
+};
 
 export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const [content,setContent] = useState<FAQ | null>(null);
+  const [content, setContent] = useState<FAQ | null>(null);
 
   useEffect(() => {
-        let mounted = true;
-    
-        const load = async () => {
-          try {
-            const contentRes = await fetch("/api/FAQ");
-            if (!contentRes.ok) {
-              throw new Error("Failed to load Overview content");
-            }
-    
-            const contentData = (await contentRes.json()) as FAQ;
-    
-            if (!mounted) return;
-            setContent(contentData);
-          } catch (e: any) {
-            if (!mounted) return;
-            setContent(null);
-          }
-        };
-    
-        void load();
-    
-        return () => {
-          mounted = false;
-        };
-      }, []);
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        const contentRes = await fetch("/api/FAQ");
+        if (!contentRes.ok) {
+          throw new Error("Failed to load Overview content");
+        }
+
+        const contentData = (await contentRes.json()) as FAQ;
+
+        if (!mounted) return;
+        setContent(contentData);
+      } catch (e: any) {
+        if (!mounted) return;
+        setContent(null);
+      }
+    };
+
+    void load();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const toggleFAQ = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-gray-50 to-white py-20 px-4">
+    <div className="w-full min-h-screen py-20 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
           <h2 className="mb-4 font-poppins font-extrabold text-[20px] md:text-5xl leading-none tracking-normal text-center">
-            {
-              content?.title?.split(" ")?.map((word,index)=>(
-                <span key={index} className={`${index==0 ? "text-[#1F4FD8]":"text-[#2B2B2B]"}`}>{word} </span>
-              )) ?? FALL_BACK_CONTENT?.title?.split(" ")?.map((word,index)=>(
-                <span key={index} className={`${index==0 ? "text-[#1F4FD8]":"text-[#2B2B2B]"}`}>{word} </span>
-              ))
-            }
+            {content?.title?.split(" ")?.map((word, index) => (
+              <span
+                key={index}
+                className={`${index == 0 ? "text-[#1F4FD8]" : "text-[#2B2B2B]"}`}
+              >
+                {word}{" "}
+              </span>
+            )) ??
+              FALL_BACK_CONTENT?.title?.split(" ")?.map((word, index) => (
+                <span
+                  key={index}
+                  className={`${index == 0 ? "text-[#1F4FD8]" : "text-[#2B2B2B]"}`}
+                >
+                  {word}{" "}
+                </span>
+              ))}
           </h2>
           <p className="text-[#4D4D4D] font-nunito-sans font-normal text-[12px] md:text-base leading-100% tracking-normal text-center">
-            {
-              content?.description ?? FALL_BACK_CONTENT?.description
-            }
+            {content?.description ?? FALL_BACK_CONTENT?.description}
           </p>
         </div>
 
@@ -108,32 +115,42 @@ export default function FAQSection() {
         <div className="space-y-4 mb-12">
           {content?.questionCard?.map((faq, index) => (
             <div
-              key={index}
-              className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-lg"
+            key={index}
+            className={`p-0.5 rounded-2xl transition-all duration-300 ${openIndex=== index ? "bg-linear-to-r from-[#1F4FD8] to-[#FFFFFF]" : "bg-white"}`}
+            >
+              <div className="bg-white rounded-2xl">
+                <div
+              className={`${openIndex=== index ? "bg-linear-to-r from-[#1F4FD833] to-[#FFFFFF00]" : "bg-white"} border-2 border-gray-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-lg`}
             >
               {/* Question */}
               <button
                 onClick={() => toggleFAQ(index)}
-                className="w-full flex items-center justify-between p-6 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className={`w-full flex items-center justify-between ${openIndex === index ?
+                  "px-6 pt-6" : "px-6 py-6"}
+                } text-left focus:outline-none`}
                 aria-expanded={openIndex === index}
               >
-                <h3 className="text-[#000000] pr-4 font-poppins font-bold text-[16px] md:text-lg leading-100% tracking-normal">
+                <h3 className={`${openIndex === index ? "text-[#1F4FD8]" : "text-[#2B2B2B]"} pr-4 font-poppins font-bold text-[16px] md:text-lg leading-100% tracking-normal`}>
                   {faq?.question}
                 </h3>
-                <div
-                  className={`flex-shrink-0 w-11 h-11 rounded-full bg-[#1F4FD8] flex items-center justify-center transition-transform duration-300 ${
-                    openIndex === index ? 'rotate-45' : ''
-                  }`}
-                >
-                  <svg
-                    width="35"
-                    height="35"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
+                <div className="flex-shrink-0 w-11 h-11 rounded-full bg-[#1F4FD8] flex items-center justify-center transition-all duration-300">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    {/* Horizontal line (always visible) */}
                     <path
-                      d="M10 5V15M5 10H15"
+                      d="M5 10H15"
+                      stroke="white"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+
+                    {/* Vertical line (only show when closed) */}
+                    <path
+                      d="M10 5V15"
+                      className={`transition-all duration-300 ${
+                        openIndex === index
+                          ? "opacity-0 scale-0"
+                          : "opacity-100 scale-100"
+                      }`}
                       stroke="white"
                       strokeWidth="2.5"
                       strokeLinecap="round"
@@ -146,65 +163,72 @@ export default function FAQSection() {
               <div
                 className={`overflow-hidden transition-all duration-300 ${
                   openIndex === index
-                    ? 'max-h-96 opacity-100'
-                    : 'max-h-0 opacity-0'
+                    ? "max-h-96 opacity-100"
+                    : "max-h-0 opacity-0"
                 }`}
               >
-                <div className="px-6 pb-6 pt-2">
-                  <p className="text-gray-600 text-[12px] md:text-base leading-relaxed">{faq?.answer}</p>
+                <div className="px-6 pb-6">
+                  <p className="text-gray-600 text-[12px] md:text-base leading-relaxed">
+                    {faq?.answer}
+                  </p>
                 </div>
               </div>
             </div>
-          )) ?? FALL_BACK_CONTENT?.questionCard?.map((faq, index) => (
-            <div
-              key={index}
-              className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-lg"
-            >
-              {/* Question */}
-              <button
-                onClick={() => toggleFAQ(index)}
-                className="w-full flex items-center justify-between p-6 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                aria-expanded={openIndex === index}
+              </div>
+            </div>
+          )) ??
+            FALL_BACK_CONTENT?.questionCard?.map((faq, index) => (
+              <div
+                key={index}
+                className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-lg"
               >
-                <h3 className="text-[#000000] pr-4 font-poppins font-bold text-lg leading-100% tracking-normal">
-                  {faq?.question}
-                </h3>
+                {/* Question */}
+                <button
+                  onClick={() => toggleFAQ(index)}
+                  className="w-full flex items-center justify-between p-6 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  aria-expanded={openIndex === index}
+                >
+                  <h3 className="text-[#000000] pr-4 font-poppins font-bold text-lg leading-100% tracking-normal">
+                    {faq?.question}
+                  </h3>
+                  <div
+                    className={`flex-shrink-0 w-11 h-11 rounded-full bg-[#1F4FD8] flex items-center justify-center transition-transform duration-300 ${
+                      openIndex === index ? "rotate-45" : ""
+                    }`}
+                  >
+                    <svg
+                      width="35"
+                      height="35"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M10 5V15M5 10H15"
+                        stroke="white"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Answer */}
                 <div
-                  className={`flex-shrink-0 w-11 h-11 rounded-full bg-[#1F4FD8] flex items-center justify-center transition-transform duration-300 ${
-                    openIndex === index ? 'rotate-45' : ''
+                  className={`overflow-hidden transition-all duration-300 ${
+                    openIndex === index
+                      ? "max-h-96 opacity-100"
+                      : "max-h-0 opacity-0"
                   }`}
                 >
-                  <svg
-                    width="35"
-                    height="35"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M10 5V15M5 10H15"
-                      stroke="white"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
-              </button>
-
-              {/* Answer */}
-              <div
-                className={`overflow-hidden transition-all duration-300 ${
-                  openIndex === index
-                    ? 'max-h-96 opacity-100'
-                    : 'max-h-0 opacity-0'
-                }`}
-              >
-                <div className="px-6 pb-6 pt-2">
-                  <p className="text-gray-600 leading-relaxed">{faq?.answer}</p>
+                  <div className="px-6 pb-6 pt-2">
+                    <p className="text-gray-600 leading-relaxed">
+                      {faq?.answer}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
 
         {/* View All Button */}

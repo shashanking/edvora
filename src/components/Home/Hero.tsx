@@ -222,9 +222,9 @@ const Hero = () => {
 "
               >
                 {/* Hover layer */}
-                <span className="absolute inset-0 bg-black -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></span>
+                
 
-                <span className="relative z-10 group-hover:text-white transition-colors duration-300">Book Free Assessment</span>
+                <span className="relative z-10 group-hover:text-white transition-colors duration-300">Book free Trial</span>
                 <div className="w-6.5 h-6.5 z-10  bg-[#FFFFFF] rounded-full flex items-center justify-center">
                   <img src="./arrow-up-line.png" alt="" className="group-hover:rotate-45 transition-transform duration-300" />
                 </div>

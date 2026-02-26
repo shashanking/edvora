@@ -87,11 +87,11 @@ export default function PricingSection() {
           </div>
 
           {/* Content Container */}
-          <div className="relative flex flex-col-reverse md:flex-row gap-32 md:gap-8 p-12 lg:p-16">
+          <div className="relative flex flex-col-reverse md:flex-row gap-32 md:gap-8 p-6 md:p-12 lg:p-16">
             {/* Left Side - Yellow Section */}
             <div className="text-gray-900 md:w-[638px]">
               {/* Heading */}
-              <h2 className="md:mb-4 text-[#2B2B2B] font-poppins font-bold text-[20px] md:text-5xl leading-cap leading-100% tracking-normal">
+              <h2 className="md:mb-4 text-[#2B2B2B] font-poppins font-bold text-[20px] md:text-5xl leading-cap leading-100% tracking-normal text-center md:text-left">
                 {
                   content?.title?.split(" ").map((word, index) => (
                     <span key={index} className={`${index == content?.title?.split(" ").length - 1 ? "text-[#1F4FD8]" : ""}`}>{word} </span>
@@ -100,7 +100,7 @@ export default function PricingSection() {
                   ))
                 }
               </h2>
-              <p className="text-[#4D4D4D] mb-2 md:mb-8 font-nunito-sans font-normal text-[12px] md:text-base leading-cap leading-100% tracking-normal">
+              <p className="text-[#4D4D4D] mb-2 md:mb-8 font-nunito-sans font-normal text-[12px] md:text-base leading-cap leading-100% tracking-normal text-center md:text-left">
                 {content?.description ?? FALL_BACK_CONTENT?.description}
               </p>
 

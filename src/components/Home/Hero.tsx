@@ -170,7 +170,7 @@ const Hero = () => {
           <div className="space-y-6">
             {/* Top badge */}
             <div className="flex justify-start mb-8">
-              <div className="inline-flex items-center px-5 py-2.5 rounded-full border border-white/30 bg-white/5 backdrop-blur-sm">
+              <div className="inline-flex items-center px-2 md:px-5 py-2.5 rounded-full border border-white/30 bg-white/5 backdrop-blur-sm">
                 {/* <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
               <path
                 d="M12 2L14.5 9H22L16 14L18.5 21L12 16L5.5 21L8 14L2 9H9.5L12 2Z"

@@ -91,7 +91,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href="#young-learners" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Young Learners
                 </a>
@@ -99,7 +99,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href="#adult-learners" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Adult Learners
                 </a>
@@ -107,7 +107,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href="#about" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   About
                 </a>
@@ -115,7 +115,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href="#contact" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Contact Us
                 </a>
@@ -130,7 +130,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href="/refund-policy" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Refund Policy
                 </a>
@@ -138,7 +138,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href="/privacy-policy" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Privacy Policy
                 </a>
@@ -146,7 +146,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href="/terms-conditions" 
-                  className="text-white/80 hover:text-white transition-colors text-sm"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Terms & Conditions
                 </a>
@@ -169,24 +169,24 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href={`tel:${content?.phone ?? "#"}`} 
-                  className="flex items-center gap-3 text-white/80 hover:text-white transition-colors text-sm group"
+                  className="flex items-center gap-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group"
                 >
-                  <Phone className="w-5 h-5 text-yellow-300 flex-shrink-0" />
+                  <Phone className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0" />
                   <span>{content?.phone ?? FALL_BACK_CONTENT?.phone}</span>
                 </a>
               </li>
               <li>
                 <a 
                   href={`mailto:${content?.email ?? "#"}`}
-                  className="flex items-center gap-3 text-white/80 hover:text-white transition-colors text-sm group"
+                  className="flex items-center gap-1 pr-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group"
                 >
-                  <Mail className="w-5 h-5 text-yellow-300 flex-shrink-0" />
+                  <Mail className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0" />
                   <span>{content?.email ?? FALL_BACK_CONTENT?.email}</span>
                 </a>
               </li>
               <li>
-                <div className="flex items-start gap-3 text-white/80 text-sm">
-                  <MapPin className="w-5 h-5 text-yellow-300 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-1 md:gap-3 text-white/80 text-xs md:text-sm">
+                  <MapPin className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0 mt-0.5" />
                   <span className="leading-relaxed">
                     {content?.address ?? FALL_BACK_CONTENT?.address}
                   </span>

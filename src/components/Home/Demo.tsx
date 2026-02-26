@@ -52,7 +52,7 @@ const DemoCardSection: React.FC = () => {
     }, []);
 
   return (
-    <section className="w-full relative bg-gradient-to-br from-gray-50 to-white py-16 px-6 lg:px-12">
+    <section className="w-full relative bg-gradient-to-br from-gray-50 to-white py-16 px-3 lg:px-12">
       <div className="max-w-[1400px] mx-auto">
         {/* Main Card */}
         <div className=" overflow-hidden rounded-3xl shadow-2xl bg-[#FFC83D]">

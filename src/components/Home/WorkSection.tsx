@@ -57,6 +57,7 @@ const HowItWorksSection: React.FC = () => {
           }
   
           const contentData = (await contentRes.json()) as HowItWorks;
+          
   
           if (!mounted) return;
           setContent(contentData);
@@ -85,7 +86,7 @@ const HowItWorksSection: React.FC = () => {
 }, [steps.length]);
 
   return (
-    <section className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 py-20 px-6 lg:px-12 overflow-hidden">
+    <section className="relative w-full min-h-screen py-20 px-6 lg:px-12 overflow-hidden">
       {/* Decorative ruler - top right */}
       <div className="absolute top-5 md:top-4 -right-27 md:right-6 z-20">
         <img src="./scale 1.png" alt="" className='w-1/2 md:w-2/3' />
@@ -105,7 +106,7 @@ const HowItWorksSection: React.FC = () => {
             <div className="space-y-8 relative">
               {content?.card.map((step, index) => (
                 <div
-                  key={step._id}
+                  key={index}
                   className={`flex items-start gap-6 p-px rounded-2xl transition-all duration-300 ${index%2==0 ? "bg-gradient-to-r from-[#1F4FD8] to-[#FFFFFF]" : "bg-gradient-to-l from-[#1F4FD8] to-[#FFFFFF]"}`}
                 >
                   {/* Content card */}
@@ -114,10 +115,10 @@ const HowItWorksSection: React.FC = () => {
                       bg-white transition-all duration-300 ${index===isActiveIndex ? index%2==0 ? "bg-linear-to-r from-[#1F4FD833] to-[#FFFFFF00]" : "bg-linear-to-l from-[#1F4FD833] to-[#FFFFFF00]" : "bg-white"} border border-gradient-to-r from-[#1F4FD833] to-[#FFFFFF00]`}
                   >
                     <h3 className="text-[#1F4FD8] mb-3 font-semibold text-base leading-none">
-                      {step.title}
+                      {step?.title}
                     </h3>
                     <p className="text-[#4D4D4D] font-normal text-[12px] md:text-base leading-none">
-                      {step.description}
+                      {step?.description}
                     </p>
                   </div>
                 </div>

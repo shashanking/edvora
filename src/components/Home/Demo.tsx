@@ -116,11 +116,13 @@ const DemoCardSection: React.FC = () => {
                 <div className="pt-2">
                   <a href="#contact" className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#1F4FD8] hover:bg-[#1D4ED8] text-white rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 ">
-                <span>Book Free Assessment</span>
+                {/* Hover layer */}
+                <span className="absolute inset-0 bg-black -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></span>
+                <span className='group-hover:text-white z-10'>Book Free Assessment</span>
                 <div
-                  className="w-6.5 h-6.5 transition-transform group-hover:translate-x-1 bg-[#FFFFFF] rounded-full flex items-center justify-center"
+                  className="w-6.5 h-6.5 z-10 bg-[#FFFFFF] rounded-full flex items-center justify-center"
                 >
-                  <img src="./arrow-up-line.png" alt="" />
+                  <img src="./arrow-up-line.png" alt="" className='group-hover:rotate-45 transition-all duration-300' />
                 </div>
               </a>
                 </div>

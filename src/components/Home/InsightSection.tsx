@@ -65,15 +65,13 @@ const blogPosts: BlogPost[] = [
   },
 ];
 
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, {
-    month: "short",
+const formatDate = (iso: string) =>
+  new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
+    month: "short",
     year: "numeric",
-  });
-};
+    timeZone: "UTC", // optional but SSR-safe
+  }).format(new Date(iso));
 
 const FALL_BACK_CONTENT = blogPosts;
 
@@ -238,8 +236,10 @@ export default function BlogSection() {
 
         {/* View All Button */}
         <div className="flex justify-center px-8 md:px-0">
-          <button className="bg-[#FFC83D] text-[#2B2B2B] w-full md:w-auto px-12 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 font-poppins font-semibold text-[12px] md:text-xl leading-cap leading-100% tracking-normal">
-            View All
+          <button className="bg-[#FFC83D] text-[#2B2B2B] w-full md:w-auto px-12 py-3 rounded-full shadow-lg font-poppins font-semibold text-[12px] md:text-xl leading-cap leading-100% tracking-normal relative group overflow-hidden">
+            {/* Hover layer */}
+                <span className="absolute inset-0 bg-black -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></span>
+            <span className="relative z-10 group-hover:text-white transition-colors duration-300">View All</span>
           </button>
         </div>
       </div>

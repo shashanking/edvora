@@ -132,22 +132,7 @@ export default function PricingSection() {
               <a href="#contact" className="group w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 md:px-8 py-2 md:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-3">
                 <span className="">Book Free Consultation</span>
                 <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform duration-300">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="text-blue-600"
-                  >
-                    <path
-                      d="M3 8H13M13 8L9 4M13 8L9 12"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <img src="./arrow-up-line.png" alt="" />
                 </div>
               </a>
             </div>

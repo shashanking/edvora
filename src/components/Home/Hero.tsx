@@ -221,9 +221,12 @@ const Hero = () => {
                 className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#1F4FD8] hover:bg-[#1D4ED8] text-white rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 "
               >
-                <span>Book Free Assessment</span>
-                <div className="w-6.5 h-6.5 transition-transform group-hover:translate-x-1 bg-[#FFFFFF] rounded-full flex items-center justify-center">
-                  <img src="./arrow-up-line.png" alt="" />
+                {/* Hover layer */}
+                <span className="absolute inset-0 bg-black -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></span>
+
+                <span className="relative z-10 group-hover:text-white transition-colors duration-300">Book Free Assessment</span>
+                <div className="w-6.5 h-6.5 z-10  bg-[#FFFFFF] rounded-full flex items-center justify-center">
+                  <img src="./arrow-up-line.png" alt="" className="group-hover:rotate-45 transition-transform duration-300" />
                 </div>
               </a>
 
@@ -246,7 +249,11 @@ const Hero = () => {
 
             {/* Top-left decorative white swirl */}
             <div className="absolute -z-10 top-1 -left-[15%] md:-left-[20%] w-[150px] h-[120px]">
-              <img src="./Shape 1 snake 1.png" alt="" className="w-1/2 md:w-auto" />
+              <img
+                src="./Shape 1 snake 1.png"
+                alt=""
+                className="w-1/2 md:w-auto"
+              />
             </div>
 
             {/* Student cards grid - 2x2 */}
@@ -255,7 +262,10 @@ const Hero = () => {
               <div className="aspect-square rounded-full bg-gradient-to-br from-[#FFB5C0] to-[#FFA3B5] overflow-hidden relative">
                 <div className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">
                   <img
-                    src={content?.images[0]?.url ?? Fall_BACK_CONTENT?.images[0]?.url}
+                    src={
+                      content?.images[0]?.url ??
+                      Fall_BACK_CONTENT?.images[0]?.url
+                    }
                     alt=""
                     className="md:h-70 md:w-70 object-contain"
                   />
@@ -269,7 +279,10 @@ const Hero = () => {
               >
                 <div className="absolute inset-0 flex items-center justify-center">
                   <img
-                    src={content?.images[2]?.url ?? Fall_BACK_CONTENT?.images[2]?.url}
+                    src={
+                      content?.images[2]?.url ??
+                      Fall_BACK_CONTENT?.images[2]?.url
+                    }
                     alt=""
                     className="md:h-70 md:w-70 object-contain"
                   />
@@ -280,7 +293,10 @@ const Hero = () => {
               <div className="aspect-square rounded-[32px] bg-gradient-to-br from-[#A5E5F0] to-[#7DD3E8] overflow-hidden relative">
                 <div className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">
                   <img
-                    src={content?.images[1]?.url ?? Fall_BACK_CONTENT?.images[1]?.url}
+                    src={
+                      content?.images[1]?.url ??
+                      Fall_BACK_CONTENT?.images[1]?.url
+                    }
                     alt=""
                     className="md:h-70 md:w-70 object-contain"
                   />
@@ -294,7 +310,10 @@ const Hero = () => {
               >
                 <div className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">
                   <img
-                    src={content?.images[3]?.url ?? Fall_BACK_CONTENT?.images[3]?.url}
+                    src={
+                      content?.images[3]?.url ??
+                      Fall_BACK_CONTENT?.images[3]?.url
+                    }
                     alt=""
                     className="md:h-70 md:w-70 object-contain"
                   />
@@ -307,8 +326,7 @@ const Hero = () => {
           <FeaturesBar />
         </div>
       </div>
-      <div>
-      </div>
+      <div></div>
     </section>
   );
 };

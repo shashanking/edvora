@@ -52,29 +52,29 @@ const DemoCardSection: React.FC = () => {
     }, []);
 
   return (
-    <section className="w-full relative bg-gradient-to-br from-gray-50 to-white py-16 px-3 lg:px-12">
+    <section className="w-full relative bg-gradient-to-br from-gray-50 to-white py-12 md:py-16 px-4 md:px-6 lg:px-12">
       <div className="max-w-[1400px] mx-auto">
         {/* Main Card */}
-        <div className=" overflow-hidden rounded-3xl shadow-2xl bg-[#FFC83D]">
+        <div className="overflow-hidden rounded-2xl md:rounded-3xl shadow-2xl bg-[#FFC83D]">
           {/* Two-tone background with diagonal split */}
-          <div className=" grid lg:grid-cols-2 min-h-[400px]">
+          <div className="grid lg:grid-cols-2 min-h-[350px] md:min-h-[450px] lg:min-h-[400px]">
             {/* Left side - Blue background with curved edge */}
-            <div className=" bg-gradient-to-br from-[#3B82F6] to-[#1F4FD8] overflow-hidden md:rounded-tr-[350px] rounded-br-[350px] md:rounded-br-none h-[300px] md:h-auto">
+            <div className="bg-gradient-to-br from-[#3B82F6] to-[#1F4FD8] overflow-hidden rounded-br-[200px] sm:rounded-br-[280px] md:rounded-br-[350px] lg:rounded-tr-[350px] lg:rounded-br-none h-[280px] sm:h-[320px] md:h-[400px] lg:h-auto relative">
               {/* Curved diagonal edge */}
               {/* <div className="absolute top-0 right-0 bottom-0 w-32">
               </div> */}
 
               {/* Image placeholder */}
-              <div className=" absolute -top-13 md:-top-33.5 md:-left-20 flex items-end justify-center lg:justify-start px-8 lg:px-12 py-8 overflow-hidden rounded-br-[350px]">
-                <img src={`${content?.imageUrl ?? FALL_BACK_CONTENT?.imageUrl}`} alt="" className='h-[390px] md:h-[590px] rounded-br-[350px]' />
+              <div className="absolute -top-8 sm:-top-12 md:-top-20 lg:-top-33.5 -left-4 sm:-left-8 md:-left-12 lg:-left-20 flex items-end justify-center lg:justify-start px-4 sm:px-6 md:px-8 lg:px-12 py-4 md:py-8 overflow-hidden rounded-br-[200px] sm:rounded-br-[280px] md:rounded-br-[350px]">
+                <img src={`${content?.imageUrl ?? FALL_BACK_CONTENT?.imageUrl}`} alt="" className='h-[320px] sm:h-[400px] md:h-[480px] lg:h-[590px] rounded-br-[200px] sm:rounded-br-[280px] md:rounded-br-[350px] object-cover' />
               </div>
             </div>
 
             {/* Right side - Yellow background with content */}
-            <div className="bg-[#FFC83D] px-8 lg:px-12 py-8 lg:py-12 flex flex-col justify-center">
-              <div className="space-y-6">
+            <div className="bg-[#FFC83D] px-6 md:px-8 lg:px-12 py-6 md:py-8 lg:py-12 flex flex-col justify-center">
+              <div className="space-y-4 md:space-y-6">
                 {/* Heading */}
-                <h2 className="text-poppins font-bold text-[20px] md:text-5xl leading-none leading-100% tracking-normal">
+                <h2 className="text-poppins font-bold text-[20px] sm:text-[24px] md:text-[36px] lg:text-5xl leading-tight tracking-normal">
                   {
                     content?.heading?.split(" ")?.map((word, index) => (
                       <span key={index} className={`${index < content?.heading?.split(" ").length-2 ? 'text-[#2B2B2B]' : 'text-[#1F4FD8]'}`}>
@@ -89,23 +89,23 @@ const DemoCardSection: React.FC = () => {
                 </h2>
 
                 {/* Description */}
-                <p className="text-[#4D4D4D] text-nunito font-normal text-[12px] md:text-sm leading-none leading-100% tracking-tight">
+                <p className="text-[#4D4D4D] text-nunito font-normal text-[12px] sm:text-[13px] md:text-sm leading-relaxed tracking-tight">
                   {content?.description ?? FALL_BACK_CONTENT?.description}
                 </p>
 
                 {/* Feature tags */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2 md:gap-3">
                   {content?.features?.map((feature, index) => (
                     <span
                       key={index}
-                      className="px-5 py-2 bg-white text-[#2B2B2B] rounded-full shadow-sm text-poppins font-medium text-[10px] md:text-sm leading-[calc(100% + var(--cap-height))] leading-100% tracking-normal"
+                      className="px-4 sm:px-5 py-1.5 sm:py-2 bg-white text-[#2B2B2B] rounded-full shadow-sm text-poppins font-medium text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-normal"
                     >
                       {feature}
                     </span>
                   )) ?? FALL_BACK_CONTENT?.features?.map((feature, index) => (
                     <span
                       key={index}
-                      className="px-5 py-2 bg-white text-[#2B2B2B] rounded-full shadow-sm text-poppins font-medium text-[10px] md:text-sm leading-[calc(100% + var(--cap-height))] leading-100% tracking-normal"
+                      className="px-4 sm:px-5 py-1.5 sm:py-2 bg-white text-[#2B2B2B] rounded-full shadow-sm text-poppins font-medium text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-normal"
                     >
                       {feature}
                     </span>
@@ -113,7 +113,7 @@ const DemoCardSection: React.FC = () => {
                 </div>
 
                 {/* CTA Button */}
-                <div className="pt-2">
+                <div className="pt-2 md:pt-4">
                   <a href="#contact" className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#1F4FD8] hover:bg-[#1D4ED8] text-white rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 ">
                 {/* Hover layer */}

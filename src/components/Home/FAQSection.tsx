@@ -1,7 +1,6 @@
 "use client";
 
-import { title } from "process";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface FAQItem {
   question: string;
@@ -84,11 +83,11 @@ export default function FAQSection() {
   };
 
   return (
-    <div className="w-full min-h-screen py-20 px-4">
+    <div className="w-full min-h-screen py-12 md:py-16 lg:py-20 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-16">
-          <h2 className="mb-4 font-poppins font-extrabold text-[20px] md:text-5xl leading-none tracking-normal text-center">
+        <div className="text-center mb-8 md:mb-12 lg:mb-16">
+          <h2 className="mb-3 md:mb-4 font-poppins font-extrabold text-[24px] sm:text-[28px] md:text-[36px] lg:text-5xl leading-tight tracking-normal text-center">
             {content?.title?.split(" ")?.map((word, index) => (
               <span
                 key={index}
@@ -106,13 +105,13 @@ export default function FAQSection() {
                 </span>
               ))}
           </h2>
-          <p className="text-[#4D4D4D] font-nunito-sans font-normal text-[12px] md:text-base leading-100% tracking-normal text-center">
+          <p className="text-[#4D4D4D] font-nunito-sans font-normal text-[12px] sm:text-[13px] md:text-base leading-relaxed tracking-normal text-center">
             {content?.description ?? FALL_BACK_CONTENT?.description}
           </p>
         </div>
 
         {/* FAQ Items */}
-        <div className="space-y-4 mb-12">
+        <div className="space-y-3 md:space-y-4 mb-8 md:mb-12">
           {content?.questionCard?.map((faq, index) => (
             <div
             key={index}
@@ -126,14 +125,14 @@ export default function FAQSection() {
               <button
                 onClick={() => toggleFAQ(index)}
                 className={`w-full flex items-center justify-between ${openIndex === index ?
-                  "px-6 pt-6" : "px-6 py-6"}
+                  "px-4 md:px-6 pt-4 md:pt-6" : "px-4 md:px-6 py-4 md:py-6"}
                 } text-left focus:outline-none`}
                 aria-expanded={openIndex === index}
               >
-                <h3 className={`${openIndex === index ? "text-[#1F4FD8]" : "text-[#2B2B2B]"} pr-4 font-poppins font-bold text-[16px] md:text-lg leading-100% tracking-normal`}>
+                <h3 className={`${openIndex === index ? "text-[#1F4FD8]" : "text-[#2B2B2B]"} pr-3 md:pr-4 font-poppins font-bold text-[14px] sm:text-[15px] md:text-base lg:text-lg leading-tight tracking-normal`}>
                   {faq?.question}
                 </h3>
-                <div className="flex-shrink-0 w-11 h-11 rounded-full bg-[#1F4FD8] flex items-center justify-center transition-all duration-300">
+                <div className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-[#1F4FD8] flex items-center justify-center transition-all duration-300">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                     {/* Horizontal line (always visible) */}
                     <path
@@ -167,8 +166,8 @@ export default function FAQSection() {
                     : "max-h-0 opacity-0"
                 }`}
               >
-                <div className="px-6 pb-6">
-                  <p className="text-gray-600 text-[12px] md:text-base leading-relaxed">
+                <div className="px-4 md:px-6 pb-4 md:pb-6">
+                  <p className="text-gray-600 text-[11px] sm:text-[12px] md:text-sm lg:text-base leading-relaxed">
                     {faq?.answer}
                   </p>
                 </div>
@@ -238,11 +237,11 @@ export default function FAQSection() {
               const el = document.getElementById('coming-soon-faq');
               if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000); }
             }}
-            className="bg-[#FFC83D] hover:bg-yellow-500 w-full md:w-auto text-[#2B2B2B] px-12 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 font-poppins font-semibold text-[12px] md:text-xl leading-cap leading-100% tracking-normal"
+            className="bg-[#FFC83D] hover:bg-yellow-500 w-full md:w-auto text-[#2B2B2B] px-8 md:px-12 py-3 md:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 font-poppins font-semibold text-[14px] md:text-lg lg:text-xl leading-tight tracking-normal"
           >
             View All
           </button>
-          <div id="coming-soon-faq" className="hidden absolute left-1/2 -translate-x-1/2 -top-12 bg-[#1C1C28] text-white text-sm font-poppins font-semibold px-5 py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
+          <div id="coming-soon-faq" className="hidden absolute left-1/2 -translate-x-1/2 -top-10 md:-top-12 bg-[#1C1C28] text-white text-xs md:text-sm font-poppins font-semibold px-4 md:px-5 py-2 md:py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
             🚀 Coming Soon!
           </div>
         </div>

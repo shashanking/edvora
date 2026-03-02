@@ -82,7 +82,7 @@ const ProgramsOverviewSection: React.FC = () => {
   const courses = CATEGORY_MAP[selectedCategory];
 
   return (
-    <section id="young-learners" className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-20 px-6 lg:px-12 overflow-hidden">
+    <section id="young-learners" className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">
       {/* Decorative yellow swirl - left */}
       <div className="absolute top-20 md:top-40 left-0 opacity-60">
         <img src="./overviewSpiral.png" alt="" className="h-10 w-10 md:h-[145px] md:w-[145px]" />
@@ -95,25 +95,25 @@ const ProgramsOverviewSection: React.FC = () => {
 
       <div className="max-w-[1400px] mx-auto relative z-10">
         {/* Header Section */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 py-3">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8 mb-8 md:mb-12 py-3">
           {/* Left - Title */}
           <div>
-            <h2 className="md:mb-1 font-poppins font-extrabold text-[20px] md:text-[48px] leading-15 tracking-normal flex gap-4">
+            <h2 className="mb-2 md:mb-1 font-poppins font-extrabold text-[24px] sm:text-[28px] md:text-[36px] lg:text-[48px] leading-tight tracking-normal flex flex-wrap gap-2 md:gap-4">
               <span className="text-[#1F4FD8]">FOR</span>
               <span className="text-[#2B2B2B]">YOUNG LEARNERS</span>
             </h2>
-            <p className="text-[#4D4D4D] font-poppins font-semibold text-[14px] md:text-[28px] leading-none tracking-normal mb-2">(Ages 4-15)</p>
-            <p className="text-[#4D4D4D] font-nunito font-semibold text-[12px] md:text-[20px] leading-none tracking-normal">
+            <p className="text-[#4D4D4D] font-poppins font-semibold text-[14px] sm:text-[16px] md:text-[20px] lg:text-[28px] leading-tight tracking-normal mb-2">(Ages 4-15)</p>
+            <p className="text-[#4D4D4D] font-nunito font-semibold text-[12px] sm:text-[14px] md:text-[16px] lg:text-[20px] leading-relaxed tracking-normal">
               Building Strong Academic Foundations
             </p>
           </div>
 
           {/* Right - Category Tabs */}
-          <div className="w-full lg:w-auto flex flex-col items-center justify-center md:py-3">
-            <div className="flex md:gap-2">
+          <div className="w-full lg:w-auto flex flex-col items-center justify-center py-2 md:py-3">
+            <div className="flex gap-1.5 sm:gap-2">
               <button
                 onClick={() => setSelectedCategory("core")}
-                className={`px-4 md:px-6 py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[10px] md:text-[16px] leading-none tracking-normal ${
+                className={`px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[9px] sm:text-[10px] md:text-[14px] lg:text-[16px] leading-tight tracking-normal ${
                   selectedCategory === "core"
                     ? "bg-[#1F4FD8] text-white shadow-lg"
                     : "bg-white text-[#2B2B2B] hover:bg-gray-100 border border-gray-200"
@@ -123,7 +123,7 @@ const ProgramsOverviewSection: React.FC = () => {
               </button>
               <button
                 onClick={() => setSelectedCategory("specialized")}
-                className={`px-4 md:px-6 py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[10px] md:text-[16px] leading-none tracking-normal ${
+                className={`px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[9px] sm:text-[10px] md:text-[14px] lg:text-[16px] leading-tight tracking-normal ${
                   selectedCategory === "specialized"
                     ? "bg-[#1F4FD8] text-white shadow-lg"
                     : "bg-white text-[#2B2B2B] hover:bg-gray-100 border border-gray-200"
@@ -133,7 +133,7 @@ const ProgramsOverviewSection: React.FC = () => {
               </button>
               <button
                 onClick={() => setSelectedCategory("exam")}
-                className={`px-4 md:px-6 py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[10px] md:text-[16px] leading-none tracking-normal ${
+                className={`px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 rounded-full transition-all duration-300 font-nunito font-semibold text-[9px] sm:text-[10px] md:text-[14px] lg:text-[16px] leading-tight tracking-normal ${
                   selectedCategory === "exam"
                     ? "bg-[#1F4FD8] text-white shadow-lg"
                     : "bg-white text-[#2B2B2B] hover:bg-gray-100 border border-gray-200"

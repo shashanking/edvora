@@ -86,9 +86,9 @@ const AdvantageSection: React.FC = () => {
     };
   }, []);
   return (
-    <section className="relative w-full bg-white py-20 md:px-8 lg:px-12">
+    <section className="relative w-full bg-white py-12 md:py-16 lg:py-20 px-4 md:px-8 lg:px-12">
       {/*bottom left paper plane*/}
-      <div className="absolute bottom-10 md:bottom-0 md:left-40">
+      <div className="absolute bottom-10 md:bottom-0 md:left-40 -z-10 pointer-events-none">
         <img
           src="./Paper plane 1.png"
           alt=""
@@ -96,18 +96,18 @@ const AdvantageSection: React.FC = () => {
         />
       </div>
       {/*top right star*/}
-      <div className="absolute top-60 right-5 md:top-50 right-0">
+      <div className="absolute top-60 right-5 md:top-50 right-0 -z-10 pointer-events-none">
         <img
           src="./star 1.png"
           alt=""
           className="h-12.5 w-12.5 md:h-32.5 md:w-32.5"
         />
       </div>
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-[1400px] mx-auto relative z-10">
         {/* Header */}
-        <div className="text-center mb-8 px-3">
+        <div className="text-center mb-8 md:mb-12 px-3">
           <h2
-            className=" mb:3 md:mb-6 font-poppins font-extrabold text-[20px] md:text-[48px] leading-15 tracking-normal text-center text-[#2B2B2B]
+            className="mb-3 md:mb-6 font-poppins font-extrabold text-[24px] sm:text-[28px] md:text-[36px] lg:text-[48px] leading-tight tracking-normal text-center text-[#2B2B2B]
 "
           >
             {content?.heading?.split(" ")?.map((word, index) => (
@@ -128,7 +128,7 @@ const AdvantageSection: React.FC = () => {
               ))}
           </h2>
           <p
-            className="text-[#4D4D4D] mx-auto font-nunito font-normal text-[12px] md:text-[16px] leading-none tracking-normal text-center
+            className="text-[#4D4D4D] mx-auto font-nunito font-normal text-[12px] sm:text-[13px] md:text-[16px] leading-relaxed tracking-normal text-center
 "
           >
             {content?.description ?? Fall_BACK_CONTENT.description}
@@ -136,31 +136,31 @@ const AdvantageSection: React.FC = () => {
         </div>
 
         {/* Cards Grid */}
-        <div className="flex  items-center justify-center flex-wrap gap-2 md:gap-6 mt-16">
+        <div className="flex items-center justify-center flex-wrap gap-3 md:gap-4 lg:gap-6 mt-8 md:mt-12 lg:mt-16">
           {/* Card 1 - 1-on-1 Live Sessions */}
           {content?.card?.map((card, index) => (
             <div
               key={index}
-              className="p-px rounded-3xl bg-linear-to-b from-[#1F4FD8] to-[#FFFFFF]"
+              className="p-px rounded-2xl md:rounded-3xl bg-linear-to-b from-[#1F4FD8] to-[#FFFFFF]"
             >
-              <div className="w-[171px] h-[191px] md:w-[310px] md:h-[360px] bg-gradient-to-b from-[#F3F3F3] to-[#FFFFFF] rounded-3xl p-8 hover:scale-105 transition-transform duration-300 hover:bg-gradient-to-b hover:from-[#1F4FD8] hover:to-[#FFFFFF] border ">
+              <div className="w-[160px] h-[180px] sm:w-[200px] sm:h-[220px] md:w-[280px] md:h-[320px] lg:w-[310px] lg:h-[360px] bg-gradient-to-b from-[#F3F3F3] to-[#FFFFFF] rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 hover:scale-105 transition-transform duration-300 hover:bg-gradient-to-b hover:from-[#1F4FD8] hover:to-[#FFFFFF] border">
                 <div className="group relative flex flex-col items-center text-center ">
                   {/* Icon circle */}
-                  <div className="h-20 w-20 md:w-32 md:h-32 bg-white rounded-full flex items-center justify-center mb-2 md:mb-8 shadow-lg">
+                  <div className="h-16 w-16 sm:h-20 sm:w-20 md:w-28 md:h-28 lg:w-32 lg:h-32 bg-white rounded-full flex items-center justify-center mb-3 md:mb-6 lg:mb-8 shadow-lg">
                     <img
                       src={card?.imageUrl}
                       alt=""
-                      className="h-8 w-8 md:h-25 md:w-25"
+                      className="h-6 w-6 sm:h-8 sm:w-8 md:h-20 md:w-20 lg:h-25 lg:w-25"
                     />
                   </div>
 
                   <h3
-                    className=" text-[#2B2B2B] mt-auto font-poppins font-extrabold text-[16px] md:text-[20px] leading-none tracking-normal text-center md:w-[228px]
+                    className="text-[#2B2B2B] mt-auto font-poppins font-extrabold text-[12px] sm:text-[14px] md:text-[18px] lg:text-[20px] leading-tight tracking-normal text-center w-full
 "
                   >
                     {card?.title}
                   </h3>
-                  <p className="font-nunito text-sm mt-2 md:text-base text-[#4D4D4D] max-h-0 opacity-0 group-hover:max-h-16 group-hover:opacity-100 transition-all duration-200">
+                  <p className="font-nunito text-[10px] sm:text-xs md:text-sm lg:text-base mt-2 text-[#4D4D4D] max-h-0 opacity-0 group-hover:max-h-20 group-hover:opacity-100 transition-all duration-200">
                     {card?.description}
                   </p>
                 </div>

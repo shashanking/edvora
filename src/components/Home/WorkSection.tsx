@@ -1,6 +1,6 @@
 'use client';
 
-import React, { use, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 type Card = {
   _id: string;
@@ -86,38 +86,38 @@ const HowItWorksSection: React.FC = () => {
 }, [steps.length]);
 
   return (
-    <section className="relative w-full min-h-screen py-20 px-6 lg:px-12 overflow-hidden">
+    <section className="relative w-full min-h-screen py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">
       {/* Decorative ruler - top right */}
-      <div className="absolute top-5 md:top-4 -right-27 md:right-6 z-20">
-        <img src="./scale 1.png" alt="" className='w-1/2 md:w-2/3' />
+      <div className="absolute top-4 md:top-4 -right-8 sm:-right-12 md:right-6 z-0 pointer-events-none">
+        <img src="./scale 1.png" alt="" className='w-[80px] sm:w-[120px] md:w-[160px] lg:w-auto' />
       </div>
 
       {/* Decorative paperclip - bottom left */}
-      <div className="absolute bottom-40 md:bottom-16 left-0">
-       <img src="./clip 1.png" alt="" className='w-1/2 md:w-2/3' />
+      <div className="absolute bottom-20 sm:bottom-32 md:bottom-16 left-0">
+       <img src="./clip 1.png" alt="" className='w-[60px] sm:w-[90px] md:w-[120px] lg:w-auto' />
       </div>
 
       <div className="max-w-[1400px] mx-auto relative z-10">
-        <div className="grid lg:grid-cols-2 gap-16 items-start">
+        <div className="grid lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-start">
             {/* Left side */}
-          <div className='flex flex-col md:flex-row items-center gap-16 h-full'>
+          <div className='flex flex-col lg:flex-row items-center gap-6 md:gap-6 lg:gap-16 h-full'>
 
             {/* Steps */}
-            <div className="space-y-8 relative">
+            <div className="space-y-4 md:space-y-6 lg:space-y-8 relative w-full md:flex-1">
               {content?.card.map((step, index) => (
                 <div
                   key={index}
-                  className={`flex items-start gap-6 p-px rounded-2xl transition-all duration-300 ${index%2==0 ? "bg-gradient-to-r from-[#1F4FD8] to-[#FFFFFF]" : "bg-gradient-to-l from-[#1F4FD8] to-[#FFFFFF]"}`}
+                  className={`flex items-start gap-3 md:gap-6 p-px rounded-xl md:rounded-2xl transition-all duration-300 ${index%2==0 ? "bg-gradient-to-r from-[#1F4FD8] to-[#FFFFFF]" : "bg-gradient-to-l from-[#1F4FD8] to-[#FFFFFF]"}`}
                 >
                   {/* Content card */}
                   <div
-                    className={`flex-1 rounded-2xl p-6 shadow-lg hover:shadow-xl
+                    className={`flex-1 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg hover:shadow-xl
                       bg-white transition-all duration-300 ${index===isActiveIndex ? index%2==0 ? "bg-linear-to-r from-[#1F4FD833] to-[#FFFFFF00]" : "bg-linear-to-l from-[#1F4FD833] to-[#FFFFFF00]" : "bg-white"} border border-gradient-to-r from-[#1F4FD833] to-[#FFFFFF00]`}
                   >
-                    <h3 className="text-[#1F4FD8] mb-3 font-semibold text-base leading-none">
+                    <h3 className="text-[#1F4FD8] mb-2 md:mb-3 font-semibold text-[14px] sm:text-[15px] md:text-base leading-tight">
                       {step?.title}
                     </h3>
-                    <p className="text-[#4D4D4D] font-normal text-[12px] md:text-base leading-none">
+                    <p className="text-[#4D4D4D] font-normal text-[11px] sm:text-[12px] md:text-base leading-relaxed">
                       {step?.description}
                     </p>
                   </div>
@@ -131,33 +131,33 @@ const HowItWorksSection: React.FC = () => {
                   <div
                     className={`flex-1 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300  border border-gradient-to-r from-[#1F4FD833] to-[#FFFFFF00]`}
                   >
-                    <h3 className="text-[#1F4FD8] mb-3 font-semibold text-base leading-none">
+                    <h3 className="text-[#1F4FD8] mb-2 md:mb-3 font-semibold text-[14px] sm:text-[15px] md:text-base leading-tight">
                       {step.title}
                     </h3>
-                    <p className="text-[#4D4D4D] font-normal text-base leading-none">
+                    <p className="text-[#4D4D4D] font-normal text-[11px] sm:text-[12px] md:text-base leading-relaxed">
                       {step.description}
                     </p>
                   </div>
                 </div>
               ))}
             </div>
-            <div className='relative md:ml-8 flex items-center justify-center relative h-full md:w-fit w-full'>
-              <div className='absolute w-full z-10 flex md:flex-col items-center justify-between md:justify-center gap-8'>
+            <div className='relative lg:ml-8 flex items-center justify-center h-full w-full lg:w-auto flex-shrink-0 mt-6 lg:mt-0'>
+              <div className='absolute w-full z-10 flex items-center justify-between md:justify-center gap-6 md:gap-8 lg:flex-col'>
                 {
                   Array.from({ length: steps.length }).map((_, index) => (
-                    <div key={index} className={`h-10 w-10 md:h-20 md:w-20 rounded-full border-4 md:border-8 border-[#1F4FD8] flex items-center justify-center text-[20px] md:text-[48px] font-poppins font-semibold text-[#1F4FD8] font-bold ${isActiveIndex === index ? "bg-[#1F4FD8] text-white" : "bg-white"}`}>{index+1}</div>
+                    <div key={index} className={`h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 rounded-full border-4 sm:border-6 md:border-6 lg:border-8 border-[#1F4FD8] flex items-center justify-center text-[18px] sm:text-[24px] md:text-[32px] lg:text-[48px] font-poppins font-semibold text-[#1F4FD8] font-bold ${isActiveIndex === index ? "bg-[#1F4FD8] text-white" : "bg-white"}`}>{index+1}</div>
                   ))
                 }
                   </div>
-                    <div className=' w-full h-1  md:h-full md:w-1 bg-gradient-to-r from-[#2C52BF00] via-[#2C52BF] to-[#2C52BF00] md:bg-gradient-to-b from-[#2C52BF00] via-[#2C52BF] to-[#2C52BF00]'></div>
+                    <div className='w-full h-1 lg:h-full lg:w-1 bg-gradient-to-r from-[#2C52BF00] via-[#2C52BF] to-[#2C52BF00] lg:bg-gradient-to-b from-[#2C52BF00] via-[#2C52BF] to-[#2C52BF00]'></div>
               </div>
           </div>
 
           {/* Right side - Title and CTA */}
-          <div className="flex flex-col justify-center items-center h-full lg:pl-12">
-            <div className="space-y-8 w-full">
+          <div className="flex flex-col justify-center items-center h-full lg:pl-8 xl:pl-12">
+            <div className="space-y-4 md:space-y-6 lg:space-y-8 w-full">
               <div>
-                <h2 className="text-[20px] md:text-5xl mb-4 text-poppins font-bold leading-none tracking-normal text-center md:text-start">
+                <h2 className="text-[24px] sm:text-[28px] md:text-[36px] lg:text-5xl mb-3 md:mb-4 text-poppins font-bold leading-tight tracking-normal text-center md:text-start">
                   {
                     content?.heading?.split(" ").map((word, index) => (
                       <span key={index} className={`${index === 2 ? "text-[#1F4FD8]" : "text-[#2B2B2B]"}`}>
@@ -170,7 +170,7 @@ const HowItWorksSection: React.FC = () => {
                     ))
                   }
                 </h2>
-                <p className="text-[#4D4D4D] text-nunito font-normal text-[12px] md:text-sm leading-none leading-100% tracking-normal text-center md:text-start">
+                <p className="text-[#4D4D4D] text-nunito font-normal text-[12px] sm:text-[13px] md:text-sm leading-relaxed tracking-normal text-center md:text-start">
                   {content?.description ?? FALLBACK_CONTENT.description}
                 </p>
               </div>
@@ -181,11 +181,11 @@ const HowItWorksSection: React.FC = () => {
                     const el = document.getElementById('coming-soon-work');
                     if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000); }
                   }}
-                  className="px-10 py-4 w-full md:w-auto bg-[#FFC83D] hover:bg-[#FBBF24] text-[#2B2B2B] rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-[12px] md:text-sm leading-none leading-100% tracking-normal"
+                  className="px-8 md:px-10 py-3 md:py-4 w-full md:w-auto bg-[#FFC83D] hover:bg-[#FBBF24] text-[#2B2B2B] rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-[14px] md:text-sm leading-tight tracking-normal"
                 >
                   Get Started Today
                 </button>
-                <div id="coming-soon-work" className="hidden absolute left-1/2 -translate-x-1/2 -top-12 bg-[#1C1C28] text-white text-sm font-poppins font-semibold px-5 py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
+                <div id="coming-soon-work" className="hidden absolute left-1/2 -translate-x-1/2 -top-10 md:-top-12 bg-[#1C1C28] text-white text-xs md:text-sm font-poppins font-semibold px-4 md:px-5 py-2 md:py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
                   🚀 Coming Soon!
                 </div>
               </div>

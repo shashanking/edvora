@@ -1,8 +1,7 @@
 'use client';
 
+import { Facebook, Instagram, Mail, MapPin, Phone } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { Phone, Mail, MapPin } from 'lucide-react';
-import { Instagram, Facebook, Linkedin } from 'lucide-react';
 
 interface FooterProps {
   className?: string;
@@ -59,10 +58,10 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
         };
       }, []);
   return (
-    <footer className={`bg-[#1F4FD8] text-white px-4 py-7 md:px-40 md:py-15 ${className}`}>
-      <div className="md:*:max-w-[1600px] mx-auto  md:gap-[48px]">
+    <footer className={`bg-[#1F4FD8] text-white px-4 py-7 md:px-10 lg:px-40 md:py-15 ${className}`}>
+      <div className="max-w-[1600px] mx-auto">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-4 gap-3 md:gap-12 pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 pb-8">
           {/* Logo and Description */}
           <div className="space-y-6 col-span-4 md:col-span-1">
             <div className="w-[90px] h-[90px] bg-white rounded-full flex items-center justify-center flex-shrink-0">
@@ -178,10 +177,10 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <li>
                 <a 
                   href={`mailto:${content?.email ?? "#"}`}
-                  className="flex items-center gap-1 pr-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group"
+                  className="flex items-center gap-1 pr-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group min-w-0"
                 >
                   <Mail className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0" />
-                  <span>{content?.email ?? FALL_BACK_CONTENT?.email}</span>
+                  <span className="break-all">{content?.email ?? FALL_BACK_CONTENT?.email}</span>
                 </a>
               </li>
               <li>

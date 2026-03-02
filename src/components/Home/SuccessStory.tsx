@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Testimonial = {
   name: string;
@@ -142,9 +142,9 @@ const handlePrev = () => {
   const displayedTestimonials = getDisplayedTestimonials();
 
   return (
-    <div className="w-full min-h-screen bg-white py-20 px-4 relative overflow-hidden">
+    <div className="w-full min-h-screen bg-white py-12 md:py-16 lg:py-20 px-4 relative overflow-hidden">
       {/* Decorative graduation cap */}
-      <div className="absolute top-22 md:top-10 right-0">
+      <div className="absolute top-22 md:top-10 right-0 -z-10 pointer-events-none">
         <img src="./Hat 1.png" alt="" className="w-[90px] md:w-auto" />
       </div>
 
@@ -154,20 +154,20 @@ const handlePrev = () => {
       </div>
 
       {/* Main content */}
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
-        <div className="text-center mb-16">
-          <h2 className="mb-4 font-poppins font-bold text-[#2B2B2B] text-[20px] md:text-6xl leading-none text-center">
+        <div className="text-center mb-8 md:mb-12 lg:mb-16">
+          <h2 className="mb-3 md:mb-4 font-poppins font-bold text-[#2B2B2B] text-[24px] sm:text-[28px] md:text-[40px] lg:text-6xl leading-tight text-center">
             Success <span className="text-[#1F4FD8]">Stories</span> Across All
             Subjects
           </h2>
-          <p className="text-[#4D4D4D] font-nunito-sans text-[12px] md:text-base leading-normal text-center">
+          <p className="text-[#4D4D4D] font-nunito-sans text-[12px] sm:text-[13px] md:text-base leading-relaxed text-center">
             What Parents Say
           </p>
         </div>
 
         {/* Avatar row */}
-        <div className="flex justify-center items-center gap-4 mb-12">
+        <div className="flex justify-center items-center gap-2 sm:gap-3 md:gap-4 mb-8 md:mb-12">
           {displayedTestimonials?.map((testimonial, index) => {
             const isActive = testimonial.slotIndex === centerSlot;
             const distanceFromCenter = Math.abs(testimonial.slotIndex - centerSlot);
@@ -176,10 +176,10 @@ const handlePrev = () => {
                 key={index}
                 className={`rounded-full shrink-0 flex items-center justify-center text-3xl transition-all duration-300 ${
                   isActive
-                    ? "h-20 w-20 md:w-40 md:h-40 border-4 border-[#1F4FD8]"
+                    ? "h-16 w-16 sm:h-20 sm:w-20 md:w-32 md:h-32 lg:w-40 lg:h-40 border-3 sm:border-4 border-[#1F4FD8]"
                     : distanceFromCenter === 1
-                      ? "h-12 w-12 md:w-30 md:h-30"
-                      : "w-8 h-8 md:w-24 md:h-24"
+                      ? "h-10 w-10 sm:h-12 sm:w-12 md:w-24 md:h-24 lg:w-30 lg:h-30"
+                      : "w-6 h-6 sm:w-8 sm:h-8 md:w-16 md:h-16 lg:w-24 lg:h-24"
                 }`}
               >
                 <img
@@ -193,21 +193,21 @@ const handlePrev = () => {
         </div>
 
         {/* Testimonial cards */}
-        <div className="flex items-center justify-center overflow-hidden gap-6 mb-12">
+        <div className="flex items-center justify-center overflow-hidden gap-3 md:gap-6 mb-8 md:mb-12">
           {displayedTestimonials?.map((testimonial, index) => {
             const isActive = testimonial.slotIndex === centerSlot;
             return (
               <div
                 key={index}
-                className={`bg-white w-50 md:w-107.5 rounded-2xl p-5 gap-4 shadow-sm transition-all duration-300 shrink-0  ${isActive ? "border-2 border-blue-600" : "border border-gray-200 opacity-70"}`}
+                className={`bg-white w-[180px] sm:w-[220px] md:w-[280px] lg:w-[320px] rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 gap-3 md:gap-4 shadow-sm transition-all duration-300 shrink-0 ${isActive ? "border-2 border-blue-600" : "border border-gray-200 opacity-70"}`}
               >
                 {/* Card header */}
-                <div className="flex items-center gap-4 md:mb-6">
-                  <div className="w-9 h-9 md:w-15 md:h-15 rounded-full flex items-center justify-center text-2xl">
+                <div className="flex items-center gap-2 sm:gap-3 md:gap-4 mb-3 md:mb-6">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-12 md:h-12 lg:w-15 lg:h-15 rounded-full flex items-center justify-center text-2xl">
                     <img src={testimonial.imageUrl} alt="" />
                   </div>
                   <div>
-                    <h3 className=" text-[#2B2B2B] font-poppins text-[14px] md:text-lg leading-normal">
+                    <h3 className="text-[#2B2B2B] font-poppins text-[12px] sm:text-[14px] md:text-base lg:text-lg leading-tight">
                       {testimonial.name}
                     </h3>
                     <div className="flex gap-1 mt-1">
@@ -227,17 +227,17 @@ const handlePrev = () => {
                   </div>
                 </div>
 
-                <div className="w-full h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#2C52BF] to-transparent mb-6" />
+                <div className="w-full h-[1px] md:h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#2C52BF] to-transparent mb-3 md:mb-6" />
 
                 {/* Card content */}
                 <div>
-                  <h4 className="hidden md:block font-semibold text-[#4D4D4D] mb-3 font-nunito-sans text-lg leading-6">
+                  <h4 className="hidden md:block font-semibold text-[#4D4D4D] mb-2 md:mb-3 font-nunito-sans text-sm md:text-base lg:text-lg leading-tight">
                     {testimonial.category}
                   </h4>
-                  <p className="text-[#4D4D4D] mb-4 font-nunito-sans text-[12px] md:text-base leading-6">
+                  <p className="text-[#4D4D4D] mb-2 md:mb-4 font-nunito-sans text-[10px] sm:text-[11px] md:text-sm lg:text-base leading-relaxed">
                     {testimonial.description}
                   </p>
-                  <p className="text-[#4D4D4D] font-nunito-sans text-[12px] md:text-base font-bold leading-6">
+                  <p className="text-[#4D4D4D] font-nunito-sans text-[10px] sm:text-[11px] md:text-sm lg:text-base font-bold leading-relaxed">
                     — {testimonial.subtitle}
                   </p>
                 </div>

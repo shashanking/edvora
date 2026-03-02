@@ -1,10 +1,9 @@
 "use client";
 
-import { title } from "process";
-import React, { useEffect, useRef, useState } from "react";
 import emailjs from "@emailjs/browser";
-import toast from "react-hot-toast";
 import { Loader } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
 interface ContactFormData {
   firstName: string;
@@ -43,7 +42,7 @@ const FALL_BACK_CONTENT = {
   phone: "+91 93303 88153",
   emailDescription:
     "Contact us to share your thoughts, ask questions, or explore opportunities to work and grow together.",
-  email: "Example@gmail.com",
+  email: "contact@addifyacademy.com",
 };
 
 export default function ContactSection() {
@@ -132,13 +131,13 @@ export default function ContactSection() {
   };
 
   return (
-    <div id="contact" className="w-full min-h-screen bg-gradient-to-b from-gray-50 to-white py-20 px-4">
-      <div className="max-w-7xl mx-auto border-2 bg-gradient-to-r from-[#2C52BF] to-[#3CA7E9] rounded-[3rem] p-1">
-        <div className="bg-white  rounded-[3rem] p-8 md:p-12 lg:p-16 shadow-lg">
-          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
+    <div id="contact" className="w-full min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 md:py-16 lg:py-20 px-4">
+      <div className="max-w-7xl mx-auto border-2 bg-gradient-to-r from-[#2C52BF] to-[#3CA7E9] rounded-[2rem] md:rounded-[3rem] p-1">
+        <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 lg:p-16 shadow-lg">
+          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 lg:gap-16">
             {/* LEFT – FORM */}
             <div>
-              <h2 className="text-[#2B2B2B] mb-2 md:mb-6 font-poppins font-bold text-[20px] md:text-3xl leading-none md:text-center uppercase tracking-normal">
+              <h2 className="text-[#2B2B2B] mb-3 md:mb-6 font-poppins font-bold text-[20px] sm:text-[22px] md:text-2xl lg:text-3xl leading-tight md:text-center uppercase tracking-normal">
                 {content?.title?.split(" ")?.map((word, index) => (
                   <span
                     key={index}
@@ -157,18 +156,18 @@ export default function ContactSection() {
                   ))}
               </h2>
 
-              <p className="text-[#4D4D4D] mb-10 font-nunito-sans text-[12px] md:text-base leading-6">
+              <p className="text-[#4D4D4D] mb-6 md:mb-10 font-nunito-sans text-[12px] sm:text-[13px] md:text-base leading-relaxed">
                 {content?.description ?? FALL_BACK_CONTENT?.description}
               </p>
 
-              <form ref={formRef} onSubmit={sendEmail} className="space-y-5">
+              <form ref={formRef} onSubmit={sendEmail} className="space-y-4 md:space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
                     placeholder="First Name"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2 pl-5 pr-1.5 font-nunito-sans text-sm leading-none text-[#4D4D4D]"
+                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
                     required
                   />
                   <input
@@ -176,7 +175,7 @@ export default function ContactSection() {
                     value={formData.lastName}
                     onChange={handleChange}
                     placeholder="Last Name"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2 pl-5 pr-1.5 font-nunito-sans text-sm leading-none text-[#4D4D4D]"
+                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
                     required
                   />
                 </div>
@@ -187,7 +186,7 @@ export default function ContactSection() {
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder="Phone number"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2 pl-5 pr-1.5 font-nunito-sans text-sm leading-none text-[#4D4D4D]"
+                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
                     required
                   />
                   <input
@@ -196,7 +195,7 @@ export default function ContactSection() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="Email ID"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2 pl-5 pr-1.5 font-nunito-sans text-sm leading-none text-[#4D4D4D]"
+                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
                     required
                   />
                 </div>
@@ -234,7 +233,7 @@ export default function ContactSection() {
                   onChange={handleChange}
                   rows={6}
                   placeholder="Message"
-                  className="w-full px-6 py-4 border-2 rounded-3xl  focus:outline-none resize-none  border-[#D4D4D4] outline-none font-nunito-sans text-sm leading-none text-[#4D4D4D]"
+                  className="w-full px-4 md:px-6 py-3 md:py-4 border-2 rounded-2xl md:rounded-3xl focus:outline-none resize-none border-[#D4D4D4] outline-none font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
                   required
                 />
 
@@ -260,23 +259,23 @@ export default function ContactSection() {
               </form>
             </div>
 
-            <div className="h-0.5 w-[320px] md:w-0.5 md:h-105 rounded-[6px] md:bg-linear-to-t bg-linear-to-l from-[#FFFFFF00] to-[#1F4FD8]"></div>
+            <div className="h-0.5 w-full max-w-[320px] md:w-0.5 md:h-105 rounded-[6px] md:bg-linear-to-t bg-linear-to-l from-[#FFFFFF00] to-[#1F4FD8]"></div>
 
             {/* RIGHT – CONTACT INFO */}
-            <div className=" md:h-[420px]">
+            <div className="md:h-[420px]">
               {/* CALL */}
-              <div className=" mb-6 md:mb-12">
-                <h3 className="text-[#1F4FD8] mb-2 md:mb-6 font-poppins font-bold text-[24px] md:text-[48px] leading-none">
+              <div className="mb-6 md:mb-12">
+                <h3 className="text-[#1F4FD8] mb-3 md:mb-6 font-poppins font-bold text-[24px] sm:text-[28px] md:text-[36px] lg:text-[48px] leading-tight">
                   Call Us
                 </h3>
 
-                <p className="text-[#4D4D4D] mb-2 md:mb-6 font-nunito-sans text-[10px] md:text-base leading-6">
+                <p className="text-[#4D4D4D] mb-3 md:mb-6 font-nunito-sans text-[10px] sm:text-[11px] md:text-sm lg:text-base leading-relaxed">
                   {content?.callDescription ??
                     FALL_BACK_CONTENT?.callDescription}
                 </p>
 
-                <a className="flex items-center gap-3 text-[#1F4FD8] font-semibold text-[12px] md:text-xl">
-                  <div className="w-5 h-5 md:w-10 md:h-10 rounded-full flex items-center justify-center font-poppins font-bold text-sm leading-none">
+                <a className="flex items-center gap-2 md:gap-3 text-[#1F4FD8] font-semibold text-[12px] sm:text-[14px] md:text-lg lg:text-xl">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center font-poppins font-bold text-sm leading-tight">
                     <img src="./phone-fill.png" alt="" />
                   </div>
                   <span className="text-[#1F4FD8]">
@@ -287,17 +286,17 @@ export default function ContactSection() {
 
               {/* EMAIL */}
               <div>
-                <h3 className="text-[#1F4FD8] mb-2 md:mb-6 font-poppins font-bold text-[24px] md:text-[48px] leading-none">
+                <h3 className="text-[#1F4FD8] mb-3 md:mb-6 font-poppins font-bold text-[24px] sm:text-[28px] md:text-[36px] lg:text-[48px] leading-tight">
                   Email
                 </h3>
 
-                <p className="text-[#4D4D4D] mb-2 md:mb-6 font-nunito-sans text-[10px] md:text-base leading-6">
+                <p className="text-[#4D4D4D] mb-3 md:mb-6 font-nunito-sans text-[10px] sm:text-[11px] md:text-sm lg:text-base leading-relaxed">
                   {content?.emailDescription ??
                     FALL_BACK_CONTENT?.emailDescription}
                 </p>
 
-                <a className="flex items-center gap-3 text-blue-600 font-semibold text-[12px] md:text-xl hover:text-blue-700">
-                  <div className="w-5 h-5 md:w-10 md:h-10 rounded-full flex items-center justify-center font-poppins font-bold text-sm leading-none">
+                <a className="flex items-center gap-2 md:gap-3 text-blue-600 font-semibold text-[12px] sm:text-[14px] md:text-lg lg:text-xl hover:text-blue-700">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center font-poppins font-bold text-sm leading-tight">
                     <img src="./outline-email.png" alt="" />
                   </div>
                   <span className="text-[#1F4FD8]">

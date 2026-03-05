@@ -1,27 +1,37 @@
 "use client";
 import React, { useEffect } from "react";
 import Navbar from "../core/NavBar";
+import { ArrowUpRight } from "lucide-react";
+
+type FEATURE_TAG = {
+  icon: string;
+  title: string;
+};
 
 type homeHero = {
   _id: string;
   mainTag: string;
   heading: string;
   tag: string;
-  images: { url: string }[];
+  description: string;
+  feature: FEATURE_TAG[];
+  image: string;
 };
 
 const Fall_BACK_CONTENT: homeHero = {
   _id: "",
-  mainTag:
-    "Certified Educators Across All Subjects | 500+ Students Transformed Globally",
-  heading: "ADDIFY ACADEMY: Your Global Learning Partner",
-  tag: "Master Any Subject with Expert-Led, Personalized 1-on-1 Learning",
-  images: [
-    { url: "./image 01.png" },
-    { url: "./image 02.png" },
-    { url: "./image 03.png" },
-    { url: "./image 04.png" },
+  mainTag: "YOUR GLOBAL LEARNING PARTNER",
+  heading: `Learn Smarter.Grow Confident.Achieve More.`,
+  tag: "1-on-1 Personalized Learning For Every Age",
+  description:
+    "Expert tutors. Tailored curriculum. Real results.From ages 4 to adults self. we close learning gaps and unlock your best self.",
+  feature: [
+    { icon: "./root_math.png", title: "Maths & Science" },
+    { icon: "./people-speak.png", title: "Spoken English" },
+    { icon: "./whiteBriffecase.png", title: "Business Skills" },
+    { icon: "./zigzagArrow.png", title: "Personality Dev" },
   ],
+  image: "./CARDS.png",
 };
 
 const FeaturesBar = () => {
@@ -112,7 +122,10 @@ const Hero = () => {
     };
   }, []);
   return (
-    <section id="home" className="relative min-h-screen overflow-hidden px-4 md:px-8 lg:px-16 pb-28 sm:pb-32 md:pb-36 lg:pb-40">
+    <section
+      id="home"
+      className="relative min-h-screen overflow-hidden px-4 md:px-8 lg:px-16 pb-28 sm:pb-32 md:pb-36 lg:pb-40"
+    >
       {/* Navbar */}
       <div className="absolute top-0 left-0 right-0 z-20">
         <Navbar />
@@ -126,9 +139,9 @@ const Hero = () => {
         />
       </div>
       {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Scattered stars */}
-        {/* {[...Array(60)].map((_, i) => (
+      {/* <div className="absolute inset-0 overflow-hidden pointer-events-none"> */}
+      {/* Scattered stars */}
+      {/* {[...Array(60)].map((_, i) => (
           <div
             key={i}
             className="absolute w-[2px] h-[2px] bg-white rounded-full"
@@ -140,34 +153,34 @@ const Hero = () => {
           />
         ))} */}
 
-        {/* Top-left corner crown */}
-        <div className="absolute top-105 left-1 md:top-40 md:left-15 w-[80px] h-[80px]">
+      {/* Top-left corner crown */}
+      {/* <div className="absolute top-105 left-1 md:top-40 md:left-15 w-[80px] h-[80px]">
           <img src="./Crown.png" alt="" className="md:w-auto w-1/2" />
-        </div>
+        </div> */}
 
-        {/* Left decorative star (4-point) */}
-        <div className="absolute bottom-[10%] md:bottom-[20%] left-[1%] w-[80px] h-[80px]">
+      {/* Left decorative star (4-point) */}
+      {/* <div className="absolute bottom-[10%] md:bottom-[20%] left-[1%] w-[80px] h-[80px]">
           <img src="./star.png" alt="" className="w-1/4 md:w-auto" />
-        </div>
+        </div> */}
 
-        {/* Top-right decorative star (4-point with sparkle) */}
-        <div className="absolute top-[15%] md:top-[12%] right-[1%] w-[80px] h-[80px]">
+      {/* Top-right decorative star (4-point with sparkle) */}
+      {/* <div className="absolute top-[15%] md:top-[12%] right-[1%] w-[80px] h-[80px]">
           <img src="./star.png" alt="" className="w-1/2 md:w-auto" />
-        </div>
+        </div> */}
 
-        {/* Bottom-right decorative triangle outline */}
-        <div className="absolute bottom-[49%] md:bottom-[30%] right-[4%] w-[80px] h-[80px]">
+      {/* Bottom-right decorative triangle outline */}
+      {/* <div className="absolute bottom-[49%] md:bottom-[30%] right-[4%] w-[80px] h-[80px]">
           <img src="./Triangle.png" alt="" className="w-1/2 md:w-auto" />
-        </div>
+        </div> */}
 
-        {/* Right side bright vertical line */}
-        {/* <div className="absolute top-0 right-[30%] w-[1px] h-full bg-gradient-to-b from-transparent via-[#60A5FA] to-transparent opacity-30" /> */}
-      </div>
+      {/* Right side bright vertical line */}
+      {/* <div className="absolute top-0 right-[30%] w-[1px] h-full bg-gradient-to-b from-transparent via-[#60A5FA] to-transparent opacity-30" /> */}
+      {/* </div> */}
 
       <div className="relative z-10 mx-auto py-12 md:py-16 lg:py-20 mt-8 md:mt-10">
         <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8 mb-8 md:mb-0 items-center justify-center">
           {/* Left content */}
-          <div className="space-y-4 md:space-y-6 w-full md:w-auto">
+          <div className="space-y-4 md:space-y-6 w-full md:w-auto mt-6 md:mt-10">
             {/* Top badge */}
             <div className="flex justify-start mb-4 md:mb-8">
               <div className="inline-flex items-center px-3 md:px-5 py-2 md:py-2.5 rounded-full border border-white/30 bg-white/5 backdrop-blur-sm">
@@ -180,7 +193,7 @@ const Hero = () => {
               />
             </svg> */}
                 <span
-                  className="text-white/90 font-inter font-light text-[8px] sm:text-[10px] md:text-[16px] lg:text-[20px] leading-tight tracking-normal
+                  className="text-white/90 font-inter font-light text-[8px] sm:text-[10px] md:text-[16px] lg:text-[20px] leading-tight tracking-normal whitespace-nowrap
 "
                 >
                   {content?.mainTag ?? Fall_BACK_CONTENT?.mainTag}
@@ -192,74 +205,146 @@ const Hero = () => {
                 className="font-poppins font-extrabold leading-tight md:leading-none tracking-normal text-white
 "
               >
-                {content?.heading?.split(" ")?.map((word, index) => (
-                  <span
-                    key={index}
-                    className={`${index >= 4 ? "text-[#E2531F]" : "text-white"}`}
-                  >
-                    {word}{" "}
-                  </span>
-                )) ??
-                  Fall_BACK_CONTENT?.heading?.split(" ")?.map((word, index) => (
-                    <span
-                      key={index}
-                      className={`${index >= 4 ? "text-[#E2531F]" : "text-white"}`}
-                    >
-                      {word}{" "}
-                    </span>
-                  ))}
+                {content?.heading
+                    ?.trim()
+                    .split(".")
+                    ?.map((line, index) => {
+                      const words = line.trim().split(" ");
+                      const lastWordIndex = words.length - 1;
+
+                      return (
+                        <div key={index}>
+                          {words.map((word, i) => (
+                            <span
+                              key={i}
+                              className={`${
+                                index === 1 && i === lastWordIndex
+                                  ? "text-[#FFC83D]"
+                                  : "text-white"
+                              } leading-8 md:leading-20 `}
+                            >
+                              {word}{" "}
+                            </span>
+                          ))}
+                          <br className={`${index === Fall_BACK_CONTENT?.heading.split(".").length - 1 ? "hidden" : "block"}`}  />
+                        </div>
+                      );
+                    }) ??
+                  Fall_BACK_CONTENT?.heading
+                    ?.trim()
+                    .split(".")
+                    ?.map((line, index) => {
+                      const words = line.trim().split(" ");
+                      const lastWordIndex = words.length - 1;
+
+                      return (
+                        <div key={index}>
+                          {words.map((word, i) => (
+                            <span
+                              key={i}
+                              className={`${
+                                index === 1 && i === lastWordIndex
+                                  ? "text-[#FFC83D]"
+                                  : "text-white"
+                              } leading-8 md:leading-20 `}
+                            >
+                              {word}{" "}
+                            </span>
+                          ))}
+                          <br className={`${index === Fall_BACK_CONTENT?.heading.split(".").length - 1 ? "hidden" : "block"}`} />
+                        </div>
+                      );
+                    })}
               </div>
             </h1>
 
-            <p className="text-white/90 text-[12px] sm:text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
+            <p className="text-[#FFC83D] text-[12px] sm:text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
               {content?.tag ?? Fall_BACK_CONTENT?.tag}
             </p>
+
+            <p className="text-[#FFFFFF] text-[12px] sm:text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
+              {content?.description ?? Fall_BACK_CONTENT?.description}
+            </p>
+
+            <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
+              {content?.feature?.map((feature, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-[#FFFFFF33] border border-[#FFFFFF] rounded-full px-4 py-3"
+                >
+                  <img
+                    src={feature?.icon}
+                    alt=""
+                    className="w-3 h-3 md:w-4 md:h-4"
+                  />
+                  <p className="text-[#FFFFFF]  max-w-[560px] font-inter font-light text-xs md:text-base leading-none whitespace-nowrap">
+                    {`${feature?.title}`}
+                  </p>
+                </div>
+              )) ??
+                Fall_BACK_CONTENT?.feature?.map((feature, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-1 md:gap-2 bg-[#FFFFFF33] border border-[#FFFFFF] rounded-full px-3 md:px-4 py-3"
+                  >
+                    <img
+                      src={feature?.icon}
+                      alt=""
+                      className="w-3 h-3 md:w-4 md:h-4"
+                    />
+                    <p className="text-[#FFFFFF]  max-w-[560px] font-inter font-light text-xs md:text-base leading-none whitespace-nowrap">
+                      {`${feature?.title}`}
+                    </p>
+                  </div>
+                ))}
+            </div>
 
             <div className="flex flex-col sm:flex-row flex-wrap gap-3 md:gap-4 pt-2">
               <a
                 href="#contact"
-                className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#1F4FD8] hover:bg-[#1D4ED8] text-white rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
+                className="group relative inline-flex items-center justify-between gap-2 px-7 py-3.5 bg-[#FFC83D]  text-[#2B2B2B] rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 "
               >
                 {/* Hover layer */}
-                
 
-                <span className="relative z-10 group-hover:text-white transition-colors duration-300">Book free Trial</span>
-                <div className="w-6.5 h-6.5 z-10  bg-[#FFFFFF] rounded-full flex items-center justify-center">
-                  <img src="./arrow-up-line.png" alt="" className="group-hover:rotate-45 transition-transform duration-300" />
+                <span className="relative z-10 transition-colors duration-300">
+                  Book a Free Trial Class
+                </span>
+                <div className="w-6.5 h-6.5 z-10  bg-[#2B2B2B] rounded-full flex items-center justify-center">
+                  <ArrowUpRight className="group-hover:rotate-45 transition-transform duration-300 text-[#FFC83D] h-4 w-4" />
                 </div>
               </a>
 
-              <a
+              {/* <a
                 href="#young-learners"
                 className="inline-flex items-center justify-center px-7 py-3.5 bg-[#FFC83D] hover:bg-[#FBBF24] text-gray-900 rounded-full text-[16px] transition-all duration-300 shadow-lg font-semibold text-base leading-6 tracking-normal w-full md:w-auto
 "
               >
                 Explore Programs
-              </a>
+              </a> */}
             </div>
           </div>
 
           {/* Right content - Student images grid */}
-          <div className="relative h-[280px] w-[280px] sm:h-[350px] sm:w-[350px] md:h-[450px] md:w-[450px] lg:h-[599px] lg:w-[599px] mt-6 md:mt-10">
+          <div className="relative h-full max-w-166.75 mt-6 md:mt-10">
             {/* Decorative curved arrow pointing to images */}
-            <div className="absolute -bottom-20 left-16 sm:-bottom-24 sm:left-20 md:-left-20 md:top-24 lg:-left-76 lg:top-90 md:-translate-y-1/2 w-[80px] h-[70px] sm:w-[120px] sm:h-[100px] md:w-[180px] md:h-[150px] lg:w-[220px] lg:h-[190px]">
+            {/* <div className="absolute -bottom-20 left-16 sm:-bottom-24 sm:left-20 md:-left-20 md:top-24 lg:-left-76 lg:top-90 md:-translate-y-1/2 w-[80px] h-[70px] sm:w-[120px] sm:h-[100px] md:w-[180px] md:h-[150px] lg:w-[220px] lg:h-[190px]">
               <img src="./Arrow 2.png" alt="" className="w-full h-full object-contain" />
-            </div>
+            </div> */}
 
             {/* Top-left decorative white swirl */}
-            <div className="absolute -z-10 top-0 -left-[15%] md:-left-[20%] w-[60px] h-[50px] sm:w-[80px] sm:h-[70px] md:w-[120px] md:h-[100px] lg:w-[150px] lg:h-[120px]">
+            {/* <div className="absolute -z-10 top-0 -left-[15%] md:-left-[20%] w-[60px] h-[50px] sm:w-[80px] sm:h-[70px] md:w-[120px] md:h-[100px] lg:w-[150px] lg:h-[120px]">
               <img
                 src="./Shape 1 snake 1.png"
                 alt=""
                 className="w-full h-full object-contain"
               />
-            </div>
+            </div> */}
 
             {/* Student cards grid - 2x2 */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 max-w-full shrink-0">
+            <div className="shrink-0">
               {/* Top-left - Pink circle (Girl with red shirt) */}
-              <div className="aspect-square rounded-full bg-gradient-to-br from-[#FFB5C0] to-[#FFA3B5] overflow-hidden relative">
+              {/* <div className="aspect-square rounded-full bg-gradient-to-br from-[#FFB5C0] to-[#FFA3B5] overflow-hidden relative">
                 <div className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">
                   <img
                     src={
@@ -270,10 +355,10 @@ const Hero = () => {
                     className="w-full h-full object-contain"
                   />
                 </div>
-              </div>
+              </div> */}
 
               {/* Top-right - Yellow rounded rectangle (Boy with backpack) */}
-              <div
+              {/* <div
                 className="aspect-square bg-gradient-to-br from-[#FCD34D] to-[#FDB022] overflow-hidden relative "
                 style={{ clipPath: "circle(98% at 5% 97%)" }}
               >
@@ -287,10 +372,10 @@ const Hero = () => {
                     className="w-full h-full object-contain"
                   />
                 </div>
-              </div>
+              </div> */}
 
               {/* Bottom-left - Light blue rounded rectangle (Girl with notebook) */}
-              <div className="aspect-square rounded-[32px] bg-gradient-to-br from-[#A5E5F0] to-[#7DD3E8] overflow-hidden relative">
+              {/* <div className="aspect-square rounded-[32px] bg-gradient-to-br from-[#A5E5F0] to-[#7DD3E8] overflow-hidden relative">
                 <div className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">
                   <img
                     src={
@@ -301,10 +386,10 @@ const Hero = () => {
                     className="w-full h-full object-contain"
                   />
                 </div>
-              </div>
+              </div> */}
 
               {/* Bottom-right - Blue rounded rectangle (Boy with books) */}
-              <div
+              {/* <div
                 className="aspect-square rounded-[32px] bg-gradient-to-br from-[#3B5BA5] to-[#2948A8] overflow-hidden relative"
                 style={{ clipPath: "circle(98% at 3% 5%)" }}
               >
@@ -318,6 +403,13 @@ const Hero = () => {
                     className="w-full h-full object-contain"
                   />
                 </div>
+              </div> */}
+              <div>
+                <img
+                  src={content?.image ?? Fall_BACK_CONTENT?.image}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
               </div>
             </div>
           </div>

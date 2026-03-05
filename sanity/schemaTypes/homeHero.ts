@@ -28,12 +28,41 @@ export const homeHero = defineType({
       initialValue: "Master Any Subject with Expert-Led, Personalized 1-on-1 Learning",
     }),
     defineField({
-        name: "images",
-        title: "Images",
-        type: "array",
-        of: [{type: "image",
-            options: { hotspot: true },
-        }],
+      name: "description",
+      title: "Description",
+      type: "text",
+      rows: 3,
+    }),
+    defineField({
+      name: "feature",
+      title: "Feature",
+      type: "array",
+      of: [
+        defineField({
+          name: "feature",
+          title: "Feature",
+          type: "object",
+          fields: [
+            defineField({
+             name: "icon",
+             title: "Icon",
+             type: "image",
+             options: { hotspot: true },
+            }),
+            defineField({
+              name: "title",
+              title: "Title",
+              type: "string",
+            }),
+          ],
+        }),
+      ]
+    }),
+    defineField({
+        name: "image",
+        title: "Image",
+        type: "image",
+        options: { hotspot: true },
     })
   ],
 });

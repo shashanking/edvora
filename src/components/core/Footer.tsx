@@ -65,8 +65,8 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
           {/* Logo and Description */}
           <div className="space-y-6 col-span-4 md:col-span-1">
             <div className="w-[90px] h-[90px] bg-white rounded-full flex items-center justify-center flex-shrink-0">
-              {/* Logo placeholder - replace with your actual logo */}
-              <div className="flex-shrink-0 h-9 w-9 md:h-[110px] md:w-[110px]">
+              {/* Logo */}
+              <div className="flex-shrink-0 h-[110px] w-[110px]">
           <img src="./image 1.png" alt="logo" className='rounded-full h-full w-full object-cover' />
         </div>
             </div>
@@ -123,7 +123,7 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
           </div>
 
           {/* Important Links */}
-          <div>
+          <div className='ml-8'>
             <h3 className="text-white font-semibold text-lg mb-6">Important</h3>
             <ul className="space-y-4">
               <li>

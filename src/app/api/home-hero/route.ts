@@ -8,9 +8,12 @@ const query = `*[_type == "homeHero"][0]{
   mainTag,
   heading,
   tag,
-  images[]{
-    "url": asset->url
-  }
+  description,
+  feature[]{
+    "icon": icon.asset->url,
+    title
+  },
+  "image": image.asset->url
 }`;
 
 export async function GET() {

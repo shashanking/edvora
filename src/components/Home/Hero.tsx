@@ -193,14 +193,14 @@ const Hero = () => {
               />
             </svg> */}
                 <span
-                  className="text-white/90 font-inter font-light text-[8px] sm:text-[10px] md:text-[16px] lg:text-[20px] leading-tight tracking-normal whitespace-nowrap
+                  className="text-white/90 font-inter font-light text-[10px] md:text-[16px] lg:text-[20px] leading-tight tracking-normal whitespace-nowrap
 "
                 >
                   {content?.mainTag ?? Fall_BACK_CONTENT?.mainTag}
                 </span>
               </div>
             </div>
-            <h1 className="leading-tight text-[24px] sm:text-[28px] md:text-[40px] lg:text-[56px] w-fit">
+            <h1 className="leading-tight text-[28px] md:text-[40px] lg:text-[56px] w-fit">
               <div
                 className="font-poppins font-extrabold leading-tight md:leading-none tracking-normal text-white
 "
@@ -258,11 +258,11 @@ const Hero = () => {
               </div>
             </h1>
 
-            <p className="text-[#FFC83D] text-[12px] sm:text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
+            <p className="text-[#FFC83D] text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
               {content?.tag ?? Fall_BACK_CONTENT?.tag}
             </p>
 
-            <p className="text-[#FFFFFF] text-[12px] sm:text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
+            <p className="text-[#FFFFFF] text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
               {content?.description ?? Fall_BACK_CONTENT?.description}
             </p>
 

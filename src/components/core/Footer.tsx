@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { Facebook, Instagram, Mail, MapPin, Phone } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import React, { useEffect, useState } from "react";
 
 interface FooterProps {
   className?: string;
@@ -16,59 +16,67 @@ type Content = {
   xlink: string;
   facebooklink: string;
   linkedinlink: string;
-}
+};
 
 const FALL_BACK_CONTENT: Content = {
-  description: "Addify Academy is a modern learning platform helping students build strong skills, confidence, and knowledge through interactive lessons and expert guidance.",
+  description:
+    "Addify Academy is a modern learning platform helping students build strong skills, confidence, and knowledge through interactive lessons and expert guidance.",
   phone: "+91 93303 88153",
   email: "contact@addifyacademy.com",
-  address: "KUNJAMONI,2ND FLOOR, PANCHPOTA, RAJPUR SONARPUR (M) Kolkata West Bengal 700152 South 24 Parganas India ",
+  address:
+    "KUNJAMONI,2ND FLOOR, PANCHPOTA, RAJPUR SONARPUR (M) Kolkata West Bengal 700152 South 24 Parganas India ",
   instalink: "#",
   xlink: "#",
   facebooklink: "#",
   linkedinlink: "#",
-}
-const Footer: React.FC<FooterProps> = ({ className = '' }) => {
+};
+const Footer: React.FC<FooterProps> = ({ className = "" }) => {
   const [content, setContent] = useState<Content | null>(null);
 
   useEffect(() => {
-        let mounted = true;
-    
-        const load = async () => {
-          try {
-            const contentRes = await fetch("/api/footer");
-            if (!contentRes.ok) {
-              throw new Error("Failed to load footer content");
-            }
-    
-            const contentData = (await contentRes.json()) as Content;
-    
-            if (!mounted) return;
-            setContent(contentData);
-          } catch (e: any) {
-            if (!mounted) return;
-            setContent(null);
-          }
-        };
-    
-        void load();
-    
-        return () => {
-          mounted = false;
-        };
-      }, []);
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        const contentRes = await fetch("/api/footer");
+        if (!contentRes.ok) {
+          throw new Error("Failed to load footer content");
+        }
+
+        const contentData = (await contentRes.json()) as Content;
+
+        if (!mounted) return;
+        setContent(contentData);
+      } catch (e: any) {
+        if (!mounted) return;
+        setContent(null);
+      }
+    };
+
+    void load();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   return (
-    <footer className={`bg-[#1F4FD8] text-white px-4 py-7 md:px-10 lg:px-40 md:py-15 ${className}`}>
+    <footer
+      className={`bg-[#1F4FD8] text-white px-4 py-7 md:px-10 lg:px-40 md:py-15 ${className}`}
+    >
       <div className="max-w-[1600px] mx-auto">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 pb-8">
           {/* Logo and Description */}
           <div className="space-y-6 col-span-4 md:col-span-1">
-            <div className="w-[90px] h-[90px] bg-white rounded-full flex items-center justify-center flex-shrink-0">
+            <div className=" flex items-center lg:justify-end flex-shrink-0">
               {/* Logo */}
-              <div className="flex-shrink-0 h-[110px] w-[110px]">
-          <img src="./image 1.png" alt="logo" className='rounded-full h-full w-full object-cover' />
-        </div>
+              <div className="flex-shrink-0 h-9 w-30 md:h-[60px] md:w-[200px] lg:h-[110px] lg:w-[350px]">
+                <img
+                  src="./LogoHeader.png"
+                  alt="logo"
+                  className="h-full w-full object-cover"
+                />
+              </div>
             </div>
             <p className="text-white/90 text-[12px] md:text-sm leading-relaxed max-w-xs">
               {content?.description ?? FALL_BACK_CONTENT?.description}
@@ -77,43 +85,45 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
 
           {/* Menu Links */}
           <div>
-            <h3 className="text-white font-semibold text-[16px] md:text-lg mb-6">Menu</h3>
+            <h3 className="text-white font-semibold text-[16px] md:text-lg mb-6">
+              Menu
+            </h3>
             <ul className="space-y-4">
               <li>
-                <a 
-                  href="#home" 
+                <a
+                  href="#home"
                   className="text-yellow-300 hover:text-yellow-200 transition-colors text-[12px] md:text-sm font-medium"
                 >
                   Home
                 </a>
               </li>
               <li>
-                <a 
-                  href="#young-learners" 
+                <a
+                  href="#young-learners"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Young Learners
                 </a>
               </li>
               <li>
-                <a 
-                  href="#adult-learners" 
+                <a
+                  href="#adult-learners"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Adult Learners
                 </a>
               </li>
               <li>
-                <a 
-                  href="#about" 
+                <a
+                  href="#about"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   About
                 </a>
               </li>
               <li>
-                <a 
-                  href="#contact" 
+                <a
+                  href="#contact"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Contact Us
@@ -123,28 +133,28 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
           </div>
 
           {/* Important Links */}
-          <div className='ml-8'>
+          <div className="ml-8">
             <h3 className="text-white font-semibold text-lg mb-6">Important</h3>
             <ul className="space-y-4">
               <li>
-                <a 
-                  href="/refund-policy" 
+                <a
+                  href="/refund-policy"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Refund Policy
                 </a>
               </li>
               <li>
-                <a 
-                  href="/privacy-policy" 
+                <a
+                  href="/privacy-policy"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a 
-                  href="/terms-conditions" 
+                <a
+                  href="/terms-conditions"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Terms & Conditions
@@ -166,8 +176,8 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
             <h3 className="text-white font-semibold text-lg mb-6">Contact</h3>
             <ul className="space-y-4">
               <li>
-                <a 
-                  href={`tel:${content?.phone ?? "#"}`} 
+                <a
+                  href={`tel:${content?.phone ?? "#"}`}
                   className="flex items-center gap-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group"
                 >
                   <Phone className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0" />
@@ -175,12 +185,14 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
                 </a>
               </li>
               <li>
-                <a 
+                <a
                   href={`mailto:${content?.email ?? "#"}`}
                   className="flex items-center gap-1 pr-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group min-w-0"
                 >
                   <Mail className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0" />
-                  <span className="break-all">{content?.email ?? FALL_BACK_CONTENT?.email}</span>
+                  <span className="break-all">
+                    {content?.email ?? FALL_BACK_CONTENT?.email}
+                  </span>
                 </a>
               </li>
               <li>
@@ -200,10 +212,8 @@ const Footer: React.FC<FooterProps> = ({ className = '' }) => {
 
         {/* Bottom Section - Follow Us & Social Icons */}
         <div className="flex items-center justify-between gap-6">
-          <div className="text-white font-semibold text-lg">
-            Follow us
-          </div>
-          
+          <div className="text-white font-semibold text-lg">Follow us</div>
+
           <div className="flex items-center gap-4">
             <a
               href={content?.instalink ?? "#"}

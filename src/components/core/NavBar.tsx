@@ -8,8 +8,8 @@ export default function Navbar() {
     <nav className="px-4 md:px-10 lg:px-16 xl:px-24 py-5 z-10 relative">
       <div className="max-w-[1400px] mx-auto w-full flex items-start md:items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex-shrink-0 h-9 w-9 md:h-[80px] md:w-[80px] lg:h-[110px] lg:w-[110px]">
-          <img src="./image 1.png" alt="logo" className='rounded-full h-full w-full object-cover' />
+        <div className="flex-shrink-0 h-9 w-30 md:h-[60px] md:w-[200px] lg:h-[110px] lg:w-[350px]">
+          <img src="./LogoHeader.png" alt="logo" className='h-full w-full object-cover' />
         </div>
 
         {/* Navigation Links */}

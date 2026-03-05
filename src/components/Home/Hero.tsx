@@ -178,7 +178,7 @@ const Hero = () => {
       {/* </div> */}
 
       <div className="relative z-10 mx-auto py-12 md:py-16 lg:py-20 mt-8 md:mt-10">
-        <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8 mb-8 md:mb-0 items-center justify-center">
+        <div className="flex flex-col-reverse lg:flex-row gap-6 md:gap-8 mb-8 md:mb-0 items-center justify-center">
           {/* Left content */}
           <div className="space-y-4 md:space-y-6 w-full md:w-auto mt-6 md:mt-10">
             {/* Top badge */}

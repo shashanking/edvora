@@ -27,11 +27,11 @@ export default function Home() {
         <AdultLearnersSection />
         <HowItWorksSection />
         <OurEducatorsSection />
-        {/* <DemoCardSection /> */}
+        <DemoCardSection />
         <TestimonialSection />
         {/* <LearningResourcesSection /> */}
         <FAQSection />
-        <PricingSection />
+        {/* <PricingSection /> */}
         <ContactSection />
         {/* <CTASection /> */}
         <Footer />

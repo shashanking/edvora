@@ -1,39 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-
-type ProgramCategory = "core" | "specialized" | "exam";
-
-type CourseItem = {
-  program: string;
-  duration: string;
-  gain: string;
-  image: string;
-  rating: number;
-};
-
-const YOUNG_CORE: CourseItem[] = [
-  { program: "Mathematics", duration: "Flexible", gain: "Master concepts from basic arithmetic to advanced algebra and geometry", image: "./Mathematics.png", rating: 4 },
-  { program: "Science (KS1-KS3)", duration: "Flexible", gain: "Build curiosity across Biology, Chemistry, and Physics", image: "./Image 01.png", rating: 4 },
-  { program: "English Language", duration: "1 year", gain: "Complete grammar, vocabulary, reading, and comprehension skills", image: "./english_class.png", rating: 4 },
-];
-
-const YOUNG_SPECIALIZED: CourseItem[] = [
-  { program: "Phonics Mastery", duration: "3 months", gain: "Decode words confidently and read fluently", image: "./Image 02.png", rating: 4 },
-  { program: "Creative Writing", duration: "40 weeks", gain: "Express ideas clearly and imaginatively", image: "./Image 03.png", rating: 4 },
-  { program: "Public Speaking", duration: "1 year", gain: "Present with confidence and poise", image: "./Image 04.png", rating: 4 },
-];
-
-const YOUNG_EXAM: CourseItem[] = [
-  { program: "SAT Preparation", duration: "1 year", gain: "Score higher and unlock university opportunities", image: "./kids_class.png", rating: 4 },
-  { program: "11+ Exam Preparation", duration: "1 year", gain: "Ace selective school entrance exams", image: "./IMG.png", rating: 4 },
-];
-
-const CATEGORY_MAP: Record<ProgramCategory, CourseItem[]> = {
-  core: YOUNG_CORE,
-  specialized: YOUNG_SPECIALIZED,
-  exam: YOUNG_EXAM,
-};
+import type { LandingCourseItem, YoungCourseCategory } from "@/src/lib/course-catalog";
 
 const StarIcon = ({ filled }: { filled: boolean }) => (
   <svg width="24" height="25" viewBox="0 0 24 25" fill={filled ? "#EEBF18" : "none"} xmlns="http://www.w3.org/2000/svg">
@@ -41,7 +9,7 @@ const StarIcon = ({ filled }: { filled: boolean }) => (
   </svg>
 );
 
-const CourseCard = ({ item }: { item: CourseItem }) => (
+const CourseCard = ({ item }: { item: LandingCourseItem }) => (
   <div className="bg-white rounded-[24px] border-2 border-[#1F4FD8] p-5 flex flex-col gap-4 w-full max-w-[501px] mx-auto hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
     {/* Image */}
     <div className="w-full h-[240px] bg-[#E2E2E2] rounded-[12px] overflow-hidden relative">
@@ -77,9 +45,13 @@ const CourseCard = ({ item }: { item: CourseItem }) => (
   </div>
 );
 
-const ProgramsOverviewSection: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<ProgramCategory>("core");
-  const courses = CATEGORY_MAP[selectedCategory];
+interface ProgramsOverviewSectionProps {
+  coursesByCategory: Record<YoungCourseCategory, LandingCourseItem[]>;
+}
+
+const ProgramsOverviewSection: React.FC<ProgramsOverviewSectionProps> = ({ coursesByCategory }) => {
+  const [selectedCategory, setSelectedCategory] = useState<YoungCourseCategory>("core");
+  const courses = coursesByCategory[selectedCategory];
 
   return (
     <section id="young-learners" className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">

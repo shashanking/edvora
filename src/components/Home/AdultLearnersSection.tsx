@@ -1,33 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-
-type AdultCategory = "professional" | "academic";
-
-type CourseItem = {
-  program: string;
-  duration: string;
-  gain: string;
-  image: string;
-  rating: number;
-};
-
-const ADULT_PROFESSIONAL: CourseItem[] = [
-  { program: "Spoken English & Personality Development", duration: "9 months", gain: "Speak fluently, command attention, and lead with charisma", image: "./DemoImage.png", rating: 4 },
-  { program: "Business Communication", duration: "3 months", gain: "Write professional emails, reports, and presentations", image: "./Educators.png", rating: 4 },
-  { program: "Interview Preparation", duration: "3 months", gain: "Land your dream job with proven interview strategies", image: "./About.jpg", rating: 4 },
-];
-
-const ADULT_ACADEMIC: CourseItem[] = [
-  { program: "Advanced Mathematics", duration: "Flexible", gain: "Master calculus, statistics, and higher-level concepts", image: "./Mathematics.png", rating: 4 },
-  { program: "Science Subjects", duration: "Flexible", gain: "University-level support in Biology, Chemistry, Physics", image: "./Image 01.png", rating: 4 },
-  { program: "English Literature & Writing", duration: "Flexible", gain: "Critical analysis, essay writing, and academic communication", image: "./english_class.png", rating: 4 },
-];
-
-const CATEGORY_MAP: Record<AdultCategory, CourseItem[]> = {
-  professional: ADULT_PROFESSIONAL,
-  academic: ADULT_ACADEMIC,
-};
+import type { AdultCourseCategory, LandingCourseItem } from "@/src/lib/course-catalog";
 
 const StarIcon = ({ filled }: { filled: boolean }) => (
   <svg width="24" height="25" viewBox="0 0 24 25" fill={filled ? "#EEBF18" : "none"} xmlns="http://www.w3.org/2000/svg">
@@ -35,7 +9,7 @@ const StarIcon = ({ filled }: { filled: boolean }) => (
   </svg>
 );
 
-const CourseCard = ({ item }: { item: CourseItem }) => (
+const CourseCard = ({ item }: { item: LandingCourseItem }) => (
   <div className="bg-white rounded-[24px] border-2 border-[#1F4FD8] p-5 flex flex-col gap-4 w-full max-w-[501px] mx-auto hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
     {/* Image */}
     <div className="w-full h-[240px] bg-[#E2E2E2] rounded-[12px] overflow-hidden relative">
@@ -71,9 +45,13 @@ const CourseCard = ({ item }: { item: CourseItem }) => (
   </div>
 );
 
-const AdultLearnersSection: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<AdultCategory>("professional");
-  const courses = CATEGORY_MAP[selectedCategory];
+interface AdultLearnersSectionProps {
+  coursesByCategory: Record<AdultCourseCategory, LandingCourseItem[]>;
+}
+
+const AdultLearnersSection: React.FC<AdultLearnersSectionProps> = ({ coursesByCategory }) => {
+  const [selectedCategory, setSelectedCategory] = useState<AdultCourseCategory>("professional");
+  const courses = coursesByCategory[selectedCategory];
 
   return (
     <section id="adult-learners" className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">

@@ -1,3 +1,5 @@
+import { createClient } from "@/src/lib/supabase/server";
+import { buildAdultCourseCatalog, buildYoungCourseCatalog, type LmsLandingCourse } from "@/src/lib/course-catalog";
 import Navbar from "../components/core/NavBar";
 import Footer from "../components/core/Footer";
 import Hero from "../components/Home/Hero";
@@ -15,7 +17,19 @@ import PricingSection from "../components/Home/PricingSection";
 import ContactSection from "../components/Home/ContactSection";
 import CTASection from "../components/Home/JoinUs";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("courses")
+    .select("title, description, duration, thumbnail_url, rating, audience, landing_category")
+    .eq("status", "published")
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: false })) as { data: LmsLandingCourse[] | null };
+
+  const catalogCourses = data ?? [];
+  const youngCourses = buildYoungCourseCatalog(catalogCourses);
+  const adultCourses = buildAdultCourseCatalog(catalogCourses);
+
   return (
     <div >
       <main className="min-h-screen bg-[#FAF9F8]">
@@ -23,8 +37,8 @@ export default function Home() {
         <Hero />
         <AboutSection />
         <AdvantageSection />
-        <ProgramsOverviewSection />
-        <AdultLearnersSection />
+        <ProgramsOverviewSection coursesByCategory={youngCourses} />
+        <AdultLearnersSection coursesByCategory={adultCourses} />
         <HowItWorksSection />
         <OurEducatorsSection />
         <DemoCardSection />

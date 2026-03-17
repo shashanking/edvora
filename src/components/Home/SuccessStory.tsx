@@ -174,7 +174,7 @@ const handlePrev = () => {
             return (
               <div
                 key={index}
-                className={`rounded-full shrink-0 flex items-center justify-center text-3xl transition-all duration-300 ${
+                className={`rounded-full shrink-0 flex items-center justify-center text-3xl transition-all duration-300 overflow-hidden ${
                   isActive
                     ? "h-16 w-16 sm:h-20 sm:w-20 md:w-32 md:h-32 lg:w-40 lg:h-40 border-3 sm:border-4 border-[#1F4FD8]"
                     : distanceFromCenter === 1
@@ -185,7 +185,7 @@ const handlePrev = () => {
                 <img
                   src={testimonial.imageUrl}
                   alt=""
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover rounded-full"
                 />
               </div>
             );
@@ -203,8 +203,8 @@ const handlePrev = () => {
               >
                 {/* Card header */}
                 <div className="flex items-center gap-2 sm:gap-3 md:gap-4 mb-3 md:mb-6">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-12 md:h-12 lg:w-15 lg:h-15 rounded-full flex items-center justify-center text-2xl">
-                    <img src={testimonial.imageUrl} alt="" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-12 md:h-12 lg:w-15 lg:h-15 rounded-full flex items-center justify-center text-2xl overflow-hidden">
+                    <img src={testimonial.imageUrl} alt="" className="h-full w-full object-cover" />
                   </div>
                   <div>
                     <h3 className="text-[#2B2B2B] font-poppins text-[12px] sm:text-[14px] md:text-base lg:text-lg leading-tight">

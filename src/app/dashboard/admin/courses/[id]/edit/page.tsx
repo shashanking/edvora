@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/client";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import ImageUpload from "@/src/components/admin/ImageUpload";
 
@@ -13,11 +13,14 @@ interface Teacher {
   email: string;
 }
 
-export default function CreateCoursePage() {
+export default function EditCoursePage() {
   const router = useRouter();
-  const supabase = createClient();
+  const params = useParams();
+  const courseId = params.id as string;
+  const supabase = createClient() as any;
 
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
@@ -39,16 +42,54 @@ export default function CreateCoursePage() {
   });
 
   useEffect(() => {
-    const fetchTeachers = async () => {
-      const { data } = await supabase
+    const fetchData = async () => {
+      setFetching(true);
+
+      // Fetch course details
+      const { data: course } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("id", courseId)
+        .single();
+
+      if (course) {
+        setForm({
+          title: course.title || "",
+          description: course.description || "",
+          price: course.price?.toString() || "",
+          currency: course.currency || "USD",
+          duration: course.duration || "",
+          level: course.level || "beginner",
+          category: course.category || "",
+          audience: course.audience || "young",
+          landing_category: course.landing_category || "core",
+          rating: course.rating?.toString() || "4",
+          display_order: course.display_order?.toString() || "0",
+          status: course.status || "draft",
+          thumbnail_url: course.thumbnail_url || "",
+        });
+      }
+
+      // Fetch teachers
+      const { data: teachersData } = await supabase
         .from("profiles")
         .select("id, full_name, email")
         .eq("role", "teacher")
         .order("full_name");
-      setTeachers((data as Teacher[]) || []);
+      setTeachers((teachersData as Teacher[]) || []);
+
+      // Fetch assigned teachers
+      const { data: assignedTeachers } = await supabase
+        .from("course_teachers")
+        .select("teacher_id")
+        .eq("course_id", courseId);
+      setSelectedTeachers((assignedTeachers || []).map((t: any) => t.teacher_id));
+
+      setFetching(false);
     };
-    fetchTeachers();
-  }, []);
+
+    fetchData();
+  }, [courseId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -67,19 +108,10 @@ export default function CreateCoursePage() {
     setLoading(true);
     setError("");
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    const { data: course, error: courseError } = await supabase
+    // Update course
+    const { error: courseError } = await supabase
       .from("courses")
-      .insert({
+      .update({
         title: form.title,
         description: form.description,
         price: parseFloat(form.price) || 0,
@@ -93,10 +125,8 @@ export default function CreateCoursePage() {
         display_order: parseInt(form.display_order, 10) || 0,
         status: form.status as "draft" | "published" | "archived",
         thumbnail_url: form.thumbnail_url || null,
-        created_by: user.id,
       } as any)
-      .select("id")
-      .single() as { data: { id: string } | null; error: any };
+      .eq("id", courseId);
 
     if (courseError) {
       setError(courseError.message);
@@ -104,9 +134,11 @@ export default function CreateCoursePage() {
       return;
     }
 
-    if (course && selectedTeachers.length > 0) {
+    // Update teacher assignments
+    await supabase.from("course_teachers").delete().eq("course_id", courseId);
+    if (selectedTeachers.length > 0) {
       const teacherAssignments = selectedTeachers.map((teacherId) => ({
-        course_id: course.id,
+        course_id: courseId,
         teacher_id: teacherId,
       }));
       await supabase.from("course_teachers").insert(teacherAssignments as any);
@@ -115,6 +147,14 @@ export default function CreateCoursePage() {
     setLoading(false);
     router.push("/dashboard/admin/courses");
   };
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -127,8 +167,8 @@ export default function CreateCoursePage() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Create Course</h1>
-          <p className="text-sm text-[#4D4D4D]">Add a new course to the platform</p>
+          <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Edit Course</h1>
+          <p className="text-sm text-[#4D4D4D]">Update course information</p>
         </div>
       </div>
 
@@ -372,7 +412,7 @@ export default function CreateCoursePage() {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            {loading ? "Creating..." : "Create Course"}
+            {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>

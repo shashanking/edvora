@@ -76,25 +76,26 @@ export default function AdminTeachersPage() {
     setAddLoading(true);
     setAddError("");
 
-    const { error } = await supabase.auth.signUp({
-      email: addForm.email,
-      password: addForm.password,
-      options: {
-        data: {
-          full_name: addForm.full_name,
-          role: "teacher",
-          phone: addForm.phone || undefined,
-        },
-      },
+    const res = await fetch("/api/admin/create-teacher", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: addForm.full_name,
+        email: addForm.email,
+        password: addForm.password,
+        phone: addForm.phone || undefined,
+      }),
     });
 
-    if (error) {
-      setAddError(error.message);
+    const result = await res.json();
+
+    if (!res.ok) {
+      setAddError(result.error || "Failed to create teacher");
       setAddLoading(false);
       return;
     }
 
-    toast.success("Teacher account created. They will receive a verification email.");
+    toast.success("Teacher account created successfully.");
     setShowAddModal(false);
     setAddForm({ full_name: "", email: "", password: "", phone: "" });
     setAddLoading(false);

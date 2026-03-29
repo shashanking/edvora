@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -23,7 +24,25 @@ export async function GET(request: Request) {
           .eq("id", user.id)
           .single() as { data: { role: string } | null };
 
-        const role = profile?.role || "student";
+        // If profile doesn't exist (trigger may have failed), create it
+        if (!profile) {
+          const supabaseAdmin = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
+
+          const meta = user.user_metadata || {};
+          await supabaseAdmin.from("profiles").upsert({
+            id: user.id,
+            full_name: meta.full_name || "",
+            email: user.email!,
+            phone: meta.phone || null,
+            country_code: meta.country_code || null,
+            role: meta.role || "student",
+          });
+        }
+
+        const role = profile?.role || user.user_metadata?.role || "student";
         const forwardedHost = request.headers.get("x-forwarded-host");
         const isLocalEnv = process.env.NODE_ENV === "development";
 

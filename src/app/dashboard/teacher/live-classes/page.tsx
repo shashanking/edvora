@@ -67,11 +67,16 @@ export default function TeacherLiveClassesPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Auto-complete sessions whose time has passed
+    try {
+      await fetch("/api/sessions/auto-complete", { method: "POST" });
+    } catch {}
+
     const { data } = await supabase
       .from("live_sessions")
       .select("*")
       .eq("teacher_id", user.id)
-      .order("scheduled_at", { ascending: false });
+      .order("scheduled_at", { ascending: true });
 
     const rows = (data as any[]) || [];
     const courseIds = [...new Set(rows.map((s) => s.course_id))];
@@ -107,21 +112,27 @@ export default function TeacherLiveClassesPage() {
       }))
     );
 
+    const now = Date.now();
     setSessions(
-      rows.map((s) => ({
-        id: s.id,
-        title: s.title,
-        scheduled_at: s.scheduled_at,
-        duration_minutes: s.duration_minutes,
-        status: s.status,
-        zoom_meeting_id: s.zoom_meeting_id,
-        zoom_join_url: s.zoom_join_url,
-        zoom_start_url: s.zoom_start_url,
-        recording_url: s.recording_url,
-        course_title: courseMap.get(s.course_id) || "Unknown",
-        course_id: s.course_id,
-        student_id: s.student_id,
-      }))
+      rows
+        .map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          scheduled_at: s.scheduled_at,
+          duration_minutes: s.duration_minutes,
+          status: s.status,
+          zoom_meeting_id: s.zoom_meeting_id,
+          zoom_join_url: s.zoom_join_url,
+          zoom_start_url: s.zoom_start_url,
+          recording_url: s.recording_url,
+          course_title: courseMap.get(s.course_id) || "Unknown",
+          course_id: s.course_id,
+          student_id: s.student_id,
+        }))
+        .filter((s: SessionRow) =>
+          (s.status === "scheduled" || s.status === "live") &&
+          new Date(s.scheduled_at).getTime() + s.duration_minutes * 60 * 1000 > now
+        )
     );
 
     setLoading(false);
@@ -242,12 +253,7 @@ export default function TeacherLiveClassesPage() {
     }
   };
 
-  const upcoming = sessions.filter(
-    (s) => s.status === "scheduled" || s.status === "live"
-  );
-  const past = sessions.filter(
-    (s) => s.status === "completed" || s.status === "cancelled"
-  );
+  const upcoming = sessions;
 
   const statusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -426,34 +432,13 @@ export default function TeacherLiveClassesPage() {
           {/* Upcoming */}
           <div className="space-y-3">
             <h2 className="text-lg font-poppins font-semibold text-[#1C1C28]">
-              Upcoming
-              {upcoming.length > 0 && (
-                <span className="ml-2 text-sm font-normal text-[#9CA3AF]">
-                  ({upcoming.length})
-                </span>
-              )}
+              Upcoming Sessions
+              <span className="ml-2 text-sm font-normal text-[#9CA3AF]">
+                ({upcoming.length})
+              </span>
             </h2>
-            {upcoming.length === 0 ? (
-              <div className="text-center py-10 bg-white rounded-2xl border border-gray-100">
-                <p className="text-sm text-[#9CA3AF]">No upcoming sessions</p>
-              </div>
-            ) : (
-              upcoming.map(renderSessionCard)
-            )}
+            {upcoming.map(renderSessionCard)}
           </div>
-
-          {/* Past */}
-          {past.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-poppins font-semibold text-[#1C1C28]">
-                Past
-                <span className="ml-2 text-sm font-normal text-[#9CA3AF]">
-                  ({past.length})
-                </span>
-              </h2>
-              {past.map(renderSessionCard)}
-            </div>
-          )}
         </>
       )}
 

@@ -32,6 +32,8 @@ export default function CreateCoursePage() {
     category: "",
     audience: "young",
     landing_category: "core",
+    classes_per_week: "2",
+    total_sessions: "8",
     rating: "4",
     display_order: "0",
     status: "draft",
@@ -89,6 +91,8 @@ export default function CreateCoursePage() {
         category: form.category || null,
         audience: form.audience as "young" | "adult",
         landing_category: form.landing_category as "core" | "specialized" | "exam" | "professional" | "academic",
+        classes_per_week: parseInt(form.classes_per_week, 10) || 2,
+        total_sessions: parseInt(form.total_sessions, 10) || 8,
         rating: parseFloat(form.rating) || 4,
         display_order: parseInt(form.display_order, 10) || 0,
         status: form.status as "draft" | "published" | "archived",
@@ -246,6 +250,34 @@ export default function CreateCoursePage() {
                 onChange={handleChange}
                 placeholder="e.g. Mathematics"
                 className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Classes Per Week *</label>
+              <input
+                name="classes_per_week"
+                type="number"
+                min="1"
+                max="7"
+                value={form.classes_per_week}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Total Sessions *</label>
+              <input
+                name="total_sessions"
+                type="number"
+                min="1"
+                value={form.total_sessions}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
+                required
               />
             </div>
           </div>

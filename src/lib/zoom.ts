@@ -89,9 +89,12 @@ export async function createZoomMeeting(
   topic: string,
   startTime: string,
   duration: number,
-  hostEmail: string
+  _hostEmail?: string
 ): Promise<ZoomMeetingResult> {
-  const res = await zoomFetch(`/users/${hostEmail}/meetings`, {
+  // Use the Zoom account owner email for all meetings.
+  // The teacher's LMS email doesn't need to match a Zoom licensed user.
+  const zoomHost = process.env.ZOOM_HOST_EMAIL || "me";
+  const res = await zoomFetch(`/users/${zoomHost}/meetings`, {
     method: "POST",
     body: JSON.stringify({
       topic,

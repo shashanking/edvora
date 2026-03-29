@@ -121,11 +121,29 @@ function LoginForm({ variant }: LoginScreenProps) {
     }
 
     if (data.user) {
-      const { data: profile } = (await supabase
+      let { data: profile } = (await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
         .single()) as { data: { role: UserRole } | null };
+
+      // If profile is missing (trigger may have failed), create it via API
+      if (!profile) {
+        const meta = data.user.user_metadata || {};
+        await fetch("/api/auth/ensure-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: data.user.id,
+            full_name: meta.full_name || "",
+            email: data.user.email,
+            phone: meta.phone || null,
+            country_code: meta.country_code || null,
+            role: meta.role || "student",
+          }),
+        });
+        profile = { role: meta.role || "student" };
+      }
 
       const role = profile?.role || "student";
 

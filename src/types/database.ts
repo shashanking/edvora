@@ -518,6 +518,84 @@ export interface Database {
           file_size?: number | null;
         };
       };
+      course_modules: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          description: string | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          description?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          display_order?: number;
+        };
+      };
+      course_lessons: {
+        Row: {
+          id: string;
+          module_id: string;
+          title: string;
+          content: string | null;
+          video_url: string | null;
+          duration_minutes: number | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          module_id: string;
+          title: string;
+          content?: string | null;
+          video_url?: string | null;
+          duration_minutes?: number | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          content?: string | null;
+          video_url?: string | null;
+          duration_minutes?: number | null;
+          display_order?: number;
+        };
+      };
+      lesson_progress: {
+        Row: {
+          id: string;
+          student_id: string;
+          lesson_id: string;
+          completed: boolean;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          lesson_id: string;
+          completed?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          completed?: boolean;
+          completed_at?: string | null;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -552,3 +630,6 @@ export type StudentSchedule = Database["public"]["Tables"]["student_schedules"][
 export type SessionRating = Database["public"]["Tables"]["session_ratings"]["Row"];
 export type PaymentReminder = Database["public"]["Tables"]["payment_reminders"]["Row"];
 export type CourseMaterial = Database["public"]["Tables"]["course_materials"]["Row"];
+export type CourseModule = Database["public"]["Tables"]["course_modules"]["Row"];
+export type CourseLesson = Database["public"]["Tables"]["course_lessons"]["Row"];
+export type LessonProgress = Database["public"]["Tables"]["lesson_progress"]["Row"];

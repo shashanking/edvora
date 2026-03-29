@@ -12,7 +12,7 @@ interface AttendanceRecord {
 }
 
 export default function StudentAttendancePage() {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 

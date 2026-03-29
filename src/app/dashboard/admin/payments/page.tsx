@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { CreditCard } from "lucide-react";
+import {
+  CreditCard, DollarSign, CheckCircle, Clock, AlertTriangle, Loader2,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 interface Payment {
   id: string;
@@ -12,13 +15,14 @@ interface Payment {
   currency: string;
   status: string;
   payment_method: string | null;
+  payment_provider: string | null;
   created_at: string;
   student_name?: string;
   course_title?: string;
 }
 
 export default function AdminPaymentsPage() {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -41,18 +45,21 @@ export default function AdminPaymentsPage() {
     const studentIds = [...new Set(rows.map((r) => r.student_id))];
     const courseIds = [...new Set(rows.map((r) => r.course_id))];
 
-    const { data: students } = await supabase
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", studentIds.length ? studentIds : ["__none__"]);
+    const [studentsRes, coursesRes] = await Promise.all([
+      studentIds.length
+        ? supabase.from("profiles").select("id, full_name").in("id", studentIds)
+        : { data: [] },
+      courseIds.length
+        ? supabase.from("courses").select("id, title").in("id", courseIds)
+        : { data: [] },
+    ]);
 
-    const { data: courses } = await supabase
-      .from("courses")
-      .select("id, title")
-      .in("id", courseIds.length ? courseIds : ["__none__"]);
-
-    const studentMap = new Map((students as any[] || []).map((s: any) => [s.id, s]));
-    const courseMap = new Map((courses as any[] || []).map((c: any) => [c.id, c]));
+    const studentMap = new Map(
+      ((studentsRes.data || []) as any[]).map((s: any) => [s.id, s])
+    );
+    const courseMap = new Map(
+      ((coursesRes.data || []) as any[]).map((c: any) => [c.id, c])
+    );
 
     const enriched = rows.map((p) => ({
       ...p,
@@ -68,6 +75,13 @@ export default function AdminPaymentsPage() {
     fetchPayments();
   }, [statusFilter]);
 
+  // Summary stats (computed from all payments, not just filtered)
+  const allPayments = payments; // When filter is "all", this includes everything
+  const totalRevenue = payments.filter((p) => p.status === "completed").reduce((sum, p) => sum + Number(p.amount), 0);
+  const completedCount = payments.filter((p) => p.status === "completed").length;
+  const pendingCount = payments.filter((p) => p.status === "pending").length;
+  const failedCount = payments.filter((p) => p.status === "failed").length;
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       completed: "bg-green-100 text-green-700",
@@ -76,19 +90,68 @@ export default function AdminPaymentsPage() {
       refunded: "bg-gray-100 text-gray-600",
     };
     return (
-      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${styles[status] || "bg-gray-100 text-gray-600"}`}>
+      <span
+        className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${styles[status] || "bg-gray-100 text-gray-600"}`}
+      >
         {status}
       </span>
     );
   };
 
+  const summaryCards = [
+    {
+      label: "Total Revenue",
+      value: `$${totalRevenue.toFixed(2)}`,
+      icon: <DollarSign className="w-6 h-6" />,
+      color: "bg-green-50 text-green-600",
+    },
+    {
+      label: "Completed",
+      value: completedCount,
+      icon: <CheckCircle className="w-6 h-6" />,
+      color: "bg-blue-50 text-[#1F4FD8]",
+    },
+    {
+      label: "Pending",
+      value: pendingCount,
+      icon: <Clock className="w-6 h-6" />,
+      color: "bg-amber-50 text-amber-600",
+    },
+    {
+      label: "Failed",
+      value: failedCount,
+      icon: <AlertTriangle className="w-6 h-6" />,
+      color: "bg-red-50 text-red-500",
+    },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Payments</h1>
         <p className="text-[#4D4D4D] text-sm mt-1">Monitor all payment transactions</p>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((card) => (
+          <div
+            key={card.label}
+            className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${card.color}`}>
+                {card.icon}
+              </div>
+            </div>
+            <p className="text-2xl font-poppins font-bold text-[#1C1C28]">{card.value}</p>
+            <p className="text-sm text-[#4D4D4D] mt-0.5">{card.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
       <div className="flex gap-3">
         <select
           value={statusFilter}
@@ -103,10 +166,11 @@ export default function AdminPaymentsPage() {
         </select>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#1F4FD8]" />
           </div>
         ) : payments.length === 0 ? (
           <div className="text-center py-20">
@@ -123,8 +187,8 @@ export default function AdminPaymentsPage() {
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Student</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Course</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Method</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Provider</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Date</th>
                 </tr>
               </thead>
@@ -136,8 +200,10 @@ export default function AdminPaymentsPage() {
                     <td className="px-6 py-4 text-sm font-medium text-[#1C1C28]">
                       {p.currency} {Number(p.amount).toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#4D4D4D] capitalize">{p.payment_method || "—"}</td>
                     <td className="px-6 py-4">{getStatusBadge(p.status)}</td>
+                    <td className="px-6 py-4 text-sm text-[#4D4D4D] capitalize">
+                      {p.payment_provider || p.payment_method || "—"}
+                    </td>
                     <td className="px-6 py-4 text-sm text-[#9CA3AF]">
                       {new Date(p.created_at).toLocaleDateString()}
                     </td>

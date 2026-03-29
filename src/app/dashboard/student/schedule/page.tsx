@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Calendar, Clock, CheckCircle, Loader2 } from "lucide-react";
+import { Calendar, Clock, CheckCircle, Loader2, Plus } from "lucide-react";
+import toast from "react-hot-toast";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -30,8 +31,6 @@ export default function StudentSchedulePage() {
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
@@ -43,7 +42,9 @@ export default function StudentSchedulePage() {
   }, []);
 
   const fetchData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const [enrollmentsRes, schedulesRes] = await Promise.all([
@@ -88,21 +89,28 @@ export default function StudentSchedulePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
 
     if (!selectedCourse) {
-      setError("Please select a course");
+      toast.error("Please select a course");
       return;
     }
     if (selectedDays.length === 0) {
-      setError("Please select at least one day");
+      toast.error("Please select at least one day");
+      return;
+    }
+    if (startTime >= endTime) {
+      toast.error("End time must be after start time");
       return;
     }
 
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setSaving(false);
+      return;
+    }
 
     const inserts = selectedDays.map((day) => ({
       student_id: user.id,
@@ -118,11 +126,15 @@ export default function StudentSchedulePage() {
       .insert(inserts as any);
 
     if (insertError) {
-      setError(insertError.message);
+      toast.error(insertError.message);
     } else {
-      setSuccess("Your preferred schedule has been submitted! The admin will confirm your schedule shortly.");
+      toast.success(
+        "Your preferred schedule has been submitted! The admin will confirm your schedule shortly."
+      );
       setSelectedDays([]);
       setSelectedCourse("");
+      setStartTime("09:00");
+      setEndTime("10:00");
       fetchData();
     }
     setSaving(false);
@@ -136,76 +148,109 @@ export default function StudentSchedulePage() {
     );
   }
 
+  const confirmedSchedules = schedules.filter((s) => s.status === "confirmed");
+  const pendingSchedules = schedules.filter((s) => s.status === "preferred");
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">My Schedule</h1>
-        <p className="text-[#4D4D4D] mt-1">Select your preferred days and times. Admin will confirm your fixed schedule.</p>
+        <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">
+          My Schedule
+        </h1>
+        <p className="text-[#4D4D4D] mt-1">
+          Select your preferred days and times. Admin will confirm your fixed
+          schedule.
+        </p>
       </div>
 
-      {/* Current confirmed schedules */}
-      {schedules.filter((s) => s.status === "confirmed").length > 0 && (
+      {/* Confirmed schedules */}
+      {confirmedSchedules.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-[#1C1C28] mb-4 flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
             Confirmed Schedule
           </h2>
           <div className="space-y-3">
-            {schedules
-              .filter((s) => s.status === "confirmed")
-              .map((s) => (
-                <div key={s.id} className="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-100">
-                  <div>
-                    <p className="font-medium text-[#1C1C28]">{s.course_title}</p>
-                    <p className="text-sm text-[#4D4D4D]">
-                      {DAYS[s.day_of_week]} &middot; {s.confirmed_start_time || s.preferred_start_time} – {s.confirmed_end_time || s.preferred_end_time}
-                    </p>
-                  </div>
-                  <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">Confirmed</span>
+            {confirmedSchedules.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-100"
+              >
+                <div>
+                  <p className="font-medium text-[#1C1C28]">
+                    {s.course_title}
+                  </p>
+                  <p className="text-sm text-[#4D4D4D]">
+                    {DAYS[s.day_of_week]} &middot;{" "}
+                    {s.confirmed_start_time || s.preferred_start_time} &ndash;{" "}
+                    {s.confirmed_end_time || s.preferred_end_time}
+                  </p>
                 </div>
-              ))}
+                <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                  Confirmed
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Pending preferred schedules */}
-      {schedules.filter((s) => s.status === "preferred").length > 0 && (
+      {pendingSchedules.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-[#1C1C28] mb-4 flex items-center gap-2">
             <Clock className="w-5 h-5 text-amber-500" />
             Pending Confirmation
           </h2>
           <div className="space-y-3">
-            {schedules
-              .filter((s) => s.status === "preferred")
-              .map((s) => (
-                <div key={s.id} className="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-100">
-                  <div>
-                    <p className="font-medium text-[#1C1C28]">{s.course_title}</p>
-                    <p className="text-sm text-[#4D4D4D]">
-                      {DAYS[s.day_of_week]} &middot; {s.preferred_start_time} – {s.preferred_end_time}
-                    </p>
-                  </div>
-                  <span className="text-xs font-medium text-amber-700 bg-amber-100 px-3 py-1 rounded-full">Pending</span>
+            {pendingSchedules.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-100"
+              >
+                <div>
+                  <p className="font-medium text-[#1C1C28]">
+                    {s.course_title}
+                  </p>
+                  <p className="text-sm text-[#4D4D4D]">
+                    {DAYS[s.day_of_week]} &middot; {s.preferred_start_time}{" "}
+                    &ndash; {s.preferred_end_time}
+                  </p>
                 </div>
-              ))}
+                <span className="text-xs font-medium text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
+                  Pending
+                </span>
+              </div>
+            ))}
           </div>
+        </div>
+      )}
+
+      {/* Empty state when no schedules exist */}
+      {schedules.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <Calendar className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-[#4D4D4D] font-medium">No schedules yet</p>
+          <p className="text-sm text-[#9CA3AF] mt-1">
+            Add your preferred schedule below to get started
+          </p>
         </div>
       )}
 
       {/* Submit new preferences */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-[#1C1C28] mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-[#1F4FD8]" />
-          Select Preferred Days
+          <Plus className="w-5 h-5 text-[#1F4FD8]" />
+          Add Schedule Preference
         </h2>
-
-        {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}
-        {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-600 text-sm">{success}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Course</label>
+            <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+              Course
+            </label>
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
@@ -213,13 +258,17 @@ export default function StudentSchedulePage() {
             >
               <option value="">Select a course</option>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.title}</option>
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1C1C28] mb-2">Select Days</label>
+            <label className="block text-sm font-medium text-[#1C1C28] mb-2">
+              Select Days
+            </label>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
               {DAYS.map((day, idx) => (
                 <button
@@ -240,7 +289,9 @@ export default function StudentSchedulePage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Preferred Start Time</label>
+              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+                Preferred Start Time
+              </label>
               <input
                 type="time"
                 value={startTime}
@@ -249,7 +300,9 @@ export default function StudentSchedulePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Preferred End Time</label>
+              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+                Preferred End Time
+              </label>
               <input
                 type="time"
                 value={endTime}
@@ -264,7 +317,11 @@ export default function StudentSchedulePage() {
             disabled={saving}
             className="w-full py-3 bg-[#1F4FD8] hover:bg-[#1a45c2] disabled:opacity-60 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Submit Preferred Schedule"}
+            {saving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              "Submit Preferred Schedule"
+            )}
           </button>
         </form>
       </div>

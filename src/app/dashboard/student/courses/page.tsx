@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { BookOpen, Clock, TrendingUp } from "lucide-react";
+import Link from "next/link";
 
 interface EnrolledCourse {
   id: string;
@@ -19,7 +20,7 @@ interface EnrolledCourse {
 }
 
 export default function StudentCoursesPage() {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   const [courses, setCourses] = useState<EnrolledCourse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,9 +101,10 @@ export default function StudentCoursesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {courses.map((course) => (
-            <div
+            <Link
               key={course.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              href={`/dashboard/student/courses/${course.course_id}`}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow block"
             >
               <div className="h-40 bg-gradient-to-br from-[#1F4FD8]/10 to-[#1F4FD8]/5 relative">
                 {course.thumbnail_url ? (
@@ -155,7 +157,7 @@ export default function StudentCoursesPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

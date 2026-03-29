@@ -2,24 +2,27 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Users, Search, Mail } from "lucide-react";
+import { Users, Search, Phone } from "lucide-react";
 
 interface StudentRow {
   id: string;
   full_name: string;
   email: string;
+  phone: string | null;
   course_title: string;
   course_id: string;
+  progress: number;
+  enrolled_at: string;
 }
 
 export default function TeacherStudentsPage() {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -39,7 +42,7 @@ export default function TeacherStudentsPage() {
 
       const { data: enrollments } = await supabase
         .from("enrollments")
-        .select("student_id, course_id")
+        .select("student_id, course_id, progress, enrolled_at")
         .in("course_id", courseIds)
         .eq("status", "active");
 
@@ -48,7 +51,7 @@ export default function TeacherStudentsPage() {
 
       const { data: students } = await supabase
         .from("profiles")
-        .select("id, full_name, email")
+        .select("id, full_name, email, phone")
         .in("id", studentIds.length ? studentIds : ["__none__"]);
 
       const { data: courses } = await supabase
@@ -63,15 +66,18 @@ export default function TeacherStudentsPage() {
         id: e.student_id,
         full_name: studentMap.get(e.student_id)?.full_name || "Unknown",
         email: studentMap.get(e.student_id)?.email || "",
+        phone: studentMap.get(e.student_id)?.phone || null,
         course_title: courseMap.get(e.course_id)?.title || "Unknown",
         course_id: e.course_id,
+        progress: e.progress ?? 0,
+        enrolled_at: e.enrolled_at,
       }));
 
       setRows(merged);
       setLoading(false);
     };
 
-    fetch();
+    fetchData();
   }, []);
 
   const filtered = useMemo(() => {
@@ -118,7 +124,10 @@ export default function TeacherStudentsPage() {
                 <tr className="border-b border-gray-100 text-left">
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Student</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Phone</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Course</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Progress</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Enrolled</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -126,7 +135,37 @@ export default function TeacherStudentsPage() {
                   <tr key={`${r.id}-${r.course_id}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-[#1C1C28]">{r.full_name}</td>
                     <td className="px-6 py-4 text-sm text-[#4D4D4D]">{r.email}</td>
-                    <td className="px-6 py-4 text-sm text-[#4D4D4D]">{r.course_title}</td>
+                    <td className="px-6 py-4 text-sm text-[#4D4D4D]">
+                      {r.phone ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Phone className="w-3.5 h-3.5 text-[#9CA3AF]" />
+                          {r.phone}
+                        </span>
+                      ) : (
+                        <span className="text-[#9CA3AF]">--</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-medium text-[#1F4FD8] bg-[#1F4FD8]/10 px-2 py-0.5 rounded-full">
+                        {r.course_title}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2.5 min-w-[120px]">
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#1F4FD8] rounded-full transition-all"
+                            style={{ width: `${Math.min(r.progress, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-[#4D4D4D] w-9 text-right">
+                          {r.progress}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#4D4D4D]">
+                      {new Date(r.enrolled_at).toLocaleDateString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>

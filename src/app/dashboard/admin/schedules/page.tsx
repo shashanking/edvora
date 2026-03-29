@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Calendar, CheckCircle, Clock, Loader2, X } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Loader2, X, Search } from "lucide-react";
+import toast from "react-hot-toast";
+import { sendScheduleConfirmedEmail } from "@/src/lib/emailjs";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -27,9 +29,11 @@ export default function AdminSchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "preferred" | "confirmed">("all");
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState({ start: "", end: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSchedules();
@@ -73,6 +77,36 @@ export default function AdminSchedulesPage() {
     });
   };
 
+  const quickConfirm = async (schedule: Schedule) => {
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from("student_schedules")
+      .update({
+        confirmed_start_time: schedule.preferred_start_time,
+        confirmed_end_time: schedule.preferred_end_time,
+        status: "confirmed",
+        confirmed_by: user?.id,
+      } as any)
+      .eq("id", schedule.id);
+
+    if (!error) {
+      toast.success("Schedule confirmed with preferred times");
+      sendScheduleConfirmedEmail({
+        studentName: schedule.student_name,
+        studentEmail: schedule.student_email,
+        courseName: schedule.course_title,
+        day: DAYS[schedule.day_of_week],
+        time: `${schedule.preferred_start_time} - ${schedule.preferred_end_time}`,
+      });
+      fetchSchedules();
+    } else {
+      toast.error(error.message);
+    }
+    setSaving(false);
+  };
+
   const confirmSchedule = async (id: string) => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -89,19 +123,39 @@ export default function AdminSchedulesPage() {
       .eq("id", id);
 
     if (!error) {
+      toast.success("Schedule confirmed");
+      const schedule = schedules.find((s) => s.id === id);
+      if (schedule) {
+        sendScheduleConfirmedEmail({
+          studentName: schedule.student_name,
+          studentEmail: schedule.student_email,
+          courseName: schedule.course_title,
+          day: DAYS[schedule.day_of_week],
+          time: `${editTime.start} - ${editTime.end}`,
+        });
+      }
       setEditingId(null);
       fetchSchedules();
+    } else {
+      toast.error(error.message);
     }
     setSaving(false);
   };
 
   const deleteSchedule = async (id: string) => {
-    if (!confirm("Delete this schedule entry?")) return;
     await supabase.from("student_schedules").delete().eq("id", id);
+    setShowDeleteModal(null);
+    toast.success("Schedule deleted");
     fetchSchedules();
   };
 
-  const filtered = schedules.filter((s) => filter === "all" || s.status === filter);
+  const filtered = schedules.filter((s) => {
+    const matchesFilter = filter === "all" || s.status === filter;
+    const matchesSearch = !search ||
+      s.student_name.toLowerCase().includes(search.toLowerCase()) ||
+      s.course_title.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -112,11 +166,24 @@ export default function AdminSchedulesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Student Schedules</h1>
-          <p className="text-[#4D4D4D] mt-1">Review student preferences and confirm fixed weekly schedules</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Student Schedules</h1>
+        <p className="text-[#4D4D4D] text-sm mt-1">Review student preferences and confirm fixed weekly schedules</p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+          <input
+            type="text"
+            placeholder="Search by student or course..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
+          />
         </div>
         <div className="flex gap-2">
           {(["all", "preferred", "confirmed"] as const).map((f) => (
@@ -135,6 +202,7 @@ export default function AdminSchedulesPage() {
         </div>
       </div>
 
+      {/* Table */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
           <Calendar className="w-12 h-12 text-[#D4D4D4] mx-auto mb-3" />
@@ -165,7 +233,7 @@ export default function AdminSchedulesPage() {
                     <td className="px-6 py-4 text-sm text-[#4D4D4D]">{s.course_title}</td>
                     <td className="px-6 py-4 text-sm font-medium text-[#1C1C28]">{DAYS[s.day_of_week]}</td>
                     <td className="px-6 py-4 text-sm text-[#4D4D4D]">
-                      {s.preferred_start_time} – {s.preferred_end_time}
+                      {s.preferred_start_time} - {s.preferred_end_time}
                     </td>
                     <td className="px-6 py-4">
                       {editingId === s.id ? (
@@ -176,7 +244,7 @@ export default function AdminSchedulesPage() {
                             onChange={(e) => setEditTime({ ...editTime, start: e.target.value })}
                             className="px-2 py-1 border border-[#D4D4D4] rounded-lg text-sm w-24"
                           />
-                          <span className="text-[#9CA3AF]">–</span>
+                          <span className="text-[#9CA3AF]">-</span>
                           <input
                             type="time"
                             value={editTime.end}
@@ -186,10 +254,10 @@ export default function AdminSchedulesPage() {
                         </div>
                       ) : s.confirmed_start_time ? (
                         <span className="text-sm text-green-700 font-medium">
-                          {s.confirmed_start_time} – {s.confirmed_end_time}
+                          {s.confirmed_start_time} - {s.confirmed_end_time}
                         </span>
                       ) : (
-                        <span className="text-sm text-[#9CA3AF]">—</span>
+                        <span className="text-sm text-[#9CA3AF]">--</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -200,14 +268,14 @@ export default function AdminSchedulesPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         {editingId === s.id ? (
                           <>
                             <button
                               onClick={() => confirmSchedule(s.id)}
                               disabled={saving}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                              title="Confirm"
+                              title="Save & Confirm"
                             >
                               <CheckCircle className="w-4 h-4" />
                             </button>
@@ -221,14 +289,24 @@ export default function AdminSchedulesPage() {
                           </>
                         ) : (
                           <>
+                            {s.status === "preferred" && (
+                              <button
+                                onClick={() => quickConfirm(s)}
+                                disabled={saving}
+                                className="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                                title="Confirm with preferred times"
+                              >
+                                Confirm
+                              </button>
+                            )}
                             <button
                               onClick={() => startEdit(s)}
                               className="px-3 py-1.5 text-xs font-medium text-[#1F4FD8] hover:bg-blue-50 rounded-lg transition-all"
                             >
-                              {s.status === "confirmed" ? "Edit" : "Confirm"}
+                              {s.status === "confirmed" ? "Edit" : "Set Time"}
                             </button>
                             <button
-                              onClick={() => deleteSchedule(s.id)}
+                              onClick={() => setShowDeleteModal(s.id)}
                               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
                               title="Delete"
                             >
@@ -242,6 +320,32 @@ export default function AdminSchedulesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-poppins font-bold text-[#1C1C28] mb-2">Delete Schedule?</h3>
+            <p className="text-sm text-[#4D4D4D] mb-6">
+              This will permanently remove this schedule entry.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteModal(null)}
+                className="px-4 py-2 text-sm font-medium text-[#4D4D4D] bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteSchedule(showDeleteModal)}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

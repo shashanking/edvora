@@ -7,6 +7,20 @@ export async function POST() {
   try {
     const supabase = await createClient() as any;
 
+    // Require admin authentication
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (!profile || profile.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     // Delete recording URLs where recording_expires_at is in the past
     const now = new Date().toISOString();
 

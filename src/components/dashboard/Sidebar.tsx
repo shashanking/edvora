@@ -39,6 +39,7 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/student", icon: <LayoutDashboard className="w-5 h-5" /> },
     { label: "Catalog", href: "/dashboard/student/catalog", icon: <BookOpen className="w-5 h-5" /> },
     { label: "My Courses", href: "/dashboard/student/courses", icon: <BookOpen className="w-5 h-5" /> },
+    { label: "Materials", href: "/dashboard/student/materials", icon: <FolderOpen className="w-5 h-5" /> },
     { label: "Assignments", href: "/dashboard/student/assignments", icon: <ClipboardList className="w-5 h-5" /> },
     { label: "Attendance", href: "/dashboard/student/attendance", icon: <Calendar className="w-5 h-5" /> },
     { label: "Live Classes", href: "/dashboard/student/live-classes", icon: <Video className="w-5 h-5" /> },

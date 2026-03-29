@@ -15,7 +15,7 @@ interface Teacher {
 
 export default function CreateCoursePage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createClient() as any;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

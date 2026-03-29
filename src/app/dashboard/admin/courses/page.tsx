@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Plus, Search, Edit2, Trash2, Eye, MoreVertical } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Eye, MoreVertical, FileText } from "lucide-react";
 import Link from "next/link";
 
 interface Course {
@@ -28,7 +28,7 @@ export default function AdminCoursesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const supabase = createClient();
+  const supabase = createClient() as any;
 
   const fetchCourses = async () => {
     setLoading(true);
@@ -177,6 +177,13 @@ export default function AdminCoursesPage() {
                     <td className="px-6 py-4">{getStatusBadge(course.status)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
+                        <Link
+                          href={`/dashboard/admin/courses/${course.id}/content`}
+                          className="p-2 text-[#4D4D4D] hover:text-[#1F4FD8] hover:bg-blue-50 rounded-lg transition-all"
+                          title="Manage Content"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Link>
                         <Link
                           href={`/dashboard/admin/courses/${course.id}/edit`}
                           className="p-2 text-[#4D4D4D] hover:text-[#1F4FD8] hover:bg-blue-50 rounded-lg transition-all"

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import Link from "next/link";
-import { Search, Users, Eye } from "lucide-react";
+import { Search, Users, Eye, UserPlus } from "lucide-react";
 
 interface Student {
   id: string;
@@ -15,7 +15,7 @@ interface Student {
 }
 
 export default function AdminStudentsPage() {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -103,13 +103,22 @@ export default function AdminStudentsPage() {
                       {new Date(student.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
-                      <Link
-                        href={`/dashboard/admin/students/${student.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1F4FD8] hover:bg-blue-50 rounded-lg transition-all"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link
+                          href={`/dashboard/admin/students/${student.id}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1F4FD8] hover:bg-blue-50 rounded-lg transition-all"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </Link>
+                        <Link
+                          href={`/dashboard/admin/enrollments?student=${student.id}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1F4FD8] hover:bg-blue-50 rounded-lg transition-all"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          Enroll
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

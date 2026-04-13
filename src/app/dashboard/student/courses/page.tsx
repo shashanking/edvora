@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { BookOpen, Clock, TrendingUp } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 interface EnrolledCourse {
@@ -35,7 +35,7 @@ export default function StudentCoursesPage() {
         .from("enrollments")
         .select("*")
         .eq("student_id", user.id)
-        .eq("status", "active")
+        .in("status", ["active", "completed"])
         .order("enrolled_at", { ascending: false });
 
       const rows = (enrollments as any[]) || [];
@@ -147,11 +147,17 @@ export default function StudentCoursesPage() {
                     <span className="text-[#4D4D4D] font-medium flex items-center gap-1">
                       <TrendingUp className="w-3.5 h-3.5" /> Progress
                     </span>
-                    <span className="text-[#1F4FD8] font-semibold">{course.progress}%</span>
+                    {course.status === "completed" ? (
+                      <span className="text-green-600 font-semibold flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5" /> Completed
+                      </span>
+                    ) : (
+                      <span className="text-[#1F4FD8] font-semibold">{course.progress}%</span>
+                    )}
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#1F4FD8] rounded-full transition-all"
+                      className={`h-full rounded-full transition-all ${course.status === "completed" ? "bg-green-500" : "bg-[#1F4FD8]"}`}
                       style={{ width: `${course.progress}%` }}
                     />
                   </div>

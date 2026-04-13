@@ -52,7 +52,7 @@ export default function StudentSchedulePage() {
         .from("enrollments")
         .select("course_id, courses(id, title)")
         .eq("student_id", user.id)
-        .eq("status", "active"),
+        .in("status", ["active", "completed"]),
       supabase
         .from("student_schedules")
         .select("*, courses(title)")

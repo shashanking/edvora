@@ -32,7 +32,7 @@ export default function StudentLiveClassesPage() {
         .from("enrollments")
         .select("course_id")
         .eq("student_id", user.id)
-        .eq("status", "active");
+        .in("status", ["active", "completed"]);
 
       const courseIds = ((enrollments as any[]) || []).map((e) => e.course_id);
       if (courseIds.length === 0) {

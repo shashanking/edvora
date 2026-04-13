@@ -32,6 +32,7 @@ interface Enrollment {
   student_id: string;
   course_id: string;
   teacher_id?: string;
+  classes_per_week?: number;
   status: string;
   progress: number;
   enrolled_at: string;
@@ -131,6 +132,7 @@ export default function AdminEnrollmentsPage() {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedCourseData, setSelectedCourseData] =
     useState<CourseOption | null>(null);
+  const [selectedClassesPerWeek, setSelectedClassesPerWeek] = useState(2);
 
   // Step 2
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
@@ -326,6 +328,7 @@ export default function AdminEnrollmentsPage() {
     setSelectedStudent(preselectedStudentId || "");
     setSelectedCourse("");
     setSelectedCourseData(null);
+    setSelectedClassesPerWeek(2);
     setSelectedTeacher("");
     setTeachers([]);
     setSchedule([]);
@@ -342,6 +345,7 @@ export default function AdminEnrollmentsPage() {
     setSelectedStudent("");
     setSelectedCourse("");
     setSelectedCourseData(null);
+    setSelectedClassesPerWeek(2);
     setSelectedTeacher("");
     setTeachers([]);
     setSchedule([]);
@@ -379,7 +383,7 @@ export default function AdminEnrollmentsPage() {
       toast.error("Please select a teacher.");
       return;
     }
-    const cpw = selectedCourseData?.classes_per_week || 1;
+    const cpw = selectedClassesPerWeek;
     if (schedule.length !== cpw) {
       setSchedule(
         Array.from({ length: cpw }, () => ({
@@ -394,7 +398,7 @@ export default function AdminEnrollmentsPage() {
   };
 
   const goToStep4 = () => {
-    const cpw = selectedCourseData?.classes_per_week || 1;
+    const cpw = selectedClassesPerWeek;
     if (schedule.length !== cpw) {
       toast.error(
         `Please configure exactly ${cpw} schedule slot${cpw > 1 ? "s" : ""}.`
@@ -491,6 +495,7 @@ export default function AdminEnrollmentsPage() {
           student_id: selectedStudent,
           course_id: selectedCourse,
           teacher_id: selectedTeacher,
+          classes_per_week: selectedClassesPerWeek,
           status: "active",
           progress: 0,
         })
@@ -542,6 +547,7 @@ export default function AdminEnrollmentsPage() {
             student_id: selectedStudent,
             course_title: courseTitle,
             total_sessions: totalSessions,
+            classes_per_week: selectedClassesPerWeek,
             schedule,
             start_date: startDate,
             duration_minutes: durationMinutes,
@@ -975,7 +981,7 @@ export default function AdminEnrollmentsPage() {
                           Classes per week:
                         </span>{" "}
                         <strong>
-                          {selectedCourseData.classes_per_week}
+                          {selectedClassesPerWeek}
                         </strong>
                       </p>
                       <p className="text-sm text-[#1C1C28]">
@@ -997,12 +1003,47 @@ export default function AdminEnrollmentsPage() {
               {wizardStep === 2 && (
                 <div className="space-y-4">
                   <p className="text-sm text-[#4D4D4D]">
-                    Select a teacher assigned to{" "}
+                    Choose the weekly class count and select a teacher assigned to{" "}
                     <strong>
                       {courses.find((c) => c.id === selectedCourse)?.title}
                     </strong>
                     :
                   </p>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-[#1C1C28]">
+                      Classes per week
+                    </label>
+                    <div className="flex flex-wrap gap-3">
+                      {[2, 3, 4].map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => {
+                            setSelectedClassesPerWeek(count);
+                            setSchedule((prev) => {
+                              const next = prev.slice(0, count);
+                              while (next.length < count) {
+                                next.push({
+                                  dayOfWeek: 1,
+                                  startTime: "09:00",
+                                  endTime: "10:00",
+                                });
+                              }
+                              return next;
+                            });
+                          }}
+                          className={`px-4 py-2 rounded-full border text-sm font-medium transition-all ${
+                            selectedClassesPerWeek === count
+                              ? "bg-[#1F4FD8] text-white border-[#1F4FD8]"
+                              : "bg-white text-[#1C1C28] border-[#D4D4D4] hover:border-[#1F4FD8]"
+                          }`}
+                        >
+                          {count} classes/week
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
                   {loadingTeachers ? (
                     <div className="flex items-center justify-center py-8">
@@ -1113,10 +1154,10 @@ export default function AdminEnrollmentsPage() {
                   <p className="text-sm text-[#4D4D4D]">
                     Configure{" "}
                     <strong>
-                      {selectedCourseData?.classes_per_week || 1}
+                      {selectedClassesPerWeek}
                     </strong>{" "}
                     weekly class slot
-                    {(selectedCourseData?.classes_per_week || 1) > 1
+                    {selectedClassesPerWeek > 1
                       ? "s"
                       : ""}
                     :

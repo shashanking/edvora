@@ -200,7 +200,7 @@ export default function StudentCourseDetailPage() {
       .select("id, status")
       .eq("student_id", userData.user.id)
       .eq("course_id", courseId)
-      .eq("status", "active")
+      .in("status", ["active", "completed"])
       .single();
 
     if (!enrollmentData) {
@@ -375,9 +375,17 @@ export default function StudentCourseDetailPage() {
   useEffect(() => {
     if (!enrollmentId || totalLessons === 0) return;
     const updateEnrollmentProgress = async () => {
+      const updateData: Record<string, any> = { progress: progressPercent };
+      if (progressPercent === 100) {
+        updateData.status = "completed";
+        updateData.completed_at = new Date().toISOString();
+      } else {
+        updateData.status = "active";
+        updateData.completed_at = null;
+      }
       await supabase
         .from("enrollments")
-        .update({ progress: progressPercent })
+        .update(updateData)
         .eq("id", enrollmentId);
     };
     updateEnrollmentProgress();

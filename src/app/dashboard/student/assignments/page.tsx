@@ -128,7 +128,7 @@ export default function StudentAssignmentsPage() {
         .from("enrollments")
         .select("id, course_id, courses(title)")
         .eq("student_id", user.id)
-        .eq("status", "active");
+        .in("status", ["active", "completed"]);
 
       const rows = (enrollments as any[]) || [];
       const mapped: EnrolledCourse[] = rows.map((e) => ({

@@ -20,6 +20,7 @@ interface ScheduleDay {
  *   student_id: string,
  *   course_title: string,
  *   total_sessions: number,
+ *   classes_per_week: number,
  *   schedule: ScheduleDay[],         // weekly recurring days+times
  *   start_date: string,              // ISO date: first possible session date
  *   duration_minutes: number,
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       student_id,
       course_title,
       total_sessions,
+      classes_per_week,
       schedule,
       start_date,
       duration_minutes,
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest) {
       student_id: string;
       course_title: string;
       total_sessions: number;
+      classes_per_week: number;
       schedule: ScheduleDay[];
       start_date: string;
       duration_minutes: number;
@@ -67,6 +70,13 @@ export async function POST(req: NextRequest) {
 
     if (!enrollment_id || !course_id || !teacher_id || !student_id || !schedule?.length || !total_sessions) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (classes_per_week && schedule.length !== classes_per_week) {
+      return NextResponse.json(
+        { error: `Expected ${classes_per_week} weekly schedule slot${classes_per_week > 1 ? "s" : ""}.` },
+        { status: 400 }
+      );
     }
 
     // Get teacher email for Zoom host

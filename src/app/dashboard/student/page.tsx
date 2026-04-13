@@ -20,7 +20,7 @@ export default async function StudentDashboardPage() {
     .from("enrollments")
     .select("*", { count: "exact", head: true })
     .eq("student_id", user.id)
-    .eq("status", "active");
+    .in("status", ["active", "completed"]);
 
   const { count: assignmentCount, error: assignmentCountError } = await supabase
     .from("assignment_submissions")
@@ -31,7 +31,7 @@ export default async function StudentDashboardPage() {
     .from("enrollments")
     .select("course_id")
     .eq("student_id", user.id)
-    .eq("status", "active")) as { data: { course_id: string }[] | null; error: unknown };
+    .in("status", ["active", "completed"])) as { data: { course_id: string }[] | null; error: unknown };
 
   const enrolledCourseIds = enrollments?.map((enrollment) => enrollment.course_id) ?? [];
 

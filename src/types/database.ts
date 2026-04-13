@@ -66,6 +66,8 @@ export interface Database {
           category: string | null;
           audience: CourseAudience | null;
           landing_category: CourseLandingCategory | null;
+          classes_per_week: number;
+          total_sessions: number;
           rating: number;
           display_order: number;
           status: CourseStatus;
@@ -85,6 +87,8 @@ export interface Database {
           category?: string | null;
           audience?: CourseAudience | null;
           landing_category?: CourseLandingCategory | null;
+          classes_per_week?: number;
+          total_sessions?: number;
           rating?: number;
           display_order?: number;
           status?: CourseStatus;
@@ -103,6 +107,8 @@ export interface Database {
           category?: string | null;
           audience?: CourseAudience | null;
           landing_category?: CourseLandingCategory | null;
+          classes_per_week?: number;
+          total_sessions?: number;
           rating?: number;
           display_order?: number;
           status?: CourseStatus;
@@ -132,6 +138,7 @@ export interface Database {
           id: string;
           student_id: string;
           course_id: string;
+          classes_per_week: number;
           status: EnrollmentStatus;
           progress: number;
           enrolled_at: string;
@@ -141,12 +148,14 @@ export interface Database {
           id?: string;
           student_id: string;
           course_id: string;
+          classes_per_week?: number;
           status?: EnrollmentStatus;
           progress?: number;
           enrolled_at?: string;
           completed_at?: string | null;
         };
         Update: {
+          classes_per_week?: number;
           status?: EnrollmentStatus;
           progress?: number;
           completed_at?: string | null;

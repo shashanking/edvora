@@ -49,34 +49,34 @@ const AboutSection: React.FC = () => {
       };
     }, []);
   return (
-    <section id="about" className="relative w-full min-h-screen bg-[#1F4FD8] overflow-hidden pt-0 pb-12 md:pb-16 lg:pb-20 px-4 md:px-6 lg:px-16">
+    <section id="about" className="relative w-full min-h-screen bg-[#1F4FD8] overflow-hidden pt-20 md:pt-24 lg:pt-28 pb-12 md:pb-16 lg:pb-20 px-4 md:px-6 lg:px-16">
       {/* Decorative Elements */}
       {/* Top-left puzzle pieces */}
-      <div className="absolute top-0 left-0">
-        <img src="./Puzzle 1.png" alt="" className="h-[70px] w-[64px] md:h-[169px] md:w-[147px]" />
+      <div className="absolute top-4 md:top-8 left-0">
+        <img src="./Puzzle 1.png" alt="" className="h-[50px] w-[45px] md:h-[120px] md:w-[105px] lg:h-[169px] lg:w-[147px]" />
       </div>
 
       {/* Top-right graduation cap outline */}
-      <div className="absolute top-5 right-3 md:top-3 md:-right-2 block">
-        <img src="./Hat 1.png" alt="" className="h-[70px] w-[76px]"  />
+      <div className="absolute top-8 md:top-12 right-3 md:right-4 lg:-right-2 block">
+        <img src="./Hat 1.png" alt="" className="h-[50px] w-[55px] md:h-[60px] md:w-[65px] lg:h-[70px] lg:w-[76px]"  />
       </div>
 
       {/* Bottom-right atom/science icon */}
-      <div className="absolute bottom-20 -right-10">
-        <img src="./Atom 1.png" alt="" className="w-[91px] h-[91px] md:h-[209px] md:w-[209px]" />
+      <div className="absolute bottom-24 md:bottom-32 -right-6 md:-right-10">
+        <img src="./Atom 1.png" alt="" className="w-[70px] h-[70px] md:w-[140px] md:h-[140px] lg:h-[209px] lg:w-[209px]" />
       </div>
 
-      <div className="max-w-[1400px] mx-auto relative z-10 pt-12 md:pt-16 lg:pt-20">
+      <div className="max-w-[1400px] mx-auto relative z-10">
         <div className="flex flex-col-reverse md:grid lg:grid-cols-2 gap-8 md:gap-12 lg:gap-20 items-center">
           {/* Left side - Images with curved yellow background */}
-          <div className="relative h-[400px] sm:h-[450px] md:h-[500px] lg:h-[600px]">
+          <div className="relative h-[350px] sm:h-[400px] md:h-[500px] lg:h-[600px] mt-8 md:mt-0">
             {/* Yellow curved background - using clip-path for organic shape */}
-            <div className="absolute -z-10 inset-0 top-[30%] -left-12 sm:-left-20 md:-left-8 lg:-left-16">
-              <div className="w-[300px] sm:w-[350px] md:w-full h-1/2 bg-[#FFC83D] rounded-br-[100px] sm:rounded-br-[130px] md:rounded-br-[165px]" />
+            <div className="absolute -z-10 inset-0 top-[35%] md:top-[30%] -left-12 sm:-left-20 md:-left-8 lg:-left-16">
+              <div className="w-[280px] sm:w-[320px] md:w-full h-[45%] md:h-1/2 bg-[#FFC83D] rounded-br-[100px] sm:rounded-br-[130px] md:rounded-br-[165px]" />
             </div>
 
             {/* Student images grid - pill/capsule shaped containers */}
-            <div className="flex gap-1.5 sm:gap-2 absolute top-[15%] -right-8 sm:-right-16 md:right-20">
+            <div className="flex gap-1.5 sm:gap-2 absolute top-[10%] md:top-[15%] -right-8 sm:-right-16 md:right-20">
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}

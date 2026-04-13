@@ -38,11 +38,17 @@ export default function Navbar() {
           >
             About
           </a>
-          <a 
-            href="#contact" 
+          <a
+            href="#contact"
             className="text-gray-400 font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
           >
             Contact Us
+          </a>
+          <a
+            href="/login"
+            className="text-gray-400 font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
+          >
+            Login
           </a>
         </div>
 
@@ -118,6 +124,13 @@ export default function Navbar() {
               className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
             >
               Contact Us
+            </a>
+            <a
+              href="/login"
+              onClick={() => setIsDrawerOpen(false)}
+              className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
+            >
+              Login
             </a>
 
             {/* CTA Button in drawer */}

@@ -58,7 +58,7 @@ export default function Navbar() {
             href="#contact"
             className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-7 xl:px-8 py-3.5 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-xl inline-block"
           >
-            Book a Free Demo
+            Book a Free Trail Class
           </a>
         </div>
         <div className="md:hidden">
@@ -139,7 +139,7 @@ export default function Navbar() {
               onClick={() => setIsDrawerOpen(false)}
               className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-6 py-3 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg text-center mt-4"
             >
-              Book a Free Demo
+              Book a Free Trail Class
             </a>
           </div>
         </div>

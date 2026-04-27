@@ -20,12 +20,13 @@ import {
   MessageSquare,
   FolderOpen,
   ExternalLink,
-  Download,
+  Eye,
   Star,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import MaterialViewer from "@/src/components/shared/MaterialViewer";
 
 type Tab = "lessons" | "sessions" | "assignments" | "remarks" | "materials";
 
@@ -137,6 +138,7 @@ export default function StudentCourseDetailPage() {
   // Materials data
   const [materials, setMaterials] = useState<MaterialData[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
+  const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
 
   const totalLessons = Object.values(lessons).reduce((sum, arr) => sum + arr.length, 0);
   const completedLessons = Object.values(progress).filter(Boolean).length;
@@ -555,6 +557,14 @@ export default function StudentCourseDetailPage() {
   return (
     <div className="space-y-6">
       <Toaster position="top-right" />
+
+      <MaterialViewer
+        open={!!viewingMaterial}
+        title={viewingMaterial?.title || ""}
+        fileUrl={viewingMaterial?.file_url || ""}
+        fileType={viewingMaterial?.file_type || null}
+        onClose={() => setViewingMaterial(null)}
+      />
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -1029,14 +1039,14 @@ export default function StudentCourseDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <a
-                      href={m.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setViewingMaterial(m)}
                       className="p-2 text-[#1F4FD8] hover:bg-[#1F4FD8]/10 rounded-lg transition-colors flex-shrink-0"
+                      aria-label="View material"
                     >
-                      <Download className="w-4 h-4" />
-                    </a>
+                      <Eye className="w-4 h-4" />
+                    </button>
                   </div>
                 ))
               )}

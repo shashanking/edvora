@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import {
   FileText,
-  Download,
+  Eye,
   BookOpen,
   Loader2,
   Filter,
@@ -13,6 +13,7 @@ import {
   Image,
   FolderOpen,
 } from "lucide-react";
+import MaterialViewer from "@/src/components/shared/MaterialViewer";
 
 interface MaterialRow {
   id: string;
@@ -56,6 +57,7 @@ export default function StudentMaterialsPage() {
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCourseId, setFilterCourseId] = useState("");
+  const [viewing, setViewing] = useState<MaterialRow | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -233,15 +235,14 @@ export default function StudentMaterialsPage() {
                         </p>
                       </div>
                     </div>
-                    <a
-                      href={m.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setViewing(m)}
                       className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-[#1C1C28] text-xs font-medium rounded-lg transition-colors"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      Download
-                    </a>
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
                   </div>
                 ))}
               </div>
@@ -249,6 +250,14 @@ export default function StudentMaterialsPage() {
           ))}
         </div>
       )}
+
+      <MaterialViewer
+        open={!!viewing}
+        title={viewing?.title || ""}
+        fileUrl={viewing?.file_url || ""}
+        fileType={viewing?.file_type || null}
+        onClose={() => setViewing(null)}
+      />
     </div>
   );
 }

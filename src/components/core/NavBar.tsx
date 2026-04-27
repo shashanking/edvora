@@ -46,7 +46,7 @@ export default function Navbar() {
           </a>
           <a
             href="/login"
-            className="text-gray-400 font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
+            className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-5 lg:px-6 py-2 lg:py-2.5 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-xl text-sm lg:text-base"
           >
             Login
           </a>
@@ -128,7 +128,7 @@ export default function Navbar() {
             <a
               href="/login"
               onClick={() => setIsDrawerOpen(false)}
-              className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
+              className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-6 py-3 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg text-center"
             >
               Login
             </a>

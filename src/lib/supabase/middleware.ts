@@ -35,6 +35,15 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Carry refreshed session cookies through any redirect we issue here.
+  const redirectTo = (url: URL) => {
+    const res = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      res.cookies.set(cookie);
+    });
+    return res;
+  };
+
   // Public routes that don't require authentication
   const publicRoutes = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/auth/callback", "/studio"];
   const isPublicRoute = publicRoutes.some(
@@ -53,7 +62,7 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(url);
+    return redirectTo(url);
   }
 
   // If user is authenticated and trying to access auth pages, redirect to dashboard
@@ -68,7 +77,7 @@ export async function updateSession(request: NextRequest) {
     const role = profile?.role || "student";
     const url = request.nextUrl.clone();
     url.pathname = `/dashboard/${role}`;
-    return NextResponse.redirect(url);
+    return redirectTo(url);
   }
 
   // Role-based route protection for dashboard
@@ -76,7 +85,7 @@ export async function updateSession(request: NextRequest) {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
-      return NextResponse.redirect(url);
+      return redirectTo(url);
     }
 
     const { data: profile } = await supabase
@@ -90,24 +99,24 @@ export async function updateSession(request: NextRequest) {
     if (pathname === "/dashboard") {
       const url = request.nextUrl.clone();
       url.pathname = `/dashboard/${role}`;
-      return NextResponse.redirect(url);
+      return redirectTo(url);
     }
 
     // Check if user is accessing their own role's dashboard
     if (pathname.startsWith("/dashboard/admin") && role !== "admin") {
       const url = request.nextUrl.clone();
       url.pathname = `/dashboard/${role}`;
-      return NextResponse.redirect(url);
+      return redirectTo(url);
     }
     if (pathname.startsWith("/dashboard/teacher") && role !== "teacher") {
       const url = request.nextUrl.clone();
       url.pathname = `/dashboard/${role}`;
-      return NextResponse.redirect(url);
+      return redirectTo(url);
     }
     if (pathname.startsWith("/dashboard/student") && role !== "student") {
       const url = request.nextUrl.clone();
       url.pathname = `/dashboard/${role}`;
-      return NextResponse.redirect(url);
+      return redirectTo(url);
     }
   }
 

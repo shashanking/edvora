@@ -3,8 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/src/lib/supabase/client";
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight } from "lucide-react";
+import { Mail, User, Phone, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,29 +12,13 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      setLoading(false);
-      return;
-    }
 
     if (!phone.trim()) {
       setError("Phone number is required");
@@ -43,55 +26,28 @@ export default function RegisterPage() {
       return;
     }
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          phone: phone.trim(),
-          country_code: countryCode,
-          role: "student",
-        },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        full_name: fullName,
+        phone: phone.trim(),
+        country_code: countryCode,
+      }),
     });
 
-    if (authError) {
-      setError(authError.message);
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Failed to create account");
       setLoading(false);
       return;
     }
 
-    setSuccess(true);
-    setLoading(false);
+    router.push(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
   };
-
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF9F8] p-6">
-        <div className="w-full max-w-md text-center">
-          <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-            <Mail className="w-10 h-10 text-green-600" />
-          </div>
-          <h2 className="text-2xl font-poppins font-bold text-[#1C1C28] mb-3">
-            Check your email
-          </h2>
-          <p className="text-[#4D4D4D] mb-8 leading-relaxed">
-            We&apos;ve sent a verification link to <strong>{email}</strong>. Click the link to verify your account and get started.
-          </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#1F4FD8] text-white font-poppins font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-lg shadow-[#1F4FD8]/20"
-          >
-            Go to Login
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex">
@@ -218,42 +174,9 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4D4D4D]" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a password"
-                  className="w-full pl-12 pr-12 py-3.5 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent transition-all"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4D4D4D] hover:text-[#1C1C28] transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Confirm Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4D4D4D]" />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  className="w-full pl-12 pr-4 py-3.5 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent transition-all"
-                  required
-                />
-              </div>
-            </div>
+            <p className="text-xs text-[#4D4D4D] mt-1">
+              We&apos;ll email you a 6-digit code to verify your account and set your password.
+            </p>
 
             <button
               type="submit"
@@ -264,7 +187,7 @@ export default function RegisterPage() {
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  Create Account
+                  Send Verification Code
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}

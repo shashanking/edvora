@@ -607,8 +607,62 @@ export default function AdminEnrollmentsPage() {
   };
 
   const handleDelete = async (enrollmentId: string) => {
-    if (!confirm("Are you sure you want to delete this enrollment?")) return;
+    if (
+      !confirm(
+        "Delete this enrollment? This will also remove its weekly schedules, all scheduled sessions, and the associated Zoom meetings."
+      )
+    )
+      return;
 
+    // 1. Look up the enrollment so we know which student/course schedules to clear.
+    const { data: enrollment, error: fetchErr } = await supabase
+      .from("enrollments")
+      .select("student_id, course_id")
+      .eq("id", enrollmentId)
+      .single();
+
+    if (fetchErr || !enrollment) {
+      toast.error("Enrollment not found.");
+      return;
+    }
+
+    // 2. Delete Zoom meetings for every live_session attached to this enrollment.
+    //    The DB rows themselves cascade-delete via the enrollment_id FK in step 4,
+    //    so here we only need to tell Zoom to drop the meetings.
+    const { data: sessions } = await supabase
+      .from("live_sessions")
+      .select("id, zoom_meeting_id")
+      .eq("enrollment_id", enrollmentId);
+
+    if (sessions?.length) {
+      await Promise.all(
+        sessions
+          .filter((s: any) => s.zoom_meeting_id)
+          .map((s: any) =>
+            fetch("/api/zoom/delete-meeting", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                meeting_id: s.zoom_meeting_id,
+                session_id: s.id,
+              }),
+            }).catch(() => {})
+          )
+      );
+    }
+
+    // 3. Delete student_schedules for this student+course (no FK to enrollments).
+    const { error: schedDelErr } = await supabase
+      .from("student_schedules")
+      .delete()
+      .eq("student_id", enrollment.student_id)
+      .eq("course_id", enrollment.course_id);
+
+    if (schedDelErr) {
+      console.error("Schedule delete error:", schedDelErr.message);
+    }
+
+    // 4. Delete the enrollment — live_sessions cascade via ON DELETE CASCADE.
     const { error } = await supabase
       .from("enrollments")
       .delete()
@@ -619,7 +673,7 @@ export default function AdminEnrollmentsPage() {
       return;
     }
 
-    toast.success("Enrollment deleted.");
+    toast.success("Enrollment, sessions, and schedules deleted.");
     fetchEnrollments();
   };
 

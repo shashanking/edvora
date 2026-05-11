@@ -143,7 +143,20 @@ export default function StudentCourseDetailPage() {
   const completedLessons = Object.values(progress).filter(Boolean).length;
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
-  const now = new Date();
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const now = new Date(nowMs);
+  const JOIN_LEAD_MINUTES = 5;
+  const canJoinSession = (s: Session) => {
+    const startMs = new Date(s.scheduled_at).getTime();
+    return (
+      nowMs >= startMs - JOIN_LEAD_MINUTES * 60 * 1000 &&
+      nowMs <= startMs + s.duration_minutes * 60 * 1000
+    );
+  };
 
   // Helper: session end time has passed
   const isSessionOver = (s: Session) =>
@@ -822,15 +835,21 @@ export default function StudentCourseDetailPage() {
                         {formatDateTime(nextSession.scheduled_at)} &middot; {nextSession.duration_minutes} min
                       </p>
                       {nextSession.zoom_join_url && (
-                        <a
-                          href={nextSession.zoom_join_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all"
-                        >
-                          <Video className="w-4 h-4" />
-                          Join Session
-                        </a>
+                        canJoinSession(nextSession) ? (
+                          <a
+                            href={nextSession.zoom_join_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all"
+                          >
+                            <Video className="w-4 h-4" />
+                            Join Session
+                          </a>
+                        ) : (
+                          <p className="inline-flex items-center mt-3 px-3 py-2 text-xs font-medium text-[#9CA3AF] bg-white/70 rounded-xl">
+                            Join opens {JOIN_LEAD_MINUTES} min before start
+                          </p>
+                        )
                       )}
                     </div>
                   )}

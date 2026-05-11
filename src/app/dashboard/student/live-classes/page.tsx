@@ -16,10 +16,30 @@ interface Session {
   rating_comment?: string | null;
 }
 
+const JOIN_LEAD_MINUTES = 5;
+
+function isWithinJoinWindow(
+  scheduledAt: string,
+  durationMinutes: number,
+  nowMs: number,
+  leadMinutes = JOIN_LEAD_MINUTES
+): boolean {
+  const startMs = new Date(scheduledAt).getTime();
+  const openMs = startMs - leadMinutes * 60 * 1000;
+  const closeMs = startMs + durationMinutes * 60 * 1000;
+  return nowMs >= openMs && nowMs <= closeMs;
+}
+
 export default function StudentLiveClassesPage() {
   const supabase = createClient() as any;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const fetch = async () => {
@@ -133,18 +153,24 @@ export default function StudentLiveClassesPage() {
                       <span>{s.duration_minutes} min</span>
                     </div>
                   </div>
-                  {s.zoom_join_url && (
-                    <a
-                      href={s.zoom_join_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-md"
-                    >
-                      <Video className="w-4 h-4" />
-                      Join
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+                  {s.zoom_join_url ? (
+                    isWithinJoinWindow(s.scheduled_at, s.duration_minutes, nowMs) ? (
+                      <a
+                        href={s.zoom_join_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-md"
+                      >
+                        <Video className="w-4 h-4" />
+                        Join
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-2 text-xs font-medium text-[#9CA3AF] bg-gray-100 rounded-xl">
+                        Available {JOIN_LEAD_MINUTES} min before start
+                      </span>
+                    )
+                  ) : null}
                 </div>
               </div>
             ))}

@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import {
   FileText,
-  Eye,
   BookOpen,
   Loader2,
   Filter,
@@ -238,9 +237,8 @@ export default function StudentMaterialsPage() {
                     <button
                       type="button"
                       onClick={() => setViewing(m)}
-                      className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-[#1C1C28] text-xs font-medium rounded-lg transition-colors"
+                      className="mt-3 w-full inline-flex items-center justify-center px-3 py-2 bg-[#1F4FD8]/10 hover:bg-[#1F4FD8]/20 text-[#1F4FD8] text-sm font-semibold rounded-lg transition-colors"
                     >
-                      <Eye className="w-3.5 h-3.5" />
                       View
                     </button>
                   </div>

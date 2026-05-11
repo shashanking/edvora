@@ -20,7 +20,6 @@ import {
   MessageSquare,
   FolderOpen,
   ExternalLink,
-  Eye,
   Star,
 } from "lucide-react";
 import Link from "next/link";
@@ -1042,10 +1041,10 @@ export default function StudentCourseDetailPage() {
                     <button
                       type="button"
                       onClick={() => setViewingMaterial(m)}
-                      className="p-2 text-[#1F4FD8] hover:bg-[#1F4FD8]/10 rounded-lg transition-colors flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-xs font-semibold rounded-lg hover:bg-[#1F4FD8]/20 transition-colors flex-shrink-0"
                       aria-label="View material"
                     >
-                      <Eye className="w-4 h-4" />
+                      View
                     </button>
                   </div>
                 ))

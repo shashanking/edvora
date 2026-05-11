@@ -81,38 +81,74 @@ export interface ZoomMeetingResult {
 /**
  * Create a scheduled Zoom meeting with cloud auto-recording.
  *
- * Uses type 2 (scheduled), join_before_host enabled, waiting room disabled,
- * and auto_recording set to "cloud" so every 1-v-1 session is recorded
- * automatically.
+ * Schedules under the teacher's own Zoom user (looked up by email) when
+ * one is provided so multiple teachers can hold meetings in parallel.
+ * A single Zoom user can only be in one live meeting at a time, so
+ * funnelling every session through the account owner caused
+ * "host already in meeting" errors whenever sessions overlapped.
+ * Falls back to ZOOM_HOST_EMAIL (or "me") if the teacher isn't yet a
+ * Zoom user, listing them as an alternative host so they can still
+ * start the meeting.
  */
 export async function createZoomMeeting(
   topic: string,
   startTime: string,
   duration: number,
-  _hostEmail?: string
+  hostEmail?: string
 ): Promise<ZoomMeetingResult> {
-  // Use the Zoom account owner email for all meetings.
-  // The teacher's LMS email doesn't need to match a Zoom licensed user.
-  const zoomHost = process.env.ZOOM_HOST_EMAIL || "me";
-  const res = await zoomFetch(`/users/${zoomHost}/meetings`, {
-    method: "POST",
-    body: JSON.stringify({
-      topic,
-      type: 2, // scheduled
-      start_time: startTime, // ISO 8601
-      duration,
-      timezone: "UTC",
-      settings: {
-        auto_recording: "cloud",
-        // Students must wait for the teacher (host) to start the meeting.
-        // Without this, the first participant to join has end-meeting power
-        // until the host arrives.
-        join_before_host: false,
-        waiting_room: false,
-        meeting_authentication: false,
-      },
-    }),
-  });
+  const fallbackHost = process.env.ZOOM_HOST_EMAIL || "me";
+  const teacherHost = hostEmail?.trim();
+  const primaryHost = teacherHost || fallbackHost;
+
+  const baseSettings = {
+    auto_recording: "cloud",
+    // Students must wait for the teacher (host) to start the meeting.
+    // Without this, the first participant to join has end-meeting power
+    // until the host arrives.
+    join_before_host: false,
+    waiting_room: false,
+    meeting_authentication: false,
+  } as Record<string, unknown>;
+
+  const requestBody = {
+    topic,
+    type: 2, // scheduled
+    start_time: startTime, // ISO 8601
+    duration,
+    timezone: "UTC",
+    settings: { ...baseSettings },
+  };
+
+  let res = await zoomFetch(
+    `/users/${encodeURIComponent(primaryHost)}/meetings`,
+    {
+      method: "POST",
+      body: JSON.stringify(requestBody),
+    }
+  );
+
+  // If the teacher isn't a Zoom user yet, retry under the account owner
+  // so session creation still succeeds with the teacher as alt host.
+  if (
+    !res.ok &&
+    teacherHost &&
+    teacherHost !== fallbackHost &&
+    res.status === 404
+  ) {
+    console.warn(
+      `Zoom user "${teacherHost}" not found; falling back to "${fallbackHost}" host with teacher as alternative host`
+    );
+    res = await zoomFetch(
+      `/users/${encodeURIComponent(fallbackHost)}/meetings`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          ...requestBody,
+          settings: { ...baseSettings, alternative_hosts: teacherHost },
+        }),
+      }
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text();

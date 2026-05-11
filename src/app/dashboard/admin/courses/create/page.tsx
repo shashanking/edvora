@@ -25,8 +25,6 @@ export default function CreateCoursePage() {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    price: "",
-    currency: "USD",
     duration: "",
     level: "beginner",
     category: "",
@@ -84,8 +82,6 @@ export default function CreateCoursePage() {
       .insert({
         title: form.title,
         description: form.description,
-        price: parseFloat(form.price) || 0,
-        currency: form.currency,
         duration: form.duration || null,
         level: form.level,
         category: form.category || null,
@@ -186,37 +182,6 @@ export default function CreateCoursePage() {
         {/* Details */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
           <h2 className="text-lg font-poppins font-semibold text-[#1C1C28]">Course Details</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Price *</label>
-              <input
-                name="price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.price}
-                onChange={handleChange}
-                placeholder="0.00"
-                className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Currency</label>
-              <select
-                name="currency"
-                value={form.currency}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] text-sm focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
-              >
-                <option value="USD">USD</option>
-                <option value="INR">INR</option>
-                <option value="GBP">GBP</option>
-                <option value="EUR">EUR</option>
-              </select>
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>

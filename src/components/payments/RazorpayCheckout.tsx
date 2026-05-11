@@ -13,7 +13,7 @@ declare global {
 interface RazorpayCheckoutProps {
   courseId: string;
   courseTitle: string;
-  price: number;
+  amount: number;
   currency: string;
   userName: string;
   userEmail: string;
@@ -22,7 +22,7 @@ interface RazorpayCheckoutProps {
 export default function RazorpayCheckout({
   courseId,
   courseTitle,
-  price,
+  amount,
   currency,
   userName,
   userEmail,
@@ -66,7 +66,7 @@ export default function RazorpayCheckout({
       const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course_id: courseId }),
+        body: JSON.stringify({ course_id: courseId, amount, currency }),
       });
 
       const orderData = await orderRes.json();
@@ -155,7 +155,7 @@ export default function RazorpayCheckout({
         ) : (
           <>
             <CreditCard className="w-5 h-5" />
-            Pay {currency} {price.toFixed(2)}
+            Pay {currency} {amount.toFixed(2)}
           </>
         )}
       </button>

@@ -104,7 +104,10 @@ export async function createZoomMeeting(
       timezone: "UTC",
       settings: {
         auto_recording: "cloud",
-        join_before_host: true,
+        // Students must wait for the teacher (host) to start the meeting.
+        // Without this, the first participant to join has end-meeting power
+        // until the host arrives.
+        join_before_host: false,
         waiting_room: false,
         meeting_authentication: false,
       },

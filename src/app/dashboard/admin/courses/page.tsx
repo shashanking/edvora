@@ -10,8 +10,6 @@ interface Course {
   title: string;
   description: string;
   thumbnail_url: string | null;
-  price: number;
-  currency: string;
   level: string | null;
   category: string | null;
   audience: string | null;
@@ -140,7 +138,6 @@ export default function AdminCoursesPage() {
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Audience</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Landing</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Level</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Price</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Actions</th>
                 </tr>
@@ -171,9 +168,6 @@ export default function AdminCoursesPage() {
                     <td className="px-6 py-4 text-sm text-[#4D4D4D] capitalize">{course.audience || "—"}</td>
                     <td className="px-6 py-4 text-sm text-[#4D4D4D] capitalize">{course.landing_category || "—"}</td>
                     <td className="px-6 py-4 text-sm text-[#4D4D4D] capitalize">{course.level || "—"}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-[#1C1C28]">
-                      {course.currency} {Number(course.price).toFixed(2)}
-                    </td>
                     <td className="px-6 py-4">{getStatusBadge(course.status)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">

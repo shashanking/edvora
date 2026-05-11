@@ -1051,12 +1051,11 @@ export default function TeacherCourseDetailPage() {
                       </div>
                     </div>
                     <a
-                      href={m.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-[#1F4FD8] hover:bg-[#1F4FD8]/10 rounded-lg transition-colors flex-shrink-0"
+                      href={`/api/materials/download?url=${encodeURIComponent(m.file_url)}&name=${encodeURIComponent(m.title)}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8] hover:bg-[#1a45c2] text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-3.5 h-3.5" />
+                      Download
                     </a>
                   </div>
                 ))

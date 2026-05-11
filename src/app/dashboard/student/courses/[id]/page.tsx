@@ -113,6 +113,7 @@ export default function StudentCourseDetailPage() {
   const [course, setCourse] = useState<CourseInfo | null>(null);
   const [enrolled, setEnrolled] = useState<boolean | null>(null);
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [enrolledAt, setEnrolledAt] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [lessons, setLessons] = useState<Record<string, Lesson[]>>({});
   const [progress, setProgress] = useState<Record<string, boolean>>({});
@@ -138,6 +139,18 @@ export default function StudentCourseDetailPage() {
   const [materials, setMaterials] = useState<MaterialData[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
+
+  // Compute the student's current week in the course based on their
+  // enrollment start. Week 1 = the first 7 days, week 2 = days 8–14, etc.
+  // Falls back to week 1 until the enrollment timestamp is loaded.
+  const currentWeek = (() => {
+    if (!enrolledAt) return 1;
+    const diffMs = Date.now() - new Date(enrolledAt).getTime();
+    if (diffMs < 0) return 1;
+    return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  })();
+
+  const visibleModules = modules.filter((m) => m.display_order === currentWeek);
 
   const totalLessons = Object.values(lessons).reduce((sum, arr) => sum + arr.length, 0);
   const completedLessons = Object.values(progress).filter(Boolean).length;
@@ -211,7 +224,7 @@ export default function StudentCourseDetailPage() {
 
     const { data: enrollmentData } = await supabase
       .from("enrollments")
-      .select("id, status")
+      .select("id, status, enrolled_at")
       .eq("student_id", userData.user.id)
       .eq("course_id", courseId)
       .in("status", ["active", "completed"])
@@ -224,6 +237,7 @@ export default function StudentCourseDetailPage() {
     }
     setEnrolled(true);
     setEnrollmentId(enrollmentData.id);
+    setEnrolledAt(enrollmentData.enrolled_at || null);
 
     // Fetch modules
     const { data: modulesData } = await supabase
@@ -234,7 +248,20 @@ export default function StudentCourseDetailPage() {
 
     const mods = (modulesData as Module[]) || [];
     setModules(mods);
-    if (mods.length > 0) setExpandedModules(new Set([mods[0].id]));
+    // Auto-expand the module that matches the student's current week
+    // (display_order == currentWeek). Falls back to the first module.
+    if (mods.length > 0) {
+      const enrolledAtIso = enrollmentData.enrolled_at as string | undefined;
+      const weekNow = enrolledAtIso
+        ? Math.floor(
+            (Date.now() - new Date(enrolledAtIso).getTime()) /
+              (7 * 24 * 60 * 60 * 1000)
+          ) + 1
+        : 1;
+      const currentMods = mods.filter((m) => m.display_order === weekNow);
+      const toExpand = currentMods.length > 0 ? currentMods : [mods[0]];
+      setExpandedModules(new Set(toExpand.map((m) => m.id)));
+    }
 
     // Fetch lessons
     if (mods.length > 0) {
@@ -641,13 +668,23 @@ export default function StudentCourseDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Sidebar */}
               <div className="lg:col-span-1 space-y-3">
+                <div className="px-1 pb-1 text-xs font-medium text-[#4D4D4D]">
+                  Showing Week {currentWeek}
+                </div>
                 {modules.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-[#9CA3AF]">No content available yet</p>
                   </div>
+                ) : visibleModules.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-[#9CA3AF]">
+                      No content for Week {currentWeek} yet.
+                    </p>
+                  </div>
                 ) : (
-                  modules.map((mod, modIdx) => {
+                  visibleModules.map((mod, modIdx) => {
                     const modLessons = lessons[mod.id] || [];
                     const isExpanded = expandedModules.has(mod.id);
                     const modCompleted = modLessons.filter((l) => progress[l.id]).length;

@@ -22,7 +22,7 @@ import {
   Plus,
   Save,
   Star,
-  Download,
+  Eye,
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
@@ -1051,11 +1051,13 @@ export default function TeacherCourseDetailPage() {
                       </div>
                     </div>
                     <a
-                      href={`/api/materials/download?url=${encodeURIComponent(m.file_url)}&name=${encodeURIComponent(m.title)}`}
+                      href={m.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8] hover:bg-[#1a45c2] text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      Download
+                      <Eye className="w-3.5 h-3.5" />
+                      View
                     </a>
                   </div>
                 ))

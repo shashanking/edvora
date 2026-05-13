@@ -5,7 +5,7 @@ import { createClient } from "@/src/lib/supabase/client";
 import {
   FileText,
   Upload,
-  Download,
+  Eye,
   BookOpen,
   Loader2,
   X,
@@ -292,11 +292,13 @@ export default function TeacherMaterialsPage() {
                 </div>
               </div>
               <a
-                href={`/api/materials/download?url=${encodeURIComponent(m.file_url)}&name=${encodeURIComponent(m.title)}`}
+                href={m.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#1F4FD8] hover:bg-[#1a45c2] text-white text-xs font-semibold rounded-lg transition-colors"
               >
-                <Download className="w-3.5 h-3.5" />
-                Download
+                <Eye className="w-3.5 h-3.5" />
+                View
               </a>
             </div>
           ))}

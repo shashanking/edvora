@@ -1069,7 +1069,7 @@ export default function AdminEnrollmentsPage() {
                       Classes per week
                     </label>
                     <div className="flex flex-wrap gap-3">
-                      {[2, 3, 4].map((count) => (
+                      {[1, 2, 3, 4].map((count) => (
                         <button
                           key={count}
                           type="button"
@@ -1093,7 +1093,7 @@ export default function AdminEnrollmentsPage() {
                               : "bg-white text-[#1C1C28] border-[#D4D4D4] hover:border-[#1F4FD8]"
                           }`}
                         >
-                          {count} classes/week
+                          {count} {count === 1 ? "class" : "classes"}/week
                         </button>
                       ))}
                     </div>

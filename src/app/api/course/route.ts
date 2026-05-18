@@ -9,7 +9,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("courses")
-      .select("id, title, description, duration, thumbnail_url, rating, audience, landing_category, category, price, currency")
+      .select("id, title, description, duration, thumbnail_url, rating, audience, landing_category, category")
       .eq("status", "published")
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: false });

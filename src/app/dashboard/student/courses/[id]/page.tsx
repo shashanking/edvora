@@ -20,7 +20,6 @@ import {
   MessageSquare,
   FolderOpen,
   ExternalLink,
-  Eye,
   Star,
 } from "lucide-react";
 import Link from "next/link";
@@ -114,6 +113,7 @@ export default function StudentCourseDetailPage() {
   const [course, setCourse] = useState<CourseInfo | null>(null);
   const [enrolled, setEnrolled] = useState<boolean | null>(null);
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [enrolledAt, setEnrolledAt] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [lessons, setLessons] = useState<Record<string, Lesson[]>>({});
   const [progress, setProgress] = useState<Record<string, boolean>>({});
@@ -140,11 +140,36 @@ export default function StudentCourseDetailPage() {
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
 
+  // Compute the student's current week in the course based on their
+  // enrollment start. Week 1 = the first 7 days, week 2 = days 8–14, etc.
+  // Falls back to week 1 until the enrollment timestamp is loaded.
+  const currentWeek = (() => {
+    if (!enrolledAt) return 1;
+    const diffMs = Date.now() - new Date(enrolledAt).getTime();
+    if (diffMs < 0) return 1;
+    return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  })();
+
+  const visibleModules = modules.filter((m) => m.display_order === currentWeek);
+
   const totalLessons = Object.values(lessons).reduce((sum, arr) => sum + arr.length, 0);
   const completedLessons = Object.values(progress).filter(Boolean).length;
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
-  const now = new Date();
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const now = new Date(nowMs);
+  const JOIN_LEAD_MINUTES = 5;
+  const canJoinSession = (s: Session) => {
+    const startMs = new Date(s.scheduled_at).getTime();
+    return (
+      nowMs >= startMs - JOIN_LEAD_MINUTES * 60 * 1000 &&
+      nowMs <= startMs + s.duration_minutes * 60 * 1000
+    );
+  };
 
   // Helper: session end time has passed
   const isSessionOver = (s: Session) =>
@@ -199,7 +224,7 @@ export default function StudentCourseDetailPage() {
 
     const { data: enrollmentData } = await supabase
       .from("enrollments")
-      .select("id, status")
+      .select("id, status, enrolled_at")
       .eq("student_id", userData.user.id)
       .eq("course_id", courseId)
       .in("status", ["active", "completed"])
@@ -212,6 +237,7 @@ export default function StudentCourseDetailPage() {
     }
     setEnrolled(true);
     setEnrollmentId(enrollmentData.id);
+    setEnrolledAt(enrollmentData.enrolled_at || null);
 
     // Fetch modules
     const { data: modulesData } = await supabase
@@ -222,7 +248,20 @@ export default function StudentCourseDetailPage() {
 
     const mods = (modulesData as Module[]) || [];
     setModules(mods);
-    if (mods.length > 0) setExpandedModules(new Set([mods[0].id]));
+    // Auto-expand the module that matches the student's current week
+    // (display_order == currentWeek). Falls back to the first module.
+    if (mods.length > 0) {
+      const enrolledAtIso = enrollmentData.enrolled_at as string | undefined;
+      const weekNow = enrolledAtIso
+        ? Math.floor(
+            (Date.now() - new Date(enrolledAtIso).getTime()) /
+              (7 * 24 * 60 * 60 * 1000)
+          ) + 1
+        : 1;
+      const currentMods = mods.filter((m) => m.display_order === weekNow);
+      const toExpand = currentMods.length > 0 ? currentMods : [mods[0]];
+      setExpandedModules(new Set(toExpand.map((m) => m.id)));
+    }
 
     // Fetch lessons
     if (mods.length > 0) {
@@ -629,13 +668,23 @@ export default function StudentCourseDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Sidebar */}
               <div className="lg:col-span-1 space-y-3">
+                <div className="px-1 pb-1 text-xs font-medium text-[#4D4D4D]">
+                  Showing Week {currentWeek}
+                </div>
                 {modules.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-[#9CA3AF]">No content available yet</p>
                   </div>
+                ) : visibleModules.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-[#9CA3AF]">
+                      No content for Week {currentWeek} yet.
+                    </p>
+                  </div>
                 ) : (
-                  modules.map((mod, modIdx) => {
+                  visibleModules.map((mod, modIdx) => {
                     const modLessons = lessons[mod.id] || [];
                     const isExpanded = expandedModules.has(mod.id);
                     const modCompleted = modLessons.filter((l) => progress[l.id]).length;
@@ -823,15 +872,21 @@ export default function StudentCourseDetailPage() {
                         {formatDateTime(nextSession.scheduled_at)} &middot; {nextSession.duration_minutes} min
                       </p>
                       {nextSession.zoom_join_url && (
-                        <a
-                          href={nextSession.zoom_join_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all"
-                        >
-                          <Video className="w-4 h-4" />
-                          Join Session
-                        </a>
+                        canJoinSession(nextSession) ? (
+                          <a
+                            href={nextSession.zoom_join_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all"
+                          >
+                            <Video className="w-4 h-4" />
+                            Join Session
+                          </a>
+                        ) : (
+                          <p className="inline-flex items-center mt-3 px-3 py-2 text-xs font-medium text-[#9CA3AF] bg-white/70 rounded-xl">
+                            Join opens {JOIN_LEAD_MINUTES} min before start
+                          </p>
+                        )
                       )}
                     </div>
                   )}
@@ -1042,10 +1097,10 @@ export default function StudentCourseDetailPage() {
                     <button
                       type="button"
                       onClick={() => setViewingMaterial(m)}
-                      className="p-2 text-[#1F4FD8] hover:bg-[#1F4FD8]/10 rounded-lg transition-colors flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-xs font-semibold rounded-lg hover:bg-[#1F4FD8]/20 transition-colors flex-shrink-0"
                       aria-label="View material"
                     >
-                      <Eye className="w-4 h-4" />
+                      View
                     </button>
                   </div>
                 ))

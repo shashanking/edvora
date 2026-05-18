@@ -3,15 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { BookOpen, Clock, Star, Loader2, CheckCircle } from "lucide-react";
-import RazorpayCheckout from "@/src/components/payments/RazorpayCheckout";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface Course {
   id: string;
   title: string;
   description: string;
-  price: number;
-  currency: string;
   duration: string | null;
   level: string | null;
   category: string | null;
@@ -23,11 +20,33 @@ interface Course {
 
 export default function StudentCatalogPage() {
   const supabase = createClient() as any;
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [user, setUser] = useState<any>(null);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [enrollingId, setEnrollingId] = useState<string | null>(null);
+  const [enrollError, setEnrollError] = useState<string>("");
+
+  const handleEnroll = async (courseId: string) => {
+    if (!user) return;
+    setEnrollingId(courseId);
+    setEnrollError("");
+    const { error } = await supabase.from("enrollments").insert({
+      student_id: user.id,
+      course_id: courseId,
+      status: "active",
+    });
+    setEnrollingId(null);
+    if (error) {
+      setEnrollError(error.message || "Failed to enroll");
+      return;
+    }
+    setEnrolledCourseIds((prev) => new Set(prev).add(courseId));
+    router.push("/dashboard/student/catalog?enrolled=success");
+    router.refresh();
+  };
 
   useEffect(() => {
     fetchData();
@@ -83,6 +102,12 @@ export default function StudentCatalogPage() {
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-green-700 text-sm flex items-center gap-2">
           <CheckCircle className="w-5 h-5" />
           Enrollment successful! Your course is now available in My Courses.
+        </div>
+      )}
+
+      {enrollError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+          {enrollError}
         </div>
       )}
 
@@ -152,30 +177,26 @@ export default function StudentCatalogPage() {
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                    <div>
-                      <p className="text-lg font-bold text-[#1C1C28]">
-                        {course.currency} {course.price.toFixed(2)}
+                    {course.landing_category ? (
+                      <p className="text-xs text-[#9CA3AF] capitalize">
+                        {course.landing_category}
                       </p>
-                      {course.landing_category && (
-                        <p className="text-xs text-[#9CA3AF] capitalize mt-0.5">
-                          {course.landing_category}
-                        </p>
-                      )}
-                    </div>
+                    ) : (
+                      <span />
+                    )}
 
                     {isEnrolled ? (
                       <div className="px-4 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-xl">
                         Enrolled
                       </div>
                     ) : user ? (
-                      <RazorpayCheckout
-                        courseId={course.id}
-                        courseTitle={course.title}
-                        price={course.price}
-                        currency={course.currency}
-                        userName={user.user_metadata?.full_name || user.email}
-                        userEmail={user.email}
-                      />
+                      <button
+                        onClick={() => handleEnroll(course.id)}
+                        disabled={enrollingId === course.id}
+                        className="px-4 py-2 bg-[#1F4FD8] hover:bg-[#1a45c2] disabled:opacity-60 text-white text-sm font-poppins font-semibold rounded-xl transition-colors"
+                      >
+                        {enrollingId === course.id ? "Enrolling..." : "Enroll"}
+                      </button>
                     ) : (
                       <div className="px-4 py-2 bg-gray-100 text-gray-500 text-sm font-medium rounded-xl">
                         Login to enroll

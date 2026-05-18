@@ -59,8 +59,6 @@ export interface Database {
           title: string;
           description: string;
           thumbnail_url: string | null;
-          price: number;
-          currency: string;
           duration: string | null;
           level: string | null;
           category: string | null;
@@ -80,8 +78,6 @@ export interface Database {
           title: string;
           description: string;
           thumbnail_url?: string | null;
-          price: number;
-          currency?: string;
           duration?: string | null;
           level?: string | null;
           category?: string | null;
@@ -100,8 +96,6 @@ export interface Database {
           title?: string;
           description?: string;
           thumbnail_url?: string | null;
-          price?: number;
-          currency?: string;
           duration?: string | null;
           level?: string | null;
           category?: string | null;

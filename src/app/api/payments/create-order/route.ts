@@ -13,16 +13,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { course_id } = await request.json();
+    const { course_id, amount, currency } = await request.json();
 
     if (!course_id) {
       return NextResponse.json({ error: "course_id is required" }, { status: 400 });
     }
 
-    // Fetch course details
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return NextResponse.json(
+        { error: "A positive amount is required" },
+        { status: 400 }
+      );
+    }
+
+    const resolvedCurrency = typeof currency === "string" && currency.trim()
+      ? currency.trim().toUpperCase()
+      : "INR";
+
+    // Fetch course details (price/currency no longer live on courses).
     const { data: courseData, error: courseError } = await supabase
       .from("courses")
-      .select("id, title, price, currency")
+      .select("id, title")
       .eq("id", course_id)
       .single();
 
@@ -30,7 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
 
-    const course = courseData as any;
+    const course = courseData as { id: string; title: string };
 
     // Check if already enrolled
     const { data: existingEnrollment } = await supabase
@@ -45,11 +57,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Razorpay order (amount in paise for INR, cents for USD)
-    const amountInSmallestUnit = Math.round(Number(course.price) * 100);
+    const amountInSmallestUnit = Math.round(numericAmount * 100);
 
     const order = await getRazorpay().orders.create({
       amount: amountInSmallestUnit,
-      currency: course.currency || "INR",
+      currency: resolvedCurrency,
       receipt: `course_${course_id}_${user.id}`.slice(0, 40),
       notes: {
         course_id,
@@ -64,8 +76,8 @@ export async function POST(request: NextRequest) {
       .insert({
         student_id: user.id,
         course_id,
-        amount: course.price,
-        currency: course.currency || "INR",
+        amount: numericAmount,
+        currency: resolvedCurrency,
         payment_provider: "razorpay",
         provider_order_id: order.id,
         status: "pending",

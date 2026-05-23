@@ -21,6 +21,7 @@ import {
   FolderOpen,
   ExternalLink,
   Star,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -140,6 +141,13 @@ export default function StudentCourseDetailPage() {
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
 
+  // Lesson gating: count of live_sessions that are completed or live for this enrollment
+  const [completedSessionCount, setCompletedSessionCount] = useState<number>(0);
+
+  // Lesson gating: lessons with display_order <= maxUnlockedOrder are accessible.
+  // At minimum, lesson 1 is always unlocked.
+  const maxUnlockedOrder = Math.max(1, completedSessionCount);
+
   // Compute the student's current week in the course based on their
   // enrollment start. Week 1 = the first 7 days, week 2 = days 8–14, etc.
   // Falls back to week 1 until the enrollment timestamp is loaded.
@@ -238,6 +246,14 @@ export default function StudentCourseDetailPage() {
     setEnrolled(true);
     setEnrollmentId(enrollmentData.id);
     setEnrolledAt(enrollmentData.enrolled_at || null);
+
+    // Fetch count of completed/live sessions for this enrollment to gate lessons
+    const { count: sessionCount } = await supabase
+      .from("live_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("enrollment_id", enrollmentData.id)
+      .in("status", ["completed", "live"]);
+    setCompletedSessionCount(sessionCount ?? 0);
 
     // Fetch modules
     const { data: modulesData } = await supabase
@@ -716,8 +732,29 @@ export default function StudentCourseDetailPage() {
                         {isExpanded && modLessons.length > 0 && (
                           <div className="border-t border-gray-100 divide-y divide-gray-50">
                             {modLessons.map((lesson) => {
+                              const isLocked = lesson.display_order > maxUnlockedOrder;
                               const isCompleted = progress[lesson.id] || false;
                               const isActive = activeLesson?.id === lesson.id;
+
+                              if (isLocked) {
+                                return (
+                                  <div
+                                    key={lesson.id}
+                                    className="flex items-center gap-2.5 px-4 py-2.5 opacity-50 cursor-not-allowed"
+                                  >
+                                    <Lock className="w-5 h-5 text-[#9CA3AF] flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm truncate text-[#9CA3AF]">
+                                        {lesson.title}
+                                      </p>
+                                      <p className="text-xs text-[#C4C4C4] mt-0.5">
+                                        Unlocks after session {lesson.display_order}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
                               return (
                                 <div
                                   key={lesson.id}
@@ -777,7 +814,7 @@ export default function StudentCourseDetailPage() {
 
               {/* Main Content */}
               <div className="lg:col-span-2">
-                {activeLesson ? (
+                {activeLesson && activeLesson.display_order > maxUnlockedOrder ? null : activeLesson ? (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     {activeLesson.video_url && (
                       <div className="aspect-video bg-black">

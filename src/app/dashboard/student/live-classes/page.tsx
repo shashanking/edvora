@@ -66,12 +66,21 @@ export default function StudentLiveClassesPage() {
         await window.fetch("/api/sessions/auto-complete", { method: "POST" });
       } catch {}
 
+      // Build today's date range in UTC
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setUTCHours(23, 59, 59, 999);
+
+      // Fetch: (a) sessions scheduled for today, (b) live sessions, (c) completed sessions
       const { data: sessionData } = await supabase
         .from("live_sessions")
         .select("*")
         .in("course_id", courseIds)
-        .in("status", ["scheduled", "live"])
-        .order("scheduled_at", { ascending: true });
+        .or(
+          `and(status.eq.scheduled,scheduled_at.gte.${todayStart.toISOString()},scheduled_at.lte.${todayEnd.toISOString()}),status.eq.live,status.eq.completed`
+        )
+        .order("scheduled_at", { ascending: false });
 
       const rows = (sessionData as any[]) || [];
 
@@ -81,21 +90,16 @@ export default function StudentLiveClassesPage() {
         .in("id", courseIds);
       const courseMap = new Map(((courses as any[]) || []).map((c) => [c.id, c.title]));
 
-      const now = Date.now();
       setSessions(
-        rows
-          .map((s: any) => ({
-            id: s.id,
-            title: s.title,
-            scheduled_at: s.scheduled_at,
-            duration_minutes: s.duration_minutes,
-            status: s.status,
-            zoom_join_url: s.zoom_join_url,
-            course_title: courseMap.get(s.course_id) || "Unknown",
-          }))
-          .filter((s: Session) =>
-            new Date(s.scheduled_at).getTime() + s.duration_minutes * 60 * 1000 > now
-          )
+        rows.map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          scheduled_at: s.scheduled_at,
+          duration_minutes: s.duration_minutes,
+          status: s.status,
+          zoom_join_url: s.zoom_join_url,
+          course_title: courseMap.get(s.course_id) || "Unknown",
+        }))
       );
       setLoading(false);
     };
@@ -123,7 +127,7 @@ export default function StudentLiveClassesPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#1C1C28] mb-3">Upcoming Classes</h2>
+          <h2 className="text-lg font-semibold text-[#1C1C28] mb-3">Today's & Past Classes</h2>
           <div className="space-y-3">
             {sessions.map((s) => (
               <div

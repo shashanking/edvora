@@ -61,14 +61,14 @@ export async function POST(req: NextRequest) {
       teacher_id: string;
       student_id: string;
       course_title: string;
-      total_sessions: number;
+      total_sessions?: number;
       classes_per_week: number;
       schedule: ScheduleDay[];
       start_date: string;
       duration_minutes: number;
     };
 
-    if (!enrollment_id || !course_id || !teacher_id || !student_id || !schedule?.length || !total_sessions) {
+    if (!enrollment_id || !course_id || !teacher_id || !student_id || !schedule?.length) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -89,11 +89,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
     }
 
-    // Generate session dates
+    // Fetch ordered lessons for this course (via course_modules join)
+    const { data: lessonsData, error: lessonsErr } = await supabase
+      .from("course_lessons")
+      .select("id, title, module_id, course_modules(title, display_order)")
+      .eq("course_modules.course_id", course_id)
+      .order("display_order", { ascending: true });
+
+    if (lessonsErr) {
+      return NextResponse.json({ error: "Failed to fetch course lessons: " + lessonsErr.message }, { status: 500 });
+    }
+
+    // Filter to lessons that belong to this course (join may return nulls for unmatched rows)
+    const lessons = ((lessonsData as any[]) || []).filter((l: any) => l.course_modules !== null);
+
+    // Sort by module display_order then lesson display_order
+    lessons.sort((a: any, b: any) => {
+      const modA = a.course_modules?.display_order ?? 0;
+      const modB = b.course_modules?.display_order ?? 0;
+      if (modA !== modB) return modA - modB;
+      return (a.display_order ?? 0) - (b.display_order ?? 0);
+    });
+
+    const sessionCount = total_sessions ?? lessons.length;
+
+    // Generate session dates based on lesson count
     const sessionDates = generateSessionDates(
       new Date(start_date),
       schedule,
-      total_sessions
+      sessionCount
     );
 
     const createdSessions = [];
@@ -101,13 +125,16 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < sessionDates.length; i++) {
       const { date, daySchedule } = sessionDates[i];
       const sessionNum = i + 1;
+      const lesson = lessons[i] as any | undefined;
 
       // Build scheduled_at datetime
       const [hours, mins] = daySchedule.startTime.split(":").map(Number);
       const scheduledAt = new Date(date);
       scheduledAt.setHours(hours, mins, 0, 0);
 
-      const topic = `${course_title} - Session ${sessionNum}`;
+      const topic = lesson
+        ? `Session ${lesson.course_modules?.title} - ${lesson.title}`
+        : `${course_title} - Session ${sessionNum}`;
       const dur = duration_minutes || computeDuration(daySchedule.startTime, daySchedule.endTime);
 
       try {
@@ -127,6 +154,7 @@ export async function POST(req: NextRequest) {
             teacher_id,
             student_id,
             enrollment_id,
+            lesson_id: lesson?.id ?? null,
             title: topic,
             scheduled_at: scheduledAt.toISOString(),
             duration_minutes: dur,
@@ -150,7 +178,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       total_created: createdSessions.filter((s) => !("error" in s)).length,
-      total_requested: total_sessions,
+      total_requested: sessionCount,
       sessions: createdSessions,
     });
   } catch (err: any) {

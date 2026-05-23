@@ -325,6 +325,8 @@ export interface Database {
           course_id: string;
           teacher_id: string;
           student_id: string | null;
+          lesson_id: string | null;
+          enrollment_id: string | null;
           title: string;
           zoom_meeting_id: string | null;
           zoom_join_url: string | null;
@@ -341,6 +343,8 @@ export interface Database {
           course_id: string;
           teacher_id: string;
           student_id?: string | null;
+          lesson_id?: string | null;
+          enrollment_id?: string | null;
           title: string;
           zoom_meeting_id?: string | null;
           zoom_join_url?: string | null;
@@ -355,6 +359,8 @@ export interface Database {
         Update: {
           title?: string;
           student_id?: string | null;
+          lesson_id?: string | null;
+          enrollment_id?: string | null;
           zoom_meeting_id?: string | null;
           zoom_join_url?: string | null;
           zoom_start_url?: string | null;

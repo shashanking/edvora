@@ -11,6 +11,7 @@ import {
   Music,
   Image,
   FolderOpen,
+  Lock,
 } from "lucide-react";
 import MaterialViewer from "@/src/components/shared/MaterialViewer";
 
@@ -54,6 +55,7 @@ export default function StudentMaterialsPage() {
   const supabase = createClient() as any;
   const [materials, setMaterials] = useState<MaterialRow[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [completedCourseIds, setCompletedCourseIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [filterCourseId, setFilterCourseId] = useState("");
   const [viewing, setViewing] = useState<MaterialRow | null>(null);
@@ -83,19 +85,30 @@ export default function StudentMaterialsPage() {
       return;
     }
 
-    // Fetch courses and materials in parallel
-    const [coursesRes, materialsRes] = await Promise.all([
+    // Fetch courses, materials, and completed sessions in parallel
+    const [coursesRes, materialsRes, sessionsRes] = await Promise.all([
       supabase.from("courses").select("id, title").in("id", courseIds).order("title"),
       supabase
         .from("course_materials")
         .select("*, courses(title)")
         .in("course_id", courseIds)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("live_sessions")
+        .select("course_id")
+        .eq("student_id", user.id)
+        .eq("status", "completed"),
     ]);
 
     if (coursesRes.data) {
       setCourses(coursesRes.data as CourseOption[]);
     }
+
+    // Build a set of course_ids where the student has ≥1 completed session
+    const completedSet = new Set<string>(
+      ((sessionsRes.data as any[]) || []).map((s: any) => s.course_id)
+    );
+    setCompletedCourseIds(completedSet);
 
     if (materialsRes.data) {
       setMaterials(
@@ -128,6 +141,12 @@ export default function StudentMaterialsPage() {
     acc[key].push(m);
     return acc;
   }, {});
+
+  // Courses visible in current filter but without completed sessions (locked)
+  const lockedCourses = courses.filter((c) => {
+    if (filterCourseId && c.id !== filterCourseId) return false;
+    return !completedCourseIds.has(c.id);
+  });
 
   if (loading) {
     return (
@@ -173,7 +192,7 @@ export default function StudentMaterialsPage() {
       </div>
 
       {/* Materials */}
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && lockedCourses.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
             <FolderOpen className="w-8 h-8 text-gray-400" />
@@ -185,7 +204,10 @@ export default function StudentMaterialsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {Object.entries(groupedByCourse).map(([courseName, items]) => (
+          {/* Unlocked course materials */}
+          {Object.entries(groupedByCourse)
+            .filter(([, items]) => completedCourseIds.has(items[0]?.course_id))
+            .map(([courseName, items]) => (
             <div key={courseName}>
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="w-4 h-4 text-[#1F4FD8]" />
@@ -243,6 +265,26 @@ export default function StudentMaterialsPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Locked course placeholders */}
+          {lockedCourses.map((c) => (
+            <div key={c.id}>
+              <div className="flex items-center gap-2 mb-4">
+                <BookOpen className="w-4 h-4 text-[#9CA3AF]" />
+                <h2 className="text-base font-poppins font-semibold text-[#9CA3AF]">
+                  {c.title}
+                </h2>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                <div className="w-12 h-12 mx-auto mb-3 bg-amber-50 rounded-full flex items-center justify-center">
+                  <Lock className="w-6 h-6 text-amber-400" />
+                </div>
+                <p className="text-sm font-medium text-[#4D4D4D]">
+                  Materials will be available after your first class
+                </p>
               </div>
             </div>
           ))}

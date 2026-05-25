@@ -36,12 +36,12 @@ const subjects = [
 const FALL_BACK_CONTENT = {
   title: "Let’s get in touch",
   description:
-    "Contact us to share your thoughts, ask questions, or explore opportunities to work and grow together.",
+    "Contact us to share your thoughts, ask questions, or explore opportunities to learn and grow together.",
   callDescription:
-    "Contact us to share your thoughts, ask questions, or explore opportunities to work and grow together.",
+    "Contact us to share your thoughts, ask questions, or explore opportunities to learn and grow together.",
   phone: "+91 93303 88153",
   emailDescription:
-    "Contact us to share your thoughts, ask questions, or explore opportunities to work and grow together.",
+    "Contact us to share your thoughts, ask questions, or explore opportunities to learn and grow together.",
   email: "contact@addifyacademy.com",
 };
 

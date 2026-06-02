@@ -1,72 +1,68 @@
 'use client';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+
+const NAV_LINKS = [
+  { label: 'Home', href: '/' },
+  { label: 'Young Learners', href: '/young-learners' },
+  { label: 'Adult Learners', href: '/adult-learners' },
+  { label: 'About', href: '/about' },
+  { label: 'Blogs', href: '/blogs' },
+  { label: 'Contact Us', href: '/contact' },
+];
 
 export default function Navbar() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const pathname = usePathname();
+
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
     <nav className="px-4 md:px-10 lg:px-16 xl:px-24 py-5 z-10 relative">
       <div className="max-w-[1400px] mx-auto w-full flex items-start md:items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex-shrink-0 h-9 w-30 md:h-[60px] md:w-[200px] lg:h-[110px] lg:w-[350px]">
-          <img src="./LogoHeader.png" alt="logo" className='h-full w-full object-cover' />
-        </div>
+        <Link href="/" className="flex-shrink-0 h-9 w-30 md:h-[60px] md:w-[200px] lg:h-[110px] lg:w-[350px]">
+          <img src="/LogoHeader.png" alt="Addify Academy" className='h-full w-full object-cover' />
+        </Link>
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center gap-5 lg:gap-12 flex-nowrap whitespace-nowrap min-w-0">
-          <a 
-            href="#home" 
-            className="text-white font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
-          >
-            Home
-          </a>
-          <a 
-            href="#young-learners" 
-            className="text-gray-400 font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
-          >
-            Young Learners
-          </a>
-          <a 
-            href="#adult-learners" 
-            className="text-gray-400 font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
-          >
-            Adult Learners
-          </a>
-          <a 
-            href="#about" 
-            className="text-gray-400 font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
-          >
-            About
-          </a>
-          <a
-            href="#contact"
-            className="text-gray-400 font-medium text-sm lg:text-base hover:text-gray-300 transition-colors"
-          >
-            Contact Us
-          </a>
-          <a
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`${
+                isActive(link.href) ? 'text-white' : 'text-gray-400'
+              } font-medium text-sm lg:text-base hover:text-gray-300 transition-colors`}
+            >
+              {link.label}
+            </Link>
+          ))}
+          <Link
             href="/login"
             className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-5 lg:px-6 py-2 lg:py-2.5 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-xl text-sm lg:text-base"
           >
             Login
-          </a>
+          </Link>
         </div>
 
         {/* CTA Button */}
         <div className="hidden lg:flex-shrink-0">
-          <a 
-            href="#contact"
+          <Link
+            href="/contact"
             className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-7 xl:px-8 py-3.5 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-xl inline-block"
           >
             Book a Free Trial Class
-          </a>
+          </Link>
         </div>
         <div className="md:hidden">
-          <button 
+          <button
             onClick={() => setIsDrawerOpen(!isDrawerOpen)}
             className="flex items-center justify-center text-white"
           >
-            <img src="./NavButton.png" alt="Button" />
+            <img src="/NavButton.png" alt="Menu" />
           </button>
         </div>
       </div>
@@ -90,57 +86,34 @@ export default function Navbar() {
 
           {/* Navigation Links */}
           <div className="flex flex-col gap-6 px-6 py-4">
-            <a
-              href="#home"
-              onClick={() => setIsDrawerOpen(false)}
-              className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
-            >
-              Home
-            </a>
-            <a
-              href="#young-learners"
-              onClick={() => setIsDrawerOpen(false)}
-              className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
-            >
-              Young Learners
-            </a>
-            <a
-              href="#adult-learners"
-              onClick={() => setIsDrawerOpen(false)}
-              className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
-            >
-              Adult Learners
-            </a>
-            <a
-              href="#about"
-              onClick={() => setIsDrawerOpen(false)}
-              className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
-            >
-              About
-            </a>
-            <a
-              href="#contact"
-              onClick={() => setIsDrawerOpen(false)}
-              className="text-white font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20"
-            >
-              Contact Us
-            </a>
-            <a
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsDrawerOpen(false)}
+                className={`${
+                  isActive(link.href) ? 'text-yellow-400' : 'text-white'
+                } font-medium text-lg hover:text-yellow-400 transition-colors py-2 border-b border-white/20`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
               href="/login"
               onClick={() => setIsDrawerOpen(false)}
               className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-6 py-3 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg text-center"
             >
               Login
-            </a>
+            </Link>
 
             {/* CTA Button in drawer */}
-            <a
-              href="#contact"
+            <Link
+              href="/contact"
               onClick={() => setIsDrawerOpen(false)}
               className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-6 py-3 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg text-center mt-4"
             >
               Book a Free Trial Class
-            </a>
+            </Link>
           </div>
         </div>
       </div>

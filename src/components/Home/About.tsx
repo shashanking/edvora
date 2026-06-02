@@ -144,7 +144,7 @@ const AboutSection: React.FC = () => {
 
             <div className="pt-2 md:pt-4">
               <a
-                href="#contact"
+                href="/about"
                 className="inline-block w-full md:w-auto px-8 md:px-9 py-3 md:py-4 bg-[#FFC83D] hover:bg-[#FBBF24] text-[#2B2B2B] rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 font-poppins font-semibold text-[14px] md:text-[18px] lg:text-[20px] leading-tight tracking-normal text-center
 "
               >

@@ -1,4 +1,6 @@
 import { aboutHome } from "./aboutHome";
+import { aboutPage } from "./aboutPage";
+import { adultLearnersPage } from "./adultLearnersPage";
 import { advantage } from "./advantage";
 import { blog } from "./blog";
 import { blogPage } from "./blogPage";
@@ -14,10 +16,12 @@ import { overview } from "./overview";
 import { pricing } from "./pricing";
 import { resource } from "./resource";
 import { testimonials } from "./testimonials";
+import { youngLearnersPage } from "./youngLearnersPage";
 
 export const schemaTypes = [
     homeHero,
     aboutHome,
+    aboutPage,
     advantage,
     blog,
     blogPage,
@@ -32,4 +36,6 @@ export const schemaTypes = [
     pricing,
     resource,
     testimonials,
+    youngLearnersPage,
+    adultLearnersPage,
 ];

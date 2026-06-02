@@ -1,6 +1,7 @@
 "use client";
 
 import { Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
 interface FooterProps {
@@ -70,13 +71,13 @@ const Footer: React.FC<FooterProps> = ({ className = "" }) => {
           <div className="space-y-6 col-span-4 md:col-span-1">
             <div className=" flex items-center lg:justify-end flex-shrink-0">
               {/* Logo */}
-              <div className="flex-shrink-0 h-9 w-30 md:h-[60px] md:w-[200px] lg:h-[110px] lg:w-[350px]">
+              <Link href="/" className="flex-shrink-0 h-9 w-30 md:h-[60px] md:w-[200px] lg:h-[110px] lg:w-[350px]">
                 <img
-                  src="./LogoHeader.png"
+                  src="/LogoHeader.png"
                   alt="logo"
                   className="h-full w-full object-cover"
                 />
-              </div>
+              </Link>
             </div>
             <p className="text-white/90 text-[12px] md:text-sm leading-relaxed max-w-xs">
               {content?.description ?? FALL_BACK_CONTENT?.description}
@@ -90,44 +91,52 @@ const Footer: React.FC<FooterProps> = ({ className = "" }) => {
             </h3>
             <ul className="space-y-4">
               <li>
-                <a
-                  href="#home"
+                <Link
+                  href="/"
                   className="text-yellow-300 hover:text-yellow-200 transition-colors text-[12px] md:text-sm font-medium"
                 >
                   Home
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#young-learners"
+                <Link
+                  href="/young-learners"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Young Learners
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#adult-learners"
+                <Link
+                  href="/adult-learners"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Adult Learners
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#about"
+                <Link
+                  href="/about"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   About
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#contact"
+                <Link
+                  href="/blogs"
+                  className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
+                >
+                  Blogs
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Contact Us
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -137,28 +146,28 @@ const Footer: React.FC<FooterProps> = ({ className = "" }) => {
             <h3 className="text-white font-semibold text-lg mb-6">Important</h3>
             <ul className="space-y-4">
               <li>
-                <a
+                <Link
                   href="/refund-policy"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Refund Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a
+                <Link
                   href="/privacy-policy"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a
+                <Link
                   href="/terms-conditions"
                   className="text-white/80 hover:text-white transition-colors text-xs md:text-sm"
                 >
                   Terms & Conditions
-                </a>
+                </Link>
               </li>
               {/* <li>
                 <a 

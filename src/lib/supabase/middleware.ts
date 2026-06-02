@@ -45,7 +45,7 @@ export async function updateSession(request: NextRequest) {
   };
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/auth/callback", "/studio"];
+  const publicRoutes = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/auth/callback", "/studio", "/about", "/contact", "/blogs", "/young-learners", "/adult-learners"];
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   );

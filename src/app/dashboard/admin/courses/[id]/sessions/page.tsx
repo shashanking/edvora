@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import MaterialViewer from "@/src/components/shared/MaterialViewer";
 
 interface CourseSession {
   id: string;
@@ -88,6 +89,7 @@ export default function AdminCourseSessionsPage() {
   const [lessonPdfFile, setLessonPdfFile] = useState<File | null>(null);
   const [lessonPdfUploading, setLessonPdfUploading] = useState(false);
   const [lessonPdfUrl, setLessonPdfUrl] = useState<string | null>(null);
+  const [viewingLessonPdf, setViewingLessonPdf] = useState<CourseLesson | null>(null);
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -338,6 +340,14 @@ export default function AdminCourseSessionsPage() {
     <div className="space-y-6">
       <Toaster position="top-right" />
 
+      <MaterialViewer
+        open={!!viewingLessonPdf}
+        title={viewingLessonPdf?.title || ""}
+        fileUrl={viewingLessonPdf?.pdf_url || ""}
+        fileType="pdf"
+        onClose={() => setViewingLessonPdf(null)}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -462,9 +472,12 @@ export default function AdminCourseSessionsPage() {
                               </span>
                             )}
                             {lesson.pdf_url && (
-                              <span className="flex items-center gap-0.5 text-xs text-[#1F4FD8] flex-shrink-0">
-                                <FileText className="w-3 h-3" /> PDF
-                              </span>
+                              <button
+                                onClick={() => setViewingLessonPdf(lesson)}
+                                className="inline-flex items-center gap-1 text-xs text-[#1F4FD8] hover:underline flex-shrink-0"
+                              >
+                                <FileText className="w-3 h-3" /> View PDF
+                              </button>
                             )}
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <button

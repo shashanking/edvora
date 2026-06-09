@@ -1025,31 +1025,6 @@ export default function AdminEnrollmentsPage() {
                     </select>
                   </div>
 
-                  {selectedCourseData && (
-                    <div className="bg-[#F8F9FB] rounded-xl p-4 space-y-1.5">
-                      <p className="text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider mb-2">
-                        Course Details
-                      </p>
-                      <p className="text-sm text-[#1C1C28]">
-                        <span className="text-[#4D4D4D]">
-                          Classes per week:
-                        </span>{" "}
-                        <strong>
-                          {selectedClassesPerWeek}
-                        </strong>
-                      </p>
-                      <p className="text-sm text-[#1C1C28]">
-                        <span className="text-[#4D4D4D]">
-                          Total sessions:
-                        </span>{" "}
-                        <strong>{selectedCourseData.total_sessions}</strong>
-                      </p>
-                      <p className="text-sm text-[#1C1C28]">
-                        <span className="text-[#4D4D4D]">Duration:</span>{" "}
-                        <strong>{selectedCourseData.duration}</strong>
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
 

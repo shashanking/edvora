@@ -13,6 +13,7 @@ import {
   FileText,
   BookOpen,
   X,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -33,6 +34,7 @@ interface CourseLesson {
   title: string;
   content: string | null;
   video_url: string | null;
+  pdf_url: string | null;
   duration_minutes: number | null;
   display_order: number;
   created_at: string;
@@ -83,6 +85,9 @@ export default function AdminCourseSessionsPage() {
     display_order: "",
   });
   const [savingLesson, setSavingLesson] = useState(false);
+  const [lessonPdfFile, setLessonPdfFile] = useState<File | null>(null);
+  const [lessonPdfUploading, setLessonPdfUploading] = useState(false);
+  const [lessonPdfUrl, setLessonPdfUrl] = useState<string | null>(null);
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -234,6 +239,8 @@ export default function AdminCourseSessionsPage() {
     const nextOrder =
       currentLessons.length > 0 ? Math.max(...currentLessons.map((l) => l.display_order)) + 1 : 1;
     setLessonForm({ title: "", content: "", duration_minutes: "", display_order: nextOrder.toString() });
+    setLessonPdfFile(null);
+    setLessonPdfUrl(null);
     setShowLessonModal(true);
   };
 
@@ -246,6 +253,8 @@ export default function AdminCourseSessionsPage() {
       duration_minutes: lesson.duration_minutes?.toString() || "",
       display_order: lesson.display_order.toString(),
     });
+    setLessonPdfFile(null);
+    setLessonPdfUrl(lesson.pdf_url || null);
     setShowLessonModal(true);
   };
 
@@ -256,11 +265,31 @@ export default function AdminCourseSessionsPage() {
     }
     setSavingLesson(true);
 
+    // Upload PDF if a new file was selected
+    let pdfUrl = lessonPdfUrl;
+    if (lessonPdfFile && lessonSessionId) {
+      setLessonPdfUploading(true);
+      const ext = lessonPdfFile.name.split(".").pop() || "pdf";
+      const path = `${lessonSessionId}/${Date.now()}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("lesson-pdfs")
+        .upload(path, lessonPdfFile, { upsert: false });
+      setLessonPdfUploading(false);
+      if (uploadError) {
+        toast.error("Failed to upload PDF");
+        setSavingLesson(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("lesson-pdfs").getPublicUrl(uploadData.path);
+      pdfUrl = urlData.publicUrl;
+    }
+
     const payload = {
       title: lessonForm.title.trim(),
       content: lessonForm.content.trim() || null,
       duration_minutes: lessonForm.duration_minutes ? parseInt(lessonForm.duration_minutes) : null,
       display_order: parseInt(lessonForm.display_order) || 1,
+      pdf_url: pdfUrl,
     };
 
     if (editingLesson) {
@@ -430,6 +459,11 @@ export default function AdminCourseSessionsPage() {
                             {lesson.duration_minutes != null && (
                               <span className="flex items-center gap-1 text-xs text-[#9CA3AF] flex-shrink-0">
                                 <Clock className="w-3 h-3" /> {lesson.duration_minutes} min
+                              </span>
+                            )}
+                            {lesson.pdf_url && (
+                              <span className="flex items-center gap-0.5 text-xs text-[#1F4FD8] flex-shrink-0">
+                                <FileText className="w-3 h-3" /> PDF
                               </span>
                             )}
                             <div className="flex items-center gap-1 flex-shrink-0">
@@ -604,6 +638,34 @@ export default function AdminCourseSessionsPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">PDF Attachment</label>
+                {lessonPdfUrl && !lessonPdfFile && (
+                  <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-[#F8F9FB] rounded-lg border border-gray-100">
+                    <FileText className="w-4 h-4 text-[#1F4FD8] flex-shrink-0" />
+                    <span className="text-xs text-[#1F4FD8] truncate flex-1">PDF attached</span>
+                    <button
+                      type="button"
+                      onClick={() => setLessonPdfUrl(null)}
+                      className="p-0.5 text-[#9CA3AF] hover:text-red-500 rounded flex-shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <label className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-[#D4D4D4] rounded-xl cursor-pointer hover:border-[#1F4FD8] hover:bg-[#1F4FD8]/5 transition-all">
+                  <Upload className="w-4 h-4 text-[#9CA3AF]" />
+                  <span className="text-sm text-[#9CA3AF] truncate">
+                    {lessonPdfFile ? lessonPdfFile.name : "Upload PDF"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => setLessonPdfFile(e.target.files?.[0] || null)}
+                  />
+                </label>
+              </div>
             </div>
             <div className="flex gap-3 justify-end mt-6">
               <button
@@ -614,10 +676,10 @@ export default function AdminCourseSessionsPage() {
               </button>
               <button
                 onClick={saveLesson}
-                disabled={savingLesson}
+                disabled={savingLesson || lessonPdfUploading}
                 className="px-5 py-2 text-sm font-semibold text-white bg-[#1F4FD8] rounded-xl hover:bg-[#1a45c2] disabled:opacity-60 transition-colors"
               >
-                {savingLesson ? "Saving..." : editingLesson ? "Update" : "Create"}
+                {lessonPdfUploading ? "Uploading..." : savingLesson ? "Saving..." : editingLesson ? "Update" : "Create"}
               </button>
             </div>
           </div>

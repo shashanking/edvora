@@ -50,6 +50,7 @@ interface Lesson {
   title: string;
   content: string | null;
   video_url: string | null;
+  pdf_url: string | null;
   duration_minutes: number | null;
   display_order: number;
 }
@@ -140,6 +141,7 @@ export default function StudentCourseDetailPage() {
   const [materials, setMaterials] = useState<MaterialData[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
+  const [viewingLessonPdf, setViewingLessonPdf] = useState<Lesson | null>(null);
 
   // Lesson gating: count of live_sessions that are completed or live for this enrollment
   const [completedSessionCount, setCompletedSessionCount] = useState<number>(0);
@@ -620,6 +622,13 @@ export default function StudentCourseDetailPage() {
         fileType={viewingMaterial?.file_type || null}
         onClose={() => setViewingMaterial(null)}
       />
+      <MaterialViewer
+        open={!!viewingLessonPdf}
+        title={viewingLessonPdf?.title || ""}
+        fileUrl={viewingLessonPdf?.pdf_url || ""}
+        fileType="pdf"
+        onClose={() => setViewingLessonPdf(null)}
+      />
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -861,6 +870,17 @@ export default function StudentCourseDetailPage() {
                       {activeLesson.content && (
                         <div className="prose prose-sm max-w-none text-[#4D4D4D] leading-relaxed whitespace-pre-wrap">
                           {activeLesson.content}
+                        </div>
+                      )}
+                      {activeLesson.pdf_url && (
+                        <div className="pt-4 border-t border-gray-100">
+                          <button
+                            onClick={() => setViewingLessonPdf(activeLesson)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4FD8]/10 text-[#1F4FD8] text-sm font-medium rounded-xl hover:bg-[#1F4FD8]/20 transition-colors"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View PDF
+                          </button>
                         </div>
                       )}
                     </div>

@@ -559,6 +559,7 @@ export interface Database {
           title: string;
           content: string | null;
           video_url: string | null;
+          pdf_url: string | null;
           duration_minutes: number | null;
           display_order: number;
           created_at: string;
@@ -570,6 +571,7 @@ export interface Database {
           title: string;
           content?: string | null;
           video_url?: string | null;
+          pdf_url?: string | null;
           duration_minutes?: number | null;
           display_order?: number;
           created_at?: string;
@@ -579,6 +581,7 @@ export interface Database {
           title?: string;
           content?: string | null;
           video_url?: string | null;
+          pdf_url?: string | null;
           duration_minutes?: number | null;
           display_order?: number;
         };

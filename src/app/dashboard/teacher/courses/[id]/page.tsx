@@ -28,8 +28,27 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import MaterialViewer from "@/src/components/shared/MaterialViewer";
 
-type Tab = "sessions" | "assignments" | "remarks" | "materials";
+type Tab = "lessons" | "sessions" | "assignments" | "remarks" | "materials";
+
+interface CourseModule {
+  id: string;
+  title: string;
+  description: string | null;
+  display_order: number;
+}
+
+interface CourseLesson {
+  id: string;
+  module_id: string;
+  title: string;
+  content: string | null;
+  video_url: string | null;
+  pdf_url: string | null;
+  duration_minutes: number | null;
+  display_order: number;
+}
 
 interface CourseInfo {
   id: string;
@@ -134,6 +153,12 @@ export default function TeacherCourseDetailPage() {
   // Materials
   const [materials, setMaterials] = useState<MaterialData[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
+
+  // Lessons
+  const [courseModules, setCourseModules] = useState<CourseModule[]>([]);
+  const [courseLessons, setCourseLessons] = useState<Record<string, CourseLesson[]>>({});
+  const [lessonsLoading, setLessonsLoading] = useState(false);
+  const [viewingLessonPdf, setViewingLessonPdf] = useState<CourseLesson | null>(null);
 
   // Stats
   const [studentCount, setStudentCount] = useState(0);
@@ -328,12 +353,42 @@ export default function TeacherCourseDetailPage() {
     setMaterialsLoading(false);
   }, [courseId]);
 
+  // Fetch lessons
+  const fetchLessons = useCallback(async () => {
+    setLessonsLoading(true);
+    const { data: modsData } = await supabase
+      .from("course_modules")
+      .select("*")
+      .eq("course_id", courseId)
+      .order("display_order", { ascending: true });
+
+    const mods = (modsData as CourseModule[]) || [];
+    setCourseModules(mods);
+
+    if (mods.length > 0) {
+      const { data: lessonsData } = await supabase
+        .from("course_lessons")
+        .select("*")
+        .in("module_id", mods.map((m) => m.id))
+        .order("display_order", { ascending: true });
+
+      const grouped: Record<string, CourseLesson[]> = {};
+      for (const l of (lessonsData as CourseLesson[]) || []) {
+        if (!grouped[l.module_id]) grouped[l.module_id] = [];
+        grouped[l.module_id].push(l);
+      }
+      setCourseLessons(grouped);
+    }
+    setLessonsLoading(false);
+  }, [courseId]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   useEffect(() => {
     if (!user) return;
+    if (activeTab === "lessons") fetchLessons();
     if (activeTab === "sessions") fetchSessions();
     if (activeTab === "assignments") fetchAssignments();
     if (activeTab === "remarks") fetchRemarks();
@@ -515,6 +570,7 @@ export default function TeacherCourseDetailPage() {
   }
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: "lessons", label: "Lessons", icon: <BookOpen className="w-4 h-4" /> },
     { key: "sessions", label: "Sessions", icon: <Video className="w-4 h-4" /> },
     { key: "assignments", label: "Assignments", icon: <ClipboardList className="w-4 h-4" /> },
     { key: "remarks", label: "Remarks", icon: <MessageSquare className="w-4 h-4" /> },
@@ -524,6 +580,14 @@ export default function TeacherCourseDetailPage() {
   return (
     <div className="space-y-6">
       <Toaster position="top-right" />
+
+      <MaterialViewer
+        open={!!viewingLessonPdf}
+        title={viewingLessonPdf?.title || ""}
+        fileUrl={viewingLessonPdf?.pdf_url || ""}
+        fileType="pdf"
+        onClose={() => setViewingLessonPdf(null)}
+      />
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -595,6 +659,70 @@ export default function TeacherCourseDetailPage() {
         </div>
 
         <div className="p-5">
+          {/* ==================== LESSONS TAB ==================== */}
+          {activeTab === "lessons" && (
+            <div className="space-y-4">
+              {lessonsLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-6 h-6 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
+                </div>
+              ) : courseModules.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-[#9CA3AF]">No lessons added yet</p>
+                </div>
+              ) : (
+                courseModules.map((mod) => {
+                  const modLessons = courseLessons[mod.id] || [];
+                  return (
+                    <div key={mod.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50/70">
+                        <div className="w-7 h-7 rounded-lg bg-[#1F4FD8]/10 text-[#1F4FD8] text-xs font-bold font-poppins flex items-center justify-center flex-shrink-0">
+                          {mod.display_order}
+                        </div>
+                        <p className="font-poppins font-semibold text-[#1C1C28] text-sm">{mod.title}</p>
+                        <span className="ml-auto text-xs text-[#9CA3AF]">{modLessons.length} lesson{modLessons.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      {modLessons.length === 0 ? (
+                        <p className="text-xs text-[#9CA3AF] px-4 py-3">No lessons in this session</p>
+                      ) : (
+                        <div className="divide-y divide-gray-50">
+                          {modLessons.map((lesson) => (
+                            <div key={lesson.id} className="flex items-center gap-3 px-4 py-3">
+                              <div className="w-6 h-6 rounded-md bg-gray-100 text-xs text-[#9CA3AF] font-medium flex items-center justify-center flex-shrink-0">
+                                {lesson.display_order}
+                              </div>
+                              <FileText className="w-4 h-4 text-[#9CA3AF] flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-[#1C1C28] truncate">{lesson.title}</p>
+                                {lesson.content && (
+                                  <p className="text-xs text-[#9CA3AF] line-clamp-1 mt-0.5">{lesson.content}</p>
+                                )}
+                              </div>
+                              {lesson.duration_minutes != null && (
+                                <span className="flex items-center gap-1 text-xs text-[#9CA3AF] flex-shrink-0">
+                                  <Clock className="w-3 h-3" /> {lesson.duration_minutes}m
+                                </span>
+                              )}
+                              {lesson.pdf_url && (
+                                <button
+                                  onClick={() => setViewingLessonPdf(lesson)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-xs font-semibold rounded-lg hover:bg-[#1F4FD8]/20 transition-colors flex-shrink-0"
+                                >
+                                  <Eye className="w-3.5 h-3.5" /> View PDF
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
           {/* ==================== SESSIONS TAB ==================== */}
           {activeTab === "sessions" && (
             <div className="space-y-6">

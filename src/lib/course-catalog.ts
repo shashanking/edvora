@@ -51,6 +51,18 @@ export type LmsLandingCourse = {
   landing_category: CourseLandingCategory | null;
 };
 
+// Normalize a duration value for display. Admin-entered durations are free text
+// and sometimes contain a bare number (e.g. "6"), which renders as a unit-less
+// "Duration 6". Treat bare numbers as weeks and fall back to "Flexible".
+export function formatDuration(raw: string | null): string {
+  const trimmed = raw?.trim();
+  if (!trimmed) return "Flexible";
+  if (/^\d+$/.test(trimmed)) {
+    return `${trimmed} ${trimmed === "1" ? "week" : "weeks"}`;
+  }
+  return trimmed;
+}
+
 export function buildYoungCourseCatalog(courses: LmsLandingCourse[]) {
   const grouped: Record<YoungCourseCategory, LandingCourseItem[]> = {
     core: [],
@@ -64,7 +76,7 @@ export function buildYoungCourseCatalog(courses: LmsLandingCourse[]) {
 
     grouped[course.landing_category as YoungCourseCategory].push({
       program: course.title,
-      duration: course.duration || "Flexible",
+      duration: formatDuration(course.duration),
       gain: course.description,
       image: course.thumbnail_url || "./Mathematics.png",
       rating: course.rating ?? 4,
@@ -90,7 +102,7 @@ export function buildAdultCourseCatalog(courses: LmsLandingCourse[]) {
 
     grouped[course.landing_category as AdultCourseCategory].push({
       program: course.title,
-      duration: course.duration || "Flexible",
+      duration: formatDuration(course.duration),
       gain: course.description,
       image: course.thumbnail_url || "./DemoImage.png",
       rating: course.rating ?? 4,

@@ -18,6 +18,21 @@ type TestimonialPage = {
   card: Testimonial[];
 };
 
+// Neutral person-silhouette placeholder. Scales to fill its circular container
+// so testimonials don't imply real photos.
+const PersonAvatar = () => (
+  <div className="h-full w-full rounded-full bg-[#E8EEFB] flex items-center justify-center">
+    <svg
+      viewBox="0 0 24 24"
+      fill="#9DB2E8"
+      className="h-3/5 w-3/5"
+      aria-hidden="true"
+    >
+      <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6Z" />
+    </svg>
+  </div>
+);
+
 const testimonials: Testimonial[] = [
   {
     name: "Emma White",
@@ -52,7 +67,7 @@ const testimonials: Testimonial[] = [
     rating: 5,
     category: "Mathematics",
     description:
-      "My daughter went from failing algebra to getting an A in just 4 months. The personalized attention made all the difference.",
+      "The weekly progress reports kept me in the loop, and my son's confidence in maths has soared. He now asks to do extra practice on his own!",
     subtitle: "Sarah L., Parent, London",
   },
   {
@@ -61,8 +76,8 @@ const testimonials: Testimonial[] = [
     rating: 4,
     category: "Mathematics",
     description:
-      "My daughter went from failing algebra to getting an A in just 4 months. The personalized attention made all the difference.",
-    subtitle: "Parent of a 7-year-old",
+      "Sessions fit perfectly around our busy week, and the tutor genuinely cared. My son jumped a full grade level in a single term.",
+    subtitle: "Parent of a 12-year-old",
   },
 ];
 
@@ -182,11 +197,7 @@ const handlePrev = () => {
                       : "w-6 h-6 sm:w-8 sm:h-8 md:w-16 md:h-16 lg:w-24 lg:h-24"
                 }`}
               >
-                <img
-                  src={testimonial.imageUrl}
-                  alt=""
-                  className="h-full w-full object-cover rounded-full"
-                />
+                <PersonAvatar />
               </div>
             );
           })}
@@ -204,7 +215,7 @@ const handlePrev = () => {
                 {/* Card header */}
                 <div className="flex items-center gap-2 sm:gap-3 md:gap-4 mb-3 md:mb-6">
                   <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-12 md:h-12 lg:w-15 lg:h-15 rounded-full flex items-center justify-center text-2xl overflow-hidden">
-                    <img src={testimonial.imageUrl} alt="" className="h-full w-full object-cover" />
+                    <PersonAvatar />
                   </div>
                   <div>
                     <h3 className="text-[#2B2B2B] font-poppins text-[12px] sm:text-[14px] md:text-base lg:text-lg leading-tight">

@@ -60,6 +60,9 @@ const Footer: React.FC<FooterProps> = ({ className = "" }) => {
       mounted = false;
     };
   }, []);
+
+  const phone = content?.phone ?? FALL_BACK_CONTENT.phone;
+  const email = content?.email ?? FALL_BACK_CONTENT.email;
   return (
     <footer
       className={`bg-[#1F4FD8] text-white px-4 py-7 md:px-10 lg:px-40 md:py-15 ${className}`}
@@ -186,22 +189,20 @@ const Footer: React.FC<FooterProps> = ({ className = "" }) => {
             <ul className="space-y-4">
               <li>
                 <a
-                  href={`tel:${content?.phone ?? "#"}`}
+                  href={`tel:${phone.replace(/\s+/g, "")}`}
                   className="flex items-center gap-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group"
                 >
                   <Phone className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0" />
-                  <span>{content?.phone ?? FALL_BACK_CONTENT?.phone}</span>
+                  <span>{phone}</span>
                 </a>
               </li>
               <li>
                 <a
-                  href={`mailto:${content?.email ?? "#"}`}
+                  href={`mailto:${email}`}
                   className="flex items-center gap-1 pr-1 md:gap-3 text-white/80 hover:text-white transition-colors text-xs md:text-sm group min-w-0"
                 >
                   <Mail className="w-3 h-3 md:w-5 md:h-5 text-yellow-300 flex-shrink-0" />
-                  <span className="break-all">
-                    {content?.email ?? FALL_BACK_CONTENT?.email}
-                  </span>
+                  <span className="break-all">{email}</span>
                 </a>
               </li>
               <li>

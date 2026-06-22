@@ -153,18 +153,12 @@ const OurEducatorsSection: React.FC = () => {
 
             {/* CTA Button */}
             <div className="pt-2 md:pt-4 w-full relative">
-              <button
-                onClick={() => {
-                  const el = document.getElementById('coming-soon-educators');
-                  if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000); }
-                }}
-                className="w-full md:w-auto px-8 md:px-10 py-3 md:py-4 bg-[#FFC83D] hover:bg-[#FBBF24] text-gray-900 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-[14px] md:text-sm leading-tight tracking-normal"
+              <a
+                href="#contact"
+                className="inline-block text-center w-full md:w-auto px-8 md:px-10 py-3 md:py-4 bg-[#FFC83D] hover:bg-[#FBBF24] text-gray-900 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-poppins font-semibold text-[14px] md:text-sm leading-tight tracking-normal"
               >
                 Get Started Today
-              </button>
-              <div id="coming-soon-educators" className="hidden absolute left-1/2 -translate-x-1/2 -top-10 md:-top-12 bg-[#1C1C28] text-white text-xs md:text-sm font-poppins font-semibold px-4 md:px-5 py-2 md:py-2.5 rounded-full shadow-lg whitespace-nowrap z-50">
-                🚀 Coming Soon!
-              </div>
+              </a>
             </div>
           </div>
 

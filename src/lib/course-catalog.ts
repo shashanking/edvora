@@ -53,12 +53,12 @@ export type LmsLandingCourse = {
 
 // Normalize a duration value for display. Admin-entered durations are free text
 // and sometimes contain a bare number (e.g. "6"), which renders as a unit-less
-// "Duration 6". Treat bare numbers as weeks and fall back to "Flexible".
+// "Duration 6". Treat bare numbers as sessions and fall back to "Flexible".
 export function formatDuration(raw: string | null): string {
   const trimmed = raw?.trim();
   if (!trimmed) return "Flexible";
   if (/^\d+$/.test(trimmed)) {
-    return `${trimmed} ${trimmed === "1" ? "week" : "weeks"}`;
+    return `${trimmed} ${trimmed === "1" ? "session" : "sessions"}`;
   }
   return trimmed;
 }

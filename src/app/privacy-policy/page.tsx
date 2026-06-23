@@ -26,7 +26,8 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Who We Are</h2>
             <p>
               Addify Academy ("we", "us", or "our") is an online education platform providing
-              personalised one-on-one tutoring services. Our registered address is West Bengal, India.
+              personalised one-on-one tutoring services. Our registered address is KUNJAMONI,
+              2nd Floor, Panchpota, Rajpur Sonarpur (M), Kolkata, West Bengal, India.
               You can reach us at{" "}
               <a href="mailto:contact@addifyacademy.com" className="text-[#1F4FD8] underline">
                 contact@addifyacademy.com
@@ -166,7 +167,8 @@ export default function PrivacyPolicyPage() {
             </p>
             <address className="not-italic mt-3 space-y-1 text-gray-600">
               <p>Addify Academy</p>
-              <p>West Bengal, India</p>
+              <p>KUNJAMONI, 2nd Floor, Panchpota, Rajpur Sonarpur (M)</p>
+              <p>Kolkata, West Bengal, India</p>
               <p>
                 Email:{" "}
                 <a href="mailto:contact@addifyacademy.com" className="text-[#1F4FD8] underline">

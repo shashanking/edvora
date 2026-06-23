@@ -42,7 +42,7 @@ const PageHero: React.FC<PageHeroProps> = ({ eyebrow, heading, subheading }) => 
       </div>
 
       {/* Navbar */}
-      <div className="relative z-20">
+      <div className="relative z-20 -mx-4 md:-mx-8 lg:-mx-16">
         <Navbar />
       </div>
 

@@ -25,7 +25,7 @@ const FALL_BACK_CONTENT: Content = {
   phone: "+91 93303 88153",
   email: "contact@addifyacademy.com",
   address:
-    "KUNJAMONI,2ND FLOOR, PANCHPOTA, RAJPUR SONARPUR (M) Kolkata West Bengal 700152 South 24 Parganas India ",
+    "KUNJAMONI, 2ND FLOOR, PANCHPOTA, RAJPUR SONARPUR (M), Kolkata, West Bengal, India",
   instalink: "#",
   xlink: "#",
   facebooklink: "#",

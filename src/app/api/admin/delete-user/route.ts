@@ -31,6 +31,12 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // Transfer any courses created by this user to the admin (ON DELETE RESTRICT on courses.created_by)
+  await supabaseAdmin
+    .from("courses")
+    .update({ created_by: user.id })
+    .eq("created_by", userId);
+
   const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
   if (error) {

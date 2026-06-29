@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Search, UserPlus, Mail, Phone, Trash2, GraduationCap, Loader2 } from "lucide-react";
+import { Search, UserPlus, Mail, Phone, Trash2, GraduationCap, Loader2, KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Teacher {
@@ -25,6 +25,9 @@ export default function AdminTeachersPage() {
   const [addError, setAddError] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<Teacher | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   const fetchTeachers = async () => {
     setLoading(true);
@@ -105,11 +108,39 @@ export default function AdminTeachersPage() {
 
   const handleDelete = async (id: string) => {
     setDeleting(true);
-    await supabase.from("profiles").delete().eq("id", id);
-    setShowDeleteModal(null);
+    const res = await fetch("/api/admin/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id }),
+    });
     setDeleting(false);
-    toast.success("Teacher removed");
-    fetchTeachers();
+    setShowDeleteModal(null);
+    if (res.ok) {
+      toast.success("Teacher deleted");
+      fetchTeachers();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to delete teacher");
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!showPasswordModal) return;
+    setPasswordSaving(true);
+    const res = await fetch("/api/admin/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: showPasswordModal.id, newPassword }),
+    });
+    setPasswordSaving(false);
+    if (res.ok) {
+      toast.success("Password updated");
+      setShowPasswordModal(null);
+      setNewPassword("");
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to update password");
+    }
   };
 
   return (
@@ -203,13 +234,22 @@ export default function AdminTeachersPage() {
                       {new Date(teacher.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => setShowDeleteModal(teacher.id)}
-                        className="p-2 text-[#4D4D4D] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        title="Remove"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => { setShowPasswordModal(teacher); setNewPassword(""); }}
+                          className="p-2 text-[#4D4D4D] hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                          title="Change Password"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteModal(teacher.id)}
+                          className="p-2 text-[#4D4D4D] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -299,9 +339,9 @@ export default function AdminTeachersPage() {
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-poppins font-bold text-[#1C1C28] mb-2">Remove Teacher?</h3>
+            <h3 className="text-lg font-poppins font-bold text-[#1C1C28] mb-2">Delete Teacher?</h3>
             <p className="text-sm text-[#4D4D4D] mb-6">
-              This will remove the teacher profile. This action cannot be undone.
+              This will permanently delete the teacher account and all their data. This cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
@@ -313,9 +353,44 @@ export default function AdminTeachersPage() {
               <button
                 onClick={() => handleDelete(showDeleteModal)}
                 disabled={deleting}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 disabled:opacity-60 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 disabled:opacity-60 transition-colors flex items-center gap-2"
               >
-                {deleting ? "Removing..." : "Remove"}
+                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-poppins font-bold text-[#1C1C28] mb-1">Change Password</h3>
+            <p className="text-sm text-[#4D4D4D] mb-4">Set a new password for <span className="font-medium text-[#1C1C28]">{showPasswordModal.full_name}</span>.</p>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="New password (min 6 characters)"
+              className="w-full px-4 py-2.5 border border-[#D4D4D4] rounded-xl text-sm text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] mb-4"
+              minLength={6}
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowPasswordModal(null); setNewPassword(""); }}
+                className="px-4 py-2 text-sm font-medium text-[#4D4D4D] bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleChangePassword}
+                disabled={passwordSaving || newPassword.length < 6}
+                className="px-4 py-2 text-sm font-medium text-white bg-[#1F4FD8] rounded-xl hover:bg-[#1a45c2] disabled:opacity-60 transition-colors flex items-center gap-2"
+              >
+                {passwordSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {passwordSaving ? "Saving..." : "Update Password"}
               </button>
             </div>
           </div>

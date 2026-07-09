@@ -7,6 +7,12 @@ type Span = {
   marks?: string[];
 };
 
+type MarkDef = {
+  _key: string;
+  _type: string;
+  href?: string;
+};
+
 type Block = {
   _key?: string;
   _type: string;
@@ -14,9 +20,10 @@ type Block = {
   listItem?: "bullet" | "number";
   level?: number;
   children?: Span[];
+  markDefs?: MarkDef[];
 };
 
-const renderSpans = (children: Span[] = []) =>
+const renderSpans = (children: Span[] = [], markDefs: MarkDef[] = []) =>
   children.map((span, i) => {
     let node: React.ReactNode = span.text ?? "";
     const marks = span.marks ?? [];
@@ -24,6 +31,27 @@ const renderSpans = (children: Span[] = []) =>
     if (marks.includes("em")) node = <em key={`e-${i}`}>{node}</em>;
     if (marks.includes("underline"))
       node = <span key={`u-${i}`} className="underline">{node}</span>;
+
+    const linkMarkKey = marks.find((markKey) =>
+      markDefs.some((def) => def._key === markKey && def._type === "link")
+    );
+    if (linkMarkKey) {
+      const linkDef = markDefs.find((def) => def._key === linkMarkKey);
+      if (linkDef?.href) {
+        const isExternal = /^https?:\/\//.test(linkDef.href);
+        node = (
+          <a
+            key={`a-${i}`}
+            href={linkDef.href}
+            className="text-[#082A6B] underline hover:text-[#FFC83D] transition-colors"
+            {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          >
+            {node}
+          </a>
+        );
+      }
+    }
+
     return <React.Fragment key={span._key ?? i}>{node}</React.Fragment>;
   });
 
@@ -57,7 +85,7 @@ const PortableText: React.FC<{ value?: Block[] }> = ({ value }) => {
     const key = block._key ?? `b-${idx}`;
     if (block._type !== "block") return;
 
-    const content = renderSpans(block.children);
+    const content = renderSpans(block.children, block.markDefs);
 
     if (block.listItem) {
       if (!list || list.type !== block.listItem) {

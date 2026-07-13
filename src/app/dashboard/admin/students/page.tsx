@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import Link from "next/link";
-import { Search, Users, Eye, UserPlus, Trash2, KeyRound, Loader2 } from "lucide-react";
+import { Search, Users, Eye, UserPlus, Trash2, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Student {
@@ -25,6 +25,8 @@ export default function AdminStudentsPage() {
   const [showPasswordModal, setShowPasswordModal] = useState<Student | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [unconfirmedIds, setUnconfirmedIds] = useState<Set<string>>(new Set());
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -43,8 +45,17 @@ export default function AdminStudentsPage() {
     setLoading(false);
   };
 
+  const fetchUnconfirmed = async () => {
+    const res = await fetch("/api/admin/unconfirmed-students");
+    if (res.ok) {
+      const data = await res.json();
+      setUnconfirmedIds(new Set(data.unconfirmedIds || []));
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
+    fetchUnconfirmed();
   }, [search]);
 
   const handleDelete = async (id: string) => {
@@ -62,6 +73,28 @@ export default function AdminStudentsPage() {
     } else {
       const data = await res.json();
       toast.error(data.error || "Failed to delete student");
+    }
+  };
+
+  const handleForceVerify = async (student: Student) => {
+    setVerifyingId(student.id);
+    const res = await fetch("/api/admin/force-verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: student.id }),
+    });
+    setVerifyingId(null);
+    if (res.ok) {
+      const data = await res.json();
+      toast.success(data.alreadyVerified ? "Student was already verified" : "Student account force-verified");
+      setUnconfirmedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(student.id);
+        return next;
+      });
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to verify student");
     }
   };
 
@@ -123,6 +156,7 @@ export default function AdminStudentsPage() {
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Student</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Email</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Joined</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Actions</th>
                 </tr>
@@ -142,6 +176,17 @@ export default function AdminStudentsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-[#4D4D4D]">{student.email}</td>
                     <td className="px-6 py-4 text-sm text-[#4D4D4D]">{student.country_code && student.phone ? `${student.country_code} ${student.phone}` : student.phone || "—"}</td>
+                    <td className="px-6 py-4">
+                      {unconfirmedIds.has(student.id) ? (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-amber-700 bg-amber-100">
+                          Unconfirmed
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-green-700 bg-green-100">
+                          Verified
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-[#9CA3AF]">
                       {new Date(student.created_at).toLocaleDateString()}
                     </td>
@@ -161,6 +206,20 @@ export default function AdminStudentsPage() {
                           <UserPlus className="w-3.5 h-3.5" />
                           Enroll
                         </Link>
+                        {unconfirmedIds.has(student.id) && (
+                          <button
+                            onClick={() => handleForceVerify(student)}
+                            disabled={verifyingId === student.id}
+                            className="p-1.5 text-[#4D4D4D] hover:text-green-600 hover:bg-green-50 rounded-lg transition-all disabled:opacity-60"
+                            title="Force Verify"
+                          >
+                            {verifyingId === student.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => { setShowPasswordModal(student); setNewPassword(""); }}
                           className="p-1.5 text-[#4D4D4D] hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"

@@ -162,9 +162,23 @@ export default function StudentCourseDetailPage() {
 
   const visibleModules = modules.filter((m) => m.display_order === currentWeek);
 
+  // Whole-course totals. These drive the persisted enrollment progress/status
+  // update below, which is also read by admin and teacher dashboards, so they
+  // must reflect the entire course, not just the current week.
   const totalLessons = Object.values(lessons).reduce((sum, arr) => sum + arr.length, 0);
   const completedLessons = Object.values(progress).filter(Boolean).length;
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  // Visible-scoped totals: only lessons within the student's current-week
+  // modules, i.e. exactly what the sidebar renders. Used for the on-screen
+  // "Course Progress" card so its numbers match what's actually shown below.
+  const visibleLessonList = visibleModules.flatMap((m) => lessons[m.id] || []);
+  const visibleTotalLessons = visibleLessonList.length;
+  const visibleCompletedLessons = visibleLessonList.filter((l) => progress[l.id]).length;
+  const visibleProgressPercent =
+    visibleTotalLessons > 0
+      ? Math.round((visibleCompletedLessons / visibleTotalLessons) * 100)
+      : 0;
 
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -655,16 +669,16 @@ export default function StudentCourseDetailPage() {
             <TrendingUp className="w-4 h-4 text-[#1F4FD8]" />
             <span className="text-sm font-medium text-[#1C1C28]">Course Progress</span>
           </div>
-          <span className="text-sm font-bold text-[#1F4FD8]">{progressPercent}%</span>
+          <span className="text-sm font-bold text-[#1F4FD8]">{visibleProgressPercent}%</span>
         </div>
         <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-[#1F4FD8] to-[#3B6FF0] rounded-full transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${visibleProgressPercent}%` }}
           />
         </div>
         <p className="text-xs text-[#9CA3AF] mt-2">
-          {completedLessons} of {totalLessons} lessons completed
+          {visibleCompletedLessons} of {visibleTotalLessons} lessons completed
         </p>
       </div>
 

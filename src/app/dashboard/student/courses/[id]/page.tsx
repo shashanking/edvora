@@ -131,7 +131,6 @@ export default function StudentCourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [togglingProgress, setTogglingProgress] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<Tab>("lessons");
 
   // Session data
@@ -514,53 +513,11 @@ export default function StudentCourseDetailPage() {
     });
   };
 
-  const toggleLessonCompletion = async (lessonId: string) => {
-    if (!user) return;
-    setTogglingProgress((prev) => new Set(prev).add(lessonId));
-
-    const isCurrentlyCompleted = progress[lessonId] || false;
-    const newCompleted = !isCurrentlyCompleted;
-    setProgress((prev) => ({ ...prev, [lessonId]: newCompleted }));
-
-    const { data: existing } = await supabase
-      .from("lesson_progress")
-      .select("id")
-      .eq("student_id", user.id)
-      .eq("lesson_id", lessonId)
-      .single();
-
-    if (existing) {
-      const { error } = await supabase
-        .from("lesson_progress")
-        .update({
-          completed: newCompleted,
-          completed_at: newCompleted ? new Date().toISOString() : null,
-        })
-        .eq("id", existing.id);
-
-      if (error) {
-        setProgress((prev) => ({ ...prev, [lessonId]: isCurrentlyCompleted }));
-        toast.error("Failed to update progress");
-      }
-    } else {
-      const { error } = await supabase.from("lesson_progress").insert({
-        student_id: user.id,
-        lesson_id: lessonId,
-        completed: newCompleted,
-        completed_at: newCompleted ? new Date().toISOString() : null,
-      });
-      if (error) {
-        setProgress((prev) => ({ ...prev, [lessonId]: isCurrentlyCompleted }));
-        toast.error("Failed to update progress");
-      }
-    }
-
-    setTogglingProgress((prev) => {
-      const next = new Set(prev);
-      next.delete(lessonId);
-      return next;
-    });
-  };
+  // Lesson completion is now marked by the teacher (see the teacher course
+  // page's "Mark Complete" action), not self-reported by the student —
+  // module progression is gated on it, so it needs to be a grading
+  // decision rather than something a student can toggle themselves.
+  // Students can still see their own status below, just not change it.
 
   // Resolve a lesson's viewable document, whether it was uploaded directly
   // (pdf_url) or attached from an existing course material (material_id)
@@ -841,17 +798,16 @@ export default function StudentCourseDetailPage() {
                                       : "hover:bg-gray-50/50"
                                   }`}
                                 >
-                                  <button
-                                    onClick={() => toggleLessonCompletion(lesson.id)}
-                                    disabled={togglingProgress.has(lesson.id)}
+                                  <span
                                     className="flex-shrink-0"
+                                    title={isCompleted ? "Completed" : "Not yet completed"}
                                   >
                                     {isCompleted ? (
                                       <CheckCircle2 className="w-5 h-5 text-green-500" />
                                     ) : (
-                                      <Circle className="w-5 h-5 text-[#D4D4D4] hover:text-[#1F4FD8]" />
+                                      <Circle className="w-5 h-5 text-[#D4D4D4]" />
                                     )}
-                                  </button>
+                                  </span>
                                   <button
                                     onClick={() => setActiveLesson(lesson)}
                                     className="flex-1 min-w-0 text-left"
@@ -914,13 +870,11 @@ export default function StudentCourseDetailPage() {
                         <h2 className="text-xl font-poppins font-bold text-[#1C1C28]">
                           {activeLesson.title}
                         </h2>
-                        <button
-                          onClick={() => toggleLessonCompletion(activeLesson.id)}
-                          disabled={togglingProgress.has(activeLesson.id)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all flex-shrink-0 ${
+                        <span
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium flex-shrink-0 ${
                             progress[activeLesson.id]
-                              ? "bg-green-50 text-green-600 hover:bg-green-100"
-                              : "bg-gray-100 text-[#4D4D4D] hover:bg-[#1F4FD8]/10 hover:text-[#1F4FD8]"
+                              ? "bg-green-50 text-green-600"
+                              : "bg-gray-100 text-[#4D4D4D]"
                           }`}
                         >
                           {progress[activeLesson.id] ? (
@@ -929,10 +883,10 @@ export default function StudentCourseDetailPage() {
                             </>
                           ) : (
                             <>
-                              <Circle className="w-4 h-4" /> Mark Complete
+                              <Circle className="w-4 h-4" /> Not yet completed
                             </>
                           )}
-                        </button>
+                        </span>
                       </div>
                       {activeLesson.duration_minutes && (
                         <div className="flex items-center gap-1.5 text-sm text-[#9CA3AF] mb-4">

@@ -15,6 +15,7 @@ import {
   Play,
   FileText,
   CheckCircle2,
+  Circle,
   XCircle,
   AlertCircle,
   ChevronDown,
@@ -177,6 +178,7 @@ export default function TeacherCourseDetailPage() {
   // full curriculum.
   const [lessonViewStudentId, setLessonViewStudentId] = useState<string>("");
   const [lessonViewProgress, setLessonViewProgress] = useState<Record<string, boolean>>({});
+  const [togglingLessonId, setTogglingLessonId] = useState<string | null>(null);
 
   // Stats
   const [studentCount, setStudentCount] = useState(0);
@@ -293,6 +295,43 @@ export default function TeacherCourseDetailPage() {
       cancelled = true;
     };
   }, [lessonViewStudentId, courseLessons]);
+
+  // Lesson completion drives module progression (see 0779ad6), so it's
+  // teacher-controlled rather than self-reported by the student. This
+  // writes via the service-role-backed API route instead of the
+  // client-side Supabase client, because the lesson_progress RLS policy
+  // only permits student_id = auth.uid() writes — a teacher can't write
+  // another user's row directly.
+  const markLessonComplete = async (lessonId: string, completed: boolean) => {
+    if (!lessonViewStudentId) return;
+    setTogglingLessonId(lessonId);
+    const prevValue = lessonViewProgress[lessonId] || false;
+    setLessonViewProgress((prev) => ({ ...prev, [lessonId]: completed }));
+
+    try {
+      const res = await fetch("/api/teacher/lesson-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: lessonViewStudentId,
+          lessonId,
+          completed,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setLessonViewProgress((prev) => ({ ...prev, [lessonId]: prevValue }));
+        toast.error(data.error || "Failed to update lesson progress");
+      } else {
+        toast.success(completed ? "Marked complete" : "Marked incomplete");
+      }
+    } catch {
+      setLessonViewProgress((prev) => ({ ...prev, [lessonId]: prevValue }));
+      toast.error("Failed to update lesson progress");
+    } finally {
+      setTogglingLessonId(null);
+    }
+  };
 
   // Same completion-based formula used on the student course page: the
   // current module is the first one (by display_order) with an incomplete
@@ -856,6 +895,29 @@ export default function TeacherCourseDetailPage() {
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-xs font-semibold rounded-lg hover:bg-[#1F4FD8]/20 transition-colors flex-shrink-0"
                                 >
                                   <Eye className="w-3.5 h-3.5" /> View Document
+                                </button>
+                              )}
+                              {lessonViewStudentId && (
+                                <button
+                                  onClick={() =>
+                                    markLessonComplete(lesson.id, !lessonViewProgress[lesson.id])
+                                  }
+                                  disabled={togglingLessonId === lesson.id}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 ${
+                                    lessonViewProgress[lesson.id]
+                                      ? "bg-green-50 text-green-600 hover:bg-green-100"
+                                      : "bg-gray-100 text-[#4D4D4D] hover:bg-[#1F4FD8]/10 hover:text-[#1F4FD8]"
+                                  }`}
+                                >
+                                  {lessonViewProgress[lesson.id] ? (
+                                    <>
+                                      <CheckCircle2 className="w-3.5 h-3.5" /> Completed
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Circle className="w-3.5 h-3.5" /> Mark Complete
+                                    </>
+                                  )}
                                 </button>
                               )}
                             </div>

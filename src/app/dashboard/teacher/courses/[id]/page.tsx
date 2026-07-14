@@ -170,13 +170,13 @@ export default function TeacherCourseDetailPage() {
   const [viewingLessonPdf, setViewingLessonPdf] = useState<CourseLesson | null>(null);
 
   // A course can have several enrolled students on the same teacher, each
-  // progressing independently (1:1 pacing). "Current lesson" is therefore
+  // progressing independently (1:1 pacing). "Current module" is therefore
   // per-student, not per-course — so the Lessons tab is scoped to whichever
   // enrolled student is selected here, mirroring the student-side "current
-  // week" scoping (visibleModules) rather than always showing the full
-  // curriculum.
+  // module" scoping (visibleCourseModules) rather than always showing the
+  // full curriculum.
   const [lessonViewStudentId, setLessonViewStudentId] = useState<string>("");
-  const [lessonViewEnrolledAt, setLessonViewEnrolledAt] = useState<string | null>(null);
+  const [lessonViewProgress, setLessonViewProgress] = useState<Record<string, boolean>>({});
 
   // Stats
   const [studentCount, setStudentCount] = useState(0);
@@ -260,40 +260,58 @@ export default function TeacherCourseDetailPage() {
     setLoading(false);
   }, [courseId]);
 
-  // Fetch the selected student's enrollment start date for this course, used
-  // to compute their current week (same formula as the student dashboard).
+  // Fetch the selected student's lesson-progress for this course, used to
+  // determine their current module (mirrors the student dashboard formula).
   useEffect(() => {
     if (!lessonViewStudentId) {
-      setLessonViewEnrolledAt(null);
+      setLessonViewProgress({});
+      return;
+    }
+    const lessonIds = Object.values(courseLessons)
+      .flat()
+      .map((l) => l.id);
+    if (lessonIds.length === 0) {
+      setLessonViewProgress({});
       return;
     }
     let cancelled = false;
     (async () => {
       const { data } = await supabase
-        .from("enrollments")
-        .select("enrolled_at")
-        .eq("course_id", courseId)
+        .from("lesson_progress")
+        .select("lesson_id, completed")
         .eq("student_id", lessonViewStudentId)
-        .eq("status", "active")
-        .maybeSingle();
-      if (!cancelled) setLessonViewEnrolledAt((data as any)?.enrolled_at || null);
+        .in("lesson_id", lessonIds);
+      if (!cancelled) {
+        const map: Record<string, boolean> = {};
+        for (const p of (data as any[]) || []) {
+          map[p.lesson_id] = p.completed;
+        }
+        setLessonViewProgress(map);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [lessonViewStudentId, courseId]);
+  }, [lessonViewStudentId, courseLessons]);
 
-  // Same week-number formula used on the student course page: week 1 = the
-  // first 7 days after enrollment, week 2 = days 8-14, etc.
-  const lessonViewCurrentWeek = (() => {
-    if (!lessonViewEnrolledAt) return 1;
-    const diffMs = Date.now() - new Date(lessonViewEnrolledAt).getTime();
-    if (diffMs < 0) return 1;
-    return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  // Same completion-based formula used on the student course page: the
+  // current module is the first one (by display_order) with an incomplete
+  // lesson, or the last module if everything is complete.
+  const lessonViewCurrentModule = (() => {
+    if (!lessonViewStudentId || courseModules.length === 0) return null;
+    for (const m of courseModules) {
+      const modLessons = courseLessons[m.id] || [];
+      const allComplete =
+        modLessons.length > 0 && modLessons.every((l) => lessonViewProgress[l.id]);
+      if (!allComplete) return m;
+    }
+    return courseModules[courseModules.length - 1];
   })();
 
   const visibleCourseModules = lessonViewStudentId
-    ? courseModules.filter((m) => m.display_order === lessonViewCurrentWeek)
+    ? lessonViewCurrentModule
+      ? [lessonViewCurrentModule]
+      : []
     : courseModules;
 
   // Fetch sessions
@@ -777,8 +795,11 @@ export default function TeacherCourseDetailPage() {
                       </option>
                     ))}
                   </select>
-                  {lessonViewStudentId && (
-                    <span className="text-xs text-[#9CA3AF]">Showing Week {lessonViewCurrentWeek}</span>
+                  {lessonViewStudentId && lessonViewCurrentModule && (
+                    <span className="text-xs text-[#9CA3AF]">
+                      Showing Module{" "}
+                      {courseModules.findIndex((m) => m.id === lessonViewCurrentModule.id) + 1}
+                    </span>
                   )}
                 </div>
               )}
@@ -794,7 +815,7 @@ export default function TeacherCourseDetailPage() {
               ) : visibleCourseModules.length === 0 ? (
                 <div className="text-center py-12">
                   <BookOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-[#9CA3AF]">No content for Week {lessonViewCurrentWeek} yet.</p>
+                  <p className="text-sm text-[#9CA3AF]">No content available yet.</p>
                 </div>
               ) : (
                 visibleCourseModules.map((mod) => {

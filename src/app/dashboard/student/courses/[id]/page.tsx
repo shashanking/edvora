@@ -159,17 +159,26 @@ export default function StudentCourseDetailPage() {
   // At minimum, lesson 1 is always unlocked.
   const maxUnlockedOrder = Math.max(1, completedSessionCount);
 
-  // Compute the student's current week in the course based on their
-  // enrollment start. Week 1 = the first 7 days, week 2 = days 8–14, etc.
-  // Falls back to week 1 until the enrollment timestamp is loaded.
-  const currentWeek = (() => {
-    if (!enrolledAt) return 1;
-    const diffMs = Date.now() - new Date(enrolledAt).getTime();
-    if (diffMs < 0) return 1;
-    return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  // Determine the student's current module based on actual lesson
+  // completion, not elapsed calendar time. The "current module" is the
+  // first module (by display_order) that has at least one incomplete
+  // lesson; if every module is fully complete, fall back to the last
+  // module so a finished student still sees their most recent content
+  // instead of nothing. Modules with no lessons yet are treated as
+  // incomplete (nothing to complete there yet), so a student won't be
+  // silently pushed past an empty module.
+  const currentModule = (() => {
+    if (modules.length === 0) return null;
+    for (const m of modules) {
+      const modLessons = lessons[m.id] || [];
+      const allComplete =
+        modLessons.length > 0 && modLessons.every((l) => progress[l.id]);
+      if (!allComplete) return m;
+    }
+    return modules[modules.length - 1];
   })();
 
-  const visibleModules = modules.filter((m) => m.display_order === currentWeek);
+  const visibleModules = currentModule ? [currentModule] : [];
 
   // Whole-course totals. These drive the persisted enrollment progress/status
   // update below, which is also read by admin and teacher dashboards, so they
@@ -289,20 +298,6 @@ export default function StudentCourseDetailPage() {
 
     const mods = (modulesData as Module[]) || [];
     setModules(mods);
-    // Auto-expand the module that matches the student's current week
-    // (display_order == currentWeek). Falls back to the first module.
-    if (mods.length > 0) {
-      const enrolledAtIso = enrollmentData.enrolled_at as string | undefined;
-      const weekNow = enrolledAtIso
-        ? Math.floor(
-            (Date.now() - new Date(enrolledAtIso).getTime()) /
-              (7 * 24 * 60 * 60 * 1000)
-          ) + 1
-        : 1;
-      const currentMods = mods.filter((m) => m.display_order === weekNow);
-      const toExpand = currentMods.length > 0 ? currentMods : [mods[0]];
-      setExpandedModules(new Set(toExpand.map((m) => m.id)));
-    }
 
     // Fetch lessons
     if (mods.length > 0) {
@@ -351,6 +346,26 @@ export default function StudentCourseDetailPage() {
           progressMap[p.lesson_id] = p.completed;
         }
         setProgress(progressMap);
+
+        // Auto-expand the module the student is currently working through:
+        // the first module (by display_order) with an incomplete lesson,
+        // or the last module if everything is complete.
+        if (mods.length > 0) {
+          let toExpand: Module = mods[mods.length - 1];
+          for (const m of mods) {
+            const modLessons = grouped[m.id] || [];
+            const allComplete =
+              modLessons.length > 0 && modLessons.every((l) => progressMap[l.id]);
+            if (!allComplete) {
+              toExpand = m;
+              break;
+            }
+          }
+          setExpandedModules(new Set([toExpand.id]));
+        }
+      } else if (mods.length > 0) {
+        // No lessons anywhere yet — default to the first module.
+        setExpandedModules(new Set([mods[0].id]));
       }
     }
 
@@ -745,7 +760,9 @@ export default function StudentCourseDetailPage() {
               {/* Sidebar */}
               <div className="lg:col-span-1 space-y-3">
                 <div className="px-1 pb-1 text-xs font-medium text-[#4D4D4D]">
-                  Showing Week {currentWeek}
+                  {currentModule
+                    ? `Showing Module ${modules.findIndex((m) => m.id === currentModule.id) + 1}`
+                    : ""}
                 </div>
                 {modules.length === 0 ? (
                   <div className="text-center py-12">
@@ -756,7 +773,7 @@ export default function StudentCourseDetailPage() {
                   <div className="text-center py-12">
                     <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-[#9CA3AF]">
-                      No content for Week {currentWeek} yet.
+                      No content available yet.
                     </p>
                   </div>
                 ) : (

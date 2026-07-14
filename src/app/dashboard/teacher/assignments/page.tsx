@@ -40,6 +40,7 @@ interface SessionRow {
   scheduled_at: string | null;
   status: string;
   enrollment_id: string;
+  lesson_title: string | null;
   assignment?: AssignmentRow | null;
 }
 
@@ -173,13 +174,26 @@ export default function TeacherAssignmentsPage() {
     // Get sessions for this course where this teacher is assigned
     const { data: sessionsData } = await supabase
       .from("live_sessions")
-      .select("id, session_number, title, scheduled_at, status, enrollment_id")
+      .select("id, session_number, title, scheduled_at, status, enrollment_id, lesson_id")
       .eq("course_id", selectedCourseId)
       .eq("teacher_id", userId)
       .order("session_number", { ascending: true });
 
     const rows = (sessionsData as any[]) || [];
     const sessionIds = rows.map((s) => s.id);
+
+    // Resolve each session's linked lesson title (live_sessions.lesson_id ->
+    // course_lessons.title) so teachers can see which lesson an assignment
+    // belongs to, not just an opaque session number.
+    let lessonTitleMap = new Map<string, string>();
+    const lessonIds = [...new Set(rows.map((s) => s.lesson_id).filter(Boolean))] as string[];
+    if (lessonIds.length) {
+      const { data: lessonsData } = await supabase
+        .from("course_lessons")
+        .select("id, title")
+        .in("id", lessonIds);
+      ((lessonsData as any[]) || []).forEach((l) => lessonTitleMap.set(l.id, l.title));
+    }
 
     // Get assignments for these sessions
     let assignmentsMap = new Map<string, any>();
@@ -233,6 +247,7 @@ export default function TeacherAssignmentsPage() {
         scheduled_at: s.scheduled_at,
         status: s.status || "scheduled",
         enrollment_id: s.enrollment_id,
+        lesson_title: s.lesson_id ? lessonTitleMap.get(s.lesson_id) || null : null,
         assignment: assignmentsMap.get(s.id) || null,
       }))
     );
@@ -564,6 +579,11 @@ export default function TeacherAssignmentsPage() {
                       <h3 className="font-poppins font-semibold text-[#1C1C28]">
                         {session.title}
                       </h3>
+                      {session.lesson_title && (
+                        <p className="text-xs text-[#1F4FD8] mt-0.5">
+                          Lesson: {session.lesson_title}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 mt-2 text-xs text-[#9CA3AF]">
                         {session.scheduled_at && (
                           <span className="inline-flex items-center gap-1">

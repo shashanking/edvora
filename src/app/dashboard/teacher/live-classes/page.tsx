@@ -15,6 +15,20 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+const JOIN_LEAD_MINUTES = 5;
+
+function isWithinJoinWindow(
+  scheduledAt: string,
+  durationMinutes: number,
+  nowMs: number,
+  leadMinutes = JOIN_LEAD_MINUTES
+): boolean {
+  const startMs = new Date(scheduledAt).getTime();
+  const openMs = startMs - leadMinutes * 60 * 1000;
+  const closeMs = startMs + durationMinutes * 60 * 1000;
+  return nowMs >= openMs && nowMs <= closeMs;
+}
+
 interface SessionRow {
   id: string;
   title: string;
@@ -60,6 +74,12 @@ export default function TeacherLiveClassesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [fetchingRecordings, setFetchingRecordings] = useState<string | null>(null);
   const [deletingSession, setDeletingSession] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   const fetchSessions = async () => {
     const {
@@ -325,35 +345,26 @@ export default function TeacherLiveClassesPage() {
 
         {/* Action buttons */}
         <div className="flex flex-col gap-2 flex-shrink-0">
-          {/* Start / Join button for upcoming */}
+          {/* Start / Join button for upcoming — only active from
+              JOIN_LEAD_MINUTES before scheduled_at through session end */}
           {(s.status === "scheduled" || s.status === "live") &&
-            s.zoom_start_url && (
+            (s.zoom_start_url || s.zoom_join_url) &&
+            (isWithinJoinWindow(s.scheduled_at, s.duration_minutes, nowMs) ? (
               <a
-                href={s.zoom_start_url}
+                href={(s.zoom_start_url || s.zoom_join_url) as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-md"
               >
                 <Video className="w-4 h-4" />
-                Start
+                {s.zoom_start_url ? "Start" : "Join"}
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
-            )}
-
-          {(s.status === "scheduled" || s.status === "live") &&
-            !s.zoom_start_url &&
-            s.zoom_join_url && (
-              <a
-                href={s.zoom_join_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-md"
-              >
-                <Video className="w-4 h-4" />
-                Join
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
+            ) : (
+              <span className="inline-flex items-center px-3 py-2.5 text-xs font-medium text-[#9CA3AF] bg-gray-100 rounded-xl">
+                Available {JOIN_LEAD_MINUTES} min before start
+              </span>
+            ))}
 
           {/* Fetch Recordings button for completed sessions */}
           {s.status === "completed" && s.zoom_meeting_id && (

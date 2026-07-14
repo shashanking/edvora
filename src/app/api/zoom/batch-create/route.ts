@@ -111,7 +111,29 @@ export async function POST(req: NextRequest) {
       return (a.display_order ?? 0) - (b.display_order ?? 0);
     });
 
-    const sessionCount = total_sessions ?? lessons.length;
+    // `total_sessions` (course setting) and the actual number of lessons
+    // built in Manage Content are independent admin inputs today. If the
+    // admin set total_sessions higher than the lessons that actually exist,
+    // pairing sessions 1:1 by array index (below) would run past the end of
+    // `lessons` and create sessions with no valid lesson attached. Cap the
+    // number of sessions we create at the number of real lessons so every
+    // created session always has a lesson_id — never create orphaned
+    // sessions. Surface the shortfall to the caller instead of failing
+    // silently.
+    const requestedSessionCount = total_sessions ?? lessons.length;
+
+    if (lessons.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "This course has no lessons yet. Add lessons in Manage Content before enrolling students.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const sessionCount = Math.min(requestedSessionCount, lessons.length);
+    const lessonShortfall = requestedSessionCount > lessons.length;
 
     // Generate session dates based on lesson count
     const sessionDates = generateSessionDates(
@@ -179,6 +201,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       total_created: createdSessions.filter((s) => !("error" in s)).length,
       total_requested: sessionCount,
+      total_sessions_target: requestedSessionCount,
+      lesson_shortfall: lessonShortfall,
       sessions: createdSessions,
     });
   } catch (err: any) {

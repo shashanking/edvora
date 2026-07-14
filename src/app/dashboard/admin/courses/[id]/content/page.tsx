@@ -81,6 +81,7 @@ export default function AdminCourseContentPage() {
   const supabase = createClient() as any;
 
   const [courseTitle, setCourseTitle] = useState("");
+  const [totalSessionsTarget, setTotalSessionsTarget] = useState<number | null>(null);
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [lessons, setLessons] = useState<Record<string, CourseLesson[]>>({});
   const [materials, setMaterials] = useState<CourseMaterialOption[]>([]);
@@ -117,16 +118,27 @@ export default function AdminCourseContentPage() {
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Total lessons actually built across all modules, so admins can see at a
+  // glance whether it matches the course's Total Sessions target (batch
+  // Zoom session creation pairs sessions 1:1 with lessons, so a mismatch
+  // here means some sessions won't have a lesson attached).
+  const totalLessonsBuilt = Object.values(lessons).reduce((sum, arr) => sum + arr.length, 0);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
 
-    // Fetch course title
+    // Fetch course title + total_sessions target (used below to show how
+    // many lessons have actually been built against the session count the
+    // course is configured for)
     const { data: course } = await supabase
       .from("courses")
-      .select("title")
+      .select("title, total_sessions")
       .eq("id", courseId)
-      .single() as { data: { title: string } | null };
-    if (course) setCourseTitle(course.title);
+      .single() as { data: { title: string; total_sessions: number | null } | null };
+    if (course) {
+      setCourseTitle(course.title);
+      setTotalSessionsTarget(course.total_sessions ?? null);
+    }
 
     // Fetch modules
     const { data: modulesData } = await supabase
@@ -370,13 +382,28 @@ export default function AdminCourseContentPage() {
             <p className="text-[#4D4D4D] text-sm mt-0.5">{courseTitle || "Loading..."}</p>
           </div>
         </div>
-        <button
-          onClick={openAddModule}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1F4FD8] text-white font-poppins font-semibold text-sm rounded-xl hover:bg-[#1a45c2] transition-all shadow-md"
-        >
-          <Plus className="w-4 h-4" />
-          Add Module
-        </button>
+        <div className="flex items-center gap-3">
+          {!loading && totalSessionsTarget != null && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                totalLessonsBuilt >= totalSessionsTarget
+                  ? "bg-emerald-50 text-emerald-600"
+                  : "bg-amber-50 text-amber-600"
+              }`}
+              title="Live sessions are paired 1:1 with lessons when a student is enrolled. Build enough lessons to match Total Sessions before enrolling students."
+            >
+              {totalLessonsBuilt}/{totalSessionsTarget} lessons built
+              {totalLessonsBuilt < totalSessionsTarget && " — add more before enrolling"}
+            </span>
+          )}
+          <button
+            onClick={openAddModule}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1F4FD8] text-white font-poppins font-semibold text-sm rounded-xl hover:bg-[#1a45c2] transition-all shadow-md"
+          >
+            <Plus className="w-4 h-4" />
+            Add Module
+          </button>
+        </div>
       </div>
 
       {/* Content */}

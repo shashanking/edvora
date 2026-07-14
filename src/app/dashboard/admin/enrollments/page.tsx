@@ -536,6 +536,7 @@ export default function AdminEnrollmentsPage() {
         selectedCourseData?.total_sessions || 8;
 
       let sessionsCreated = 0;
+      let scheduleWarning: string | null = null;
       try {
         const res = await fetch("/api/zoom/batch-create", {
           method: "POST",
@@ -554,9 +555,19 @@ export default function AdminEnrollmentsPage() {
           }),
         });
         const zoomData = await res.json();
-        sessionsCreated = zoomData.total_created || 0;
+        if (!res.ok) {
+          scheduleWarning =
+            zoomData.error ||
+            "Failed to schedule sessions for this enrollment.";
+        } else {
+          sessionsCreated = zoomData.total_created || 0;
+          if (zoomData.lesson_shortfall) {
+            scheduleWarning = `Only ${zoomData.total_requested} of ${zoomData.total_sessions_target} sessions were scheduled — this course has fewer lessons built than its Total Sessions target. Add more lessons in Manage Content.`;
+          }
+        }
       } catch {
         console.error("Zoom batch-create failed");
+        scheduleWarning = "Failed to reach the session scheduling service.";
       }
 
       // 5. Send enrollment email
@@ -573,6 +584,9 @@ export default function AdminEnrollmentsPage() {
       toast.success(
         `Enrollment created! ${sessionsCreated} session${sessionsCreated !== 1 ? "s" : ""} scheduled.`
       );
+      if (scheduleWarning) {
+        toast.error(scheduleWarning, { duration: 7000 });
+      }
 
       closeModal();
       fetchEnrollments();

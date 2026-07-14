@@ -169,11 +169,35 @@ export default function TeacherCourseDetailPage() {
   const [lessonsLoading, setLessonsLoading] = useState(false);
   const [viewingLessonPdf, setViewingLessonPdf] = useState<CourseLesson | null>(null);
 
+  // A course can have several enrolled students on the same teacher, each
+  // progressing independently (1:1 pacing). "Current lesson" is therefore
+  // per-student, not per-course — so the Lessons tab is scoped to whichever
+  // enrolled student is selected here, mirroring the student-side "current
+  // week" scoping (visibleModules) rather than always showing the full
+  // curriculum.
+  const [lessonViewStudentId, setLessonViewStudentId] = useState<string>("");
+  const [lessonViewEnrolledAt, setLessonViewEnrolledAt] = useState<string | null>(null);
+
   // Stats
   const [studentCount, setStudentCount] = useState(0);
   const [sessionCount, setSessionCount] = useState(0);
 
-  const now = new Date();
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const now = new Date(nowMs);
+  const JOIN_LEAD_MINUTES = 5;
+  // Start/Join is only active from JOIN_LEAD_MINUTES before scheduled_at
+  // through the end of the session — same window used on the student side.
+  const canJoinSession = (s: Session) => {
+    const startMs = new Date(s.scheduled_at).getTime();
+    return (
+      nowMs >= startMs - JOIN_LEAD_MINUTES * 60 * 1000 &&
+      nowMs <= startMs + s.duration_minutes * 60 * 1000
+    );
+  };
 
   // Helper: is session end time in the past?
   const isSessionOver = (s: Session) =>
@@ -226,11 +250,51 @@ export default function TeacherCourseDetailPage() {
         .from("profiles")
         .select("id, full_name, email, avatar_url")
         .in("id", studentIds);
-      setEnrolledStudents((students as StudentInfo[]) || []);
+      const studentList = (students as StudentInfo[]) || [];
+      setEnrolledStudents(studentList);
+      // Default the Lessons tab's "viewing as" student to the first
+      // enrolled student so current-week scoping has something to key off.
+      setLessonViewStudentId((prev) => prev || studentList[0]?.id || "");
     }
 
     setLoading(false);
   }, [courseId]);
+
+  // Fetch the selected student's enrollment start date for this course, used
+  // to compute their current week (same formula as the student dashboard).
+  useEffect(() => {
+    if (!lessonViewStudentId) {
+      setLessonViewEnrolledAt(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("enrollments")
+        .select("enrolled_at")
+        .eq("course_id", courseId)
+        .eq("student_id", lessonViewStudentId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!cancelled) setLessonViewEnrolledAt((data as any)?.enrolled_at || null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonViewStudentId, courseId]);
+
+  // Same week-number formula used on the student course page: week 1 = the
+  // first 7 days after enrollment, week 2 = days 8-14, etc.
+  const lessonViewCurrentWeek = (() => {
+    if (!lessonViewEnrolledAt) return 1;
+    const diffMs = Date.now() - new Date(lessonViewEnrolledAt).getTime();
+    if (diffMs < 0) return 1;
+    return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  })();
+
+  const visibleCourseModules = lessonViewStudentId
+    ? courseModules.filter((m) => m.display_order === lessonViewCurrentWeek)
+    : courseModules;
 
   // Fetch sessions
   const fetchSessions = useCallback(async () => {
@@ -699,6 +763,25 @@ export default function TeacherCourseDetailPage() {
           {/* ==================== LESSONS TAB ==================== */}
           {activeTab === "lessons" && (
             <div className="space-y-4">
+              {enrolledStudents.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 px-1">
+                  <label className="text-xs font-medium text-[#4D4D4D]">Viewing lessons as:</label>
+                  <select
+                    value={lessonViewStudentId}
+                    onChange={(e) => setLessonViewStudentId(e.target.value)}
+                    className="px-3 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-[#1C1C28] text-xs focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                  >
+                    {enrolledStudents.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.full_name}
+                      </option>
+                    ))}
+                  </select>
+                  {lessonViewStudentId && (
+                    <span className="text-xs text-[#9CA3AF]">Showing Week {lessonViewCurrentWeek}</span>
+                  )}
+                </div>
+              )}
               {lessonsLoading ? (
                 <div className="flex justify-center py-12">
                   <div className="w-6 h-6 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
@@ -708,8 +791,13 @@ export default function TeacherCourseDetailPage() {
                   <BookOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                   <p className="text-sm text-[#9CA3AF]">No lessons added yet</p>
                 </div>
+              ) : visibleCourseModules.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-[#9CA3AF]">No content for Week {lessonViewCurrentWeek} yet.</p>
+                </div>
               ) : (
-                courseModules.map((mod) => {
+                visibleCourseModules.map((mod) => {
                   const modLessons = courseLessons[mod.id] || [];
                   return (
                     <div key={mod.id} className="border border-gray-100 rounded-xl overflow-hidden">
@@ -793,15 +881,21 @@ export default function TeacherCourseDetailPage() {
                         {formatDateTime(nextSession.scheduled_at)} &middot; {nextSession.duration_minutes} min
                       </p>
                       {nextSession.zoom_start_url && (
-                        <a
-                          href={nextSession.zoom_start_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all"
-                        >
-                          <Video className="w-4 h-4" />
-                          Start Session
-                        </a>
+                        canJoinSession(nextSession) ? (
+                          <a
+                            href={nextSession.zoom_start_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all"
+                          >
+                            <Video className="w-4 h-4" />
+                            Start Session
+                          </a>
+                        ) : (
+                          <p className="inline-flex items-center mt-3 px-3 py-2 text-xs font-medium text-[#9CA3AF] bg-white/70 rounded-xl">
+                            Start opens {JOIN_LEAD_MINUTES} min before start
+                          </p>
+                        )
                       )}
                     </div>
                   )}

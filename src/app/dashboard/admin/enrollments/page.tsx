@@ -56,6 +56,12 @@ interface CourseOption {
   duration: string;
 }
 
+interface CourseModuleOption {
+  id: string;
+  title: string;
+  display_order: number;
+}
+
 interface TeacherOption {
   id: string;
   full_name: string;
@@ -133,6 +139,13 @@ export default function AdminEnrollmentsPage() {
   const [selectedCourseData, setSelectedCourseData] =
     useState<CourseOption | null>(null);
   const [selectedClassesPerWeek, setSelectedClassesPerWeek] = useState(2);
+
+  // Starting module: for students who are already partway through a course
+  // (learned it before the LMS existed, or migrating from elsewhere). Default
+  // is the first module ("start from the beginning"), which is a no-op.
+  const [courseModules, setCourseModules] = useState<CourseModuleOption[]>([]);
+  const [loadingModules, setLoadingModules] = useState(false);
+  const [selectedStartModuleId, setSelectedStartModuleId] = useState("");
 
   // Step 2
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
@@ -329,6 +342,8 @@ export default function AdminEnrollmentsPage() {
     setSelectedCourse("");
     setSelectedCourseData(null);
     setSelectedClassesPerWeek(2);
+    setCourseModules([]);
+    setSelectedStartModuleId("");
     setSelectedTeacher("");
     setTeachers([]);
     setSchedule([]);
@@ -346,6 +361,8 @@ export default function AdminEnrollmentsPage() {
     setSelectedCourse("");
     setSelectedCourseData(null);
     setSelectedClassesPerWeek(2);
+    setCourseModules([]);
+    setSelectedStartModuleId("");
     setSelectedTeacher("");
     setTeachers([]);
     setSchedule([]);
@@ -359,10 +376,29 @@ export default function AdminEnrollmentsPage() {
   /*  Course selection handler                                         */
   /* ================================================================ */
 
+  const fetchCourseModules = async (courseId: string) => {
+    setLoadingModules(true);
+    const { data } = await supabase
+      .from("course_modules")
+      .select("id, title, display_order")
+      .eq("course_id", courseId)
+      .order("display_order", { ascending: true });
+
+    const mods = (data as CourseModuleOption[]) || [];
+    setCourseModules(mods);
+    // Default to the first module ("start from the beginning") whenever the
+    // course changes, so this feature is opt-in per enrollment.
+    setSelectedStartModuleId(mods[0]?.id || "");
+    setLoadingModules(false);
+  };
+
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourse(courseId);
     const c = courses.find((x) => x.id === courseId) || null;
     setSelectedCourseData(c);
+    setCourseModules([]);
+    setSelectedStartModuleId("");
+    if (courseId) fetchCourseModules(courseId);
   };
 
   /* ================================================================ */
@@ -506,6 +542,42 @@ export default function AdminEnrollmentsPage() {
         toast.error("Failed to create enrollment. " + enrErr.message);
         setEnrolling(false);
         return;
+      }
+
+      // 2b. If the admin picked a starting module past the first one, seed
+      // lesson_progress with completed:true for every lesson in every prior
+      // module. This has to go through a service-role API route — admins
+      // don't have write access to other users' lesson_progress rows under
+      // RLS. Skipped entirely (no-op) when starting at module 1, which is
+      // the default and preserves today's behavior exactly.
+      const isNonDefaultStart =
+        selectedStartModuleId &&
+        courseModules.length > 0 &&
+        selectedStartModuleId !== courseModules[0].id;
+
+      if (isNonDefaultStart) {
+        try {
+          const seedRes = await fetch("/api/admin/seed-lesson-progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              studentId: selectedStudent,
+              courseId: selectedCourse,
+              startModuleId: selectedStartModuleId,
+            }),
+          });
+          if (!seedRes.ok) {
+            const seedData = await seedRes.json().catch(() => ({}));
+            toast.error(
+              "Enrollment created, but pre-marking earlier modules complete failed: " +
+                (seedData.error || "unknown error")
+            );
+          }
+        } catch {
+          toast.error(
+            "Enrollment created, but pre-marking earlier modules complete failed."
+          );
+        }
       }
 
       // 3. Insert student_schedules
@@ -1039,6 +1111,49 @@ export default function AdminEnrollmentsPage() {
                     </select>
                   </div>
 
+                  {selectedCourse && (
+                    <div>
+                      <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+                        <BookOpen className="w-4 h-4 inline mr-1.5 text-[#1F4FD8]" />
+                        Start student at
+                      </label>
+                      {loadingModules ? (
+                        <div className="flex items-center gap-2 py-2 text-sm text-[#9CA3AF]">
+                          <div className="w-4 h-4 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
+                          Loading modules...
+                        </div>
+                      ) : courseModules.length === 0 ? (
+                        <p className="text-xs text-[#9CA3AF]">
+                          This course has no modules yet.
+                        </p>
+                      ) : (
+                        <>
+                          <select
+                            value={selectedStartModuleId}
+                            onChange={(e) =>
+                              setSelectedStartModuleId(e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] text-sm focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                          >
+                            {courseModules.map((m, i) => (
+                              <option key={m.id} value={m.id}>
+                                {i === 0
+                                  ? `Module 1: ${m.title} (start from the beginning)`
+                                  : `Module ${i + 1}: ${m.title}`}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-[#9CA3AF] mt-1.5">
+                            For students already partway through this course
+                            (e.g. learned it before joining, or migrating
+                            from elsewhere). All lessons in earlier modules
+                            will be marked complete for them.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               )}
 
@@ -1436,6 +1551,29 @@ export default function AdminEnrollmentsPage() {
                         {durationMinutes} minutes
                       </span>
                     </div>
+                    {courseModules.length > 0 &&
+                      selectedStartModuleId &&
+                      selectedStartModuleId !== courseModules[0].id && (
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-[#1F4FD8]" />
+                          <span className="text-sm text-[#4D4D4D]">
+                            Starting module:
+                          </span>
+                          <span className="text-sm font-medium text-[#1C1C28]">
+                            Module{" "}
+                            {courseModules.findIndex(
+                              (m) => m.id === selectedStartModuleId
+                            ) + 1}
+                            :{" "}
+                            {
+                              courseModules.find(
+                                (m) => m.id === selectedStartModuleId
+                              )?.title
+                            }{" "}
+                            (earlier modules will be marked complete)
+                          </span>
+                        </div>
+                      )}
                   </div>
 
                   {overlaps.length > 0 && (

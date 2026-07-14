@@ -46,8 +46,14 @@ interface CourseLesson {
   content: string | null;
   video_url: string | null;
   pdf_url: string | null;
+  material_id: string | null;
   duration_minutes: number | null;
   display_order: number;
+}
+
+interface LessonDoc {
+  url: string;
+  type: string;
 }
 
 interface CourseInfo {
@@ -157,6 +163,9 @@ export default function TeacherCourseDetailPage() {
   // Lessons
   const [courseModules, setCourseModules] = useState<CourseModule[]>([]);
   const [courseLessons, setCourseLessons] = useState<Record<string, CourseLesson[]>>({});
+  const [lessonMaterialsMap, setLessonMaterialsMap] = useState<
+    Record<string, { file_url: string; file_type: string | null }>
+  >({});
   const [lessonsLoading, setLessonsLoading] = useState(false);
   const [viewingLessonPdf, setViewingLessonPdf] = useState<CourseLesson | null>(null);
 
@@ -372,12 +381,29 @@ export default function TeacherCourseDetailPage() {
         .in("module_id", mods.map((m) => m.id))
         .order("display_order", { ascending: true });
 
+      const allLessons = (lessonsData as CourseLesson[]) || [];
       const grouped: Record<string, CourseLesson[]> = {};
-      for (const l of (lessonsData as CourseLesson[]) || []) {
+      for (const l of allLessons) {
         if (!grouped[l.module_id]) grouped[l.module_id] = [];
         grouped[l.module_id].push(l);
       }
       setCourseLessons(grouped);
+
+      // Resolve lesson documents attached via material_id (existing course material)
+      const materialIds = [...new Set(allLessons.map((l) => l.material_id).filter(Boolean))] as string[];
+      if (materialIds.length > 0) {
+        const { data: materialsData } = await supabase
+          .from("course_materials")
+          .select("id, file_url, file_type")
+          .in("id", materialIds);
+        const map: Record<string, { file_url: string; file_type: string | null }> = {};
+        for (const m of (materialsData as any[]) || []) {
+          map[m.id] = { file_url: m.file_url, file_type: m.file_type };
+        }
+        setLessonMaterialsMap(map);
+      } else {
+        setLessonMaterialsMap({});
+      }
     }
     setLessonsLoading(false);
   }, [courseId]);
@@ -509,6 +535,17 @@ export default function TeacherCourseDetailPage() {
     setSavingRemark(false);
   };
 
+  // Resolve a lesson's viewable document, whether it was uploaded directly
+  // (pdf_url) or attached from an existing course material (material_id)
+  const getLessonDoc = (lesson: CourseLesson): LessonDoc | null => {
+    if (lesson.pdf_url) return { url: lesson.pdf_url, type: "pdf" };
+    if (lesson.material_id) {
+      const mat = lessonMaterialsMap[lesson.material_id];
+      if (mat) return { url: mat.file_url, type: (mat.file_type || "pdf").toLowerCase() };
+    }
+    return null;
+  };
+
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
@@ -584,8 +621,8 @@ export default function TeacherCourseDetailPage() {
       <MaterialViewer
         open={!!viewingLessonPdf}
         title={viewingLessonPdf?.title || ""}
-        fileUrl={viewingLessonPdf?.pdf_url || ""}
-        fileType="pdf"
+        fileUrl={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.url) || ""}
+        fileType={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.type) || "pdf"}
         onClose={() => setViewingLessonPdf(null)}
       />
 
@@ -704,12 +741,12 @@ export default function TeacherCourseDetailPage() {
                                   <Clock className="w-3 h-3" /> {lesson.duration_minutes}m
                                 </span>
                               )}
-                              {lesson.pdf_url && (
+                              {getLessonDoc(lesson) && (
                                 <button
                                   onClick={() => setViewingLessonPdf(lesson)}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-xs font-semibold rounded-lg hover:bg-[#1F4FD8]/20 transition-colors flex-shrink-0"
                                 >
-                                  <Eye className="w-3.5 h-3.5" /> View PDF
+                                  <Eye className="w-3.5 h-3.5" /> View Document
                                 </button>
                               )}
                             </div>

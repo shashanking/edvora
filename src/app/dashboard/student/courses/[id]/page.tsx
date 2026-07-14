@@ -51,8 +51,14 @@ interface Lesson {
   content: string | null;
   video_url: string | null;
   pdf_url: string | null;
+  material_id: string | null;
   duration_minutes: number | null;
   display_order: number;
+}
+
+interface LessonDoc {
+  url: string;
+  type: string;
 }
 
 interface ProgressRecord {
@@ -118,6 +124,9 @@ export default function StudentCourseDetailPage() {
   const [enrolledAt, setEnrolledAt] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [lessons, setLessons] = useState<Record<string, Lesson[]>>({});
+  const [lessonMaterialsMap, setLessonMaterialsMap] = useState<
+    Record<string, { file_url: string; file_type: string | null }>
+  >({});
   const [progress, setProgress] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -311,6 +320,23 @@ export default function StudentCourseDetailPage() {
         grouped[lesson.module_id].push(lesson);
       }
       setLessons(grouped);
+
+      // Resolve lesson documents that reference an existing course_materials
+      // row (material_id) rather than a direct pdf_url upload
+      const materialIds = [...new Set(allLessons.map((l) => l.material_id).filter(Boolean))] as string[];
+      if (materialIds.length > 0) {
+        const { data: materialsData } = await supabase
+          .from("course_materials")
+          .select("id, file_url, file_type")
+          .in("id", materialIds);
+        const map: Record<string, { file_url: string; file_type: string | null }> = {};
+        for (const m of (materialsData as any[]) || []) {
+          map[m.id] = { file_url: m.file_url, file_type: m.file_type };
+        }
+        setLessonMaterialsMap(map);
+      } else {
+        setLessonMaterialsMap({});
+      }
 
       if (allLessons.length > 0) {
         const lessonIds = allLessons.map((l) => l.id);
@@ -521,6 +547,17 @@ export default function StudentCourseDetailPage() {
     });
   };
 
+  // Resolve a lesson's viewable document, whether it was uploaded directly
+  // (pdf_url) or attached from an existing course material (material_id)
+  const getLessonDoc = (lesson: Lesson): LessonDoc | null => {
+    if (lesson.pdf_url) return { url: lesson.pdf_url, type: "pdf" };
+    if (lesson.material_id) {
+      const mat = lessonMaterialsMap[lesson.material_id];
+      if (mat) return { url: mat.file_url, type: (mat.file_type || "pdf").toLowerCase() };
+    }
+    return null;
+  };
+
   const getEmbedUrl = (url: string): string | null => {
     try {
       const ytMatch = url.match(
@@ -639,8 +676,8 @@ export default function StudentCourseDetailPage() {
       <MaterialViewer
         open={!!viewingLessonPdf}
         title={viewingLessonPdf?.title || ""}
-        fileUrl={viewingLessonPdf?.pdf_url || ""}
-        fileType="pdf"
+        fileUrl={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.url) || ""}
+        fileType={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.type) || "pdf"}
         onClose={() => setViewingLessonPdf(null)}
       />
 
@@ -822,6 +859,11 @@ export default function StudentCourseDetailPage() {
                                           <Video className="w-3 h-3" /> Video
                                         </span>
                                       )}
+                                      {getLessonDoc(lesson) && (
+                                        <span className="flex items-center gap-0.5 text-xs text-emerald-600">
+                                          <FileText className="w-3 h-3" /> Document
+                                        </span>
+                                      )}
                                     </div>
                                   </button>
                                 </div>
@@ -886,14 +928,14 @@ export default function StudentCourseDetailPage() {
                           {activeLesson.content}
                         </div>
                       )}
-                      {activeLesson.pdf_url && (
+                      {getLessonDoc(activeLesson) && (
                         <div className="pt-4 border-t border-gray-100">
                           <button
                             onClick={() => setViewingLessonPdf(activeLesson)}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4FD8]/10 text-[#1F4FD8] text-sm font-medium rounded-xl hover:bg-[#1F4FD8]/20 transition-colors"
                           >
                             <FileText className="w-4 h-4" />
-                            View PDF
+                            View Document
                           </button>
                         </div>
                       )}

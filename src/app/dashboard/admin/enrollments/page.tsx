@@ -635,6 +635,16 @@ export default function AdminEnrollmentsPage() {
           sessionsCreated = zoomData.total_created || 0;
           if (zoomData.lesson_shortfall) {
             scheduleWarning = `Only ${zoomData.total_requested} of ${zoomData.total_sessions_target} sessions were scheduled — this course has fewer lessons built than its Total Sessions target. Add more lessons in Manage Content.`;
+          } else if (sessionsCreated < zoomData.total_requested) {
+            // Lesson count matched the target, so a shortfall here means
+            // individual session creation (Zoom API or DB write) failed for
+            // some sessions — this must not be silent, or the admin has no
+            // way to know a student is missing classes.
+            const failedNumbers = (zoomData.sessions || [])
+              .filter((s: any) => s.error)
+              .map((s: any) => s.session_number)
+              .join(", ");
+            scheduleWarning = `Only ${sessionsCreated} of ${zoomData.total_requested} sessions were actually scheduled — session${failedNumbers.includes(",") ? "s" : ""} ${failedNumbers || "some"} failed to create (Zoom or database error). Check server logs and consider re-running or manually creating the missing session(s).`;
           }
         }
       } catch {

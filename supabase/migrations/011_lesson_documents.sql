@@ -35,11 +35,16 @@ CREATE INDEX IF NOT EXISTS lesson_documents_lesson_id_idx ON lesson_documents(le
 
 -- Backfill: carry over any lesson that already has a single document
 -- attached via the old columns, so nothing already live gets orphaned when
--- the UI switches over to the new table.
+-- the UI switches over to the new table. Guarded against re-running this
+-- migration (e.g. pasted into the SQL editor twice) inserting duplicates —
+-- only backfills lessons that don't already have a lesson_documents row.
 INSERT INTO lesson_documents (lesson_id, pdf_url, material_id, display_order)
-SELECT id, pdf_url, material_id, 0
-FROM course_lessons
-WHERE pdf_url IS NOT NULL OR material_id IS NOT NULL;
+SELECT cl.id, cl.pdf_url, cl.material_id, 0
+FROM course_lessons cl
+WHERE (cl.pdf_url IS NOT NULL OR cl.material_id IS NOT NULL)
+  AND NOT EXISTS (
+    SELECT 1 FROM lesson_documents ld WHERE ld.lesson_id = cl.id
+  );
 
 ALTER TABLE lesson_documents ENABLE ROW LEVEL SECURITY;
 

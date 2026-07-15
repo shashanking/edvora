@@ -66,6 +66,7 @@ interface AssignmentRow {
   title: string;
   description: string;
   due_date: string | null;
+  file_urls: string[] | null;
 }
 
 // Working copy of an assignment row inside the Add/Edit Lesson modal.
@@ -78,6 +79,7 @@ interface DraftAssignment {
   title: string;
   description: string;
   due_date: string;
+  file_urls: string[];
 }
 
 // A lesson can have any number of documents (see migration 011). Each row
@@ -276,7 +278,7 @@ export default function AdminCourseContentPage() {
         // graceful-degrade pattern as lesson_documents above.
         const { data: assignData } = await supabase
           .from("assignments")
-          .select("id, lesson_id, type, title, description, due_date")
+          .select("id, lesson_id, type, title, description, due_date, file_urls")
           .in("lesson_id", allLessons.map((l) => l.id));
 
         const assignGrouped: Record<string, AssignmentRow[]> = {};
@@ -457,6 +459,7 @@ export default function AdminCourseContentPage() {
         title: a.title,
         description: a.description,
         due_date: a.due_date ? a.due_date.slice(0, 10) : "",
+        file_urls: a.file_urls || [],
       }))
     );
     setRemovedAssignmentIds([]);
@@ -473,12 +476,27 @@ export default function AdminCourseContentPage() {
         title: "",
         description: "",
         due_date: "",
+        file_urls: [],
       },
     ]);
   };
 
   const updateDraftAssignment = (key: string, patch: Partial<DraftAssignment>) => {
     setDraftAssignments((prev) => prev.map((a) => (a.key === key ? { ...a, ...patch } : a)));
+  };
+
+  const addDraftAssignmentFile = (key: string, url: string) => {
+    setDraftAssignments((prev) =>
+      prev.map((a) => (a.key === key ? { ...a, file_urls: [...a.file_urls, url] } : a))
+    );
+  };
+
+  const removeDraftAssignmentFile = (key: string, index: number) => {
+    setDraftAssignments((prev) =>
+      prev.map((a) =>
+        a.key === key ? { ...a, file_urls: a.file_urls.filter((_, i) => i !== index) } : a
+      )
+    );
   };
 
   // Existing (already-saved) assignments are deleted on save via
@@ -617,6 +635,7 @@ export default function AdminCourseContentPage() {
             title: a.title.trim(),
             description: a.description.trim(),
             due_date: a.due_date || null,
+            file_urls: a.file_urls,
           }))
         );
         if (assignError) {
@@ -1136,6 +1155,40 @@ export default function AdminCourseContentPage() {
                           placeholder="Instructions for students"
                           rows={2}
                           className="w-full px-3 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                        />
+                        {a.file_urls.length > 0 && (
+                          <div className="space-y-1.5">
+                            {a.file_urls.map((url, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-gray-200"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-[#1F4FD8] flex-shrink-0" />
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-[#1F4FD8] hover:underline truncate flex-1"
+                                >
+                                  {decodeURIComponent(url.split("/").pop() || "File")}
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => removeDraftAssignmentFile(a.key, i)}
+                                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                  <X className="w-3 h-3 text-red-500" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <FileUpload
+                          bucket="assignments"
+                          folder={`course-${courseId}/lesson-${editingLesson?.id || "new"}`}
+                          onUpload={(url) => addDraftAssignmentFile(a.key, url)}
+                          label="Attach a document"
+                          maxSizeMB={50}
                         />
                       </div>
                     ))}

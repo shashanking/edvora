@@ -32,10 +32,12 @@ interface AssignmentDetail {
   file_urls: string[];
   allowed_file_types: string[];
   course_id: string;
-  session_id: string;
+  session_id: string | null;
+  lesson_id: string | null;
   course_title: string;
   session_number: number;
   session_title: string;
+  lesson_title: string | null;
 }
 
 interface SubmissionRow {
@@ -97,12 +99,26 @@ export default function AssignmentDetailPage() {
         .eq("id", a.course_id)
         .single();
 
-      // Fetch session info
-      const { data: sessionData } = await supabase
-        .from("live_sessions")
-        .select("session_number, title")
-        .eq("id", a.session_id)
-        .single();
+      // Fetch session info (session-linked assignments) or lesson info
+      // (lesson-linked homework/classwork — see migration 012, admin's
+      // Manage Content flow. session_id is null for these.)
+      let sessionData: { session_number: number; title: string } | null = null;
+      let lessonData: { title: string } | null = null;
+      if (a.session_id) {
+        const { data } = await supabase
+          .from("live_sessions")
+          .select("session_number, title")
+          .eq("id", a.session_id)
+          .single();
+        sessionData = data;
+      } else if (a.lesson_id) {
+        const { data } = await supabase
+          .from("course_lessons")
+          .select("title")
+          .eq("id", a.lesson_id)
+          .single();
+        lessonData = data;
+      }
 
       const detail: AssignmentDetail = {
         id: a.id,
@@ -114,9 +130,11 @@ export default function AssignmentDetailPage() {
         allowed_file_types: a.allowed_file_types || [],
         course_id: a.course_id,
         session_id: a.session_id,
+        lesson_id: a.lesson_id,
         course_title: (courseData as any)?.title || "Unknown",
-        session_number: (sessionData as any)?.session_number || 0,
-        session_title: (sessionData as any)?.title || "Unknown Session",
+        session_number: sessionData?.session_number || 0,
+        session_title: sessionData?.title || "Unknown Session",
+        lesson_title: lessonData?.title || null,
       };
       setAssignment(detail);
 
@@ -303,7 +321,9 @@ export default function AssignmentDetailPage() {
               </span>
               <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full">
                 <Hash className="w-3 h-3" />
-                Session {assignment.session_number}
+                {assignment.session_id
+                  ? `Session ${assignment.session_number}`
+                  : `Lesson: ${assignment.lesson_title || "Unknown"}`}
               </span>
               {typeBadge(assignment.type)}
             </div>

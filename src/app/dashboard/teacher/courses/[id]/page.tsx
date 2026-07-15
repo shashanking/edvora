@@ -1271,7 +1271,11 @@ export default function TeacherCourseDetailPage() {
                     </Link>
                   </div>
                   {assignments.map((a) => (
-                    <div key={a.id} className="border border-gray-100 rounded-xl p-4">
+                    <Link
+                      key={a.id}
+                      href={`/dashboard/teacher/assignments/${a.id}`}
+                      className="block border border-gray-100 rounded-xl p-4 hover:border-[#1F4FD8]/30 hover:bg-[#1F4FD8]/5 transition-colors"
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -1297,7 +1301,7 @@ export default function TeacherCourseDetailPage() {
                           )}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </>
               )}

@@ -91,6 +91,7 @@ interface Session {
 
 interface AssignmentData {
   id: string;
+  lesson_id?: string | null;
   title: string;
   description: string;
   type: string;
@@ -106,6 +107,20 @@ interface AssignmentData {
     submitted_at: string;
     graded_at: string | null;
   } | null;
+}
+
+// Raw row shape from `assignment_submissions` before it's folded into
+// AssignmentData.submission (needs assignment_id to key the lookup map,
+// which the nested submission shape above doesn't carry).
+interface LessonAssignmentSubmissionRow {
+  id: string;
+  assignment_id: string;
+  content: string | null;
+  file_urls: string[];
+  grade: string | null;
+  feedback: string | null;
+  submitted_at: string;
+  graded_at: string | null;
 }
 
 interface RemarkData {
@@ -141,6 +156,10 @@ export default function StudentCourseDetailPage() {
     Record<string, { file_url: string; file_type: string | null }>
   >({});
   const [lessonDocuments, setLessonDocuments] = useState<Record<string, LessonDocumentRow[]>>({});
+  // Homework/classwork attached directly to a lesson (migration 012),
+  // grouped by lesson_id so the lesson detail view can show it inline
+  // instead of only in the separate Assignments tab.
+  const [lessonAssignments, setLessonAssignments] = useState<Record<string, AssignmentData[]>>({});
   const [progress, setProgress] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -347,6 +366,43 @@ export default function StudentCourseDetailPage() {
         }
       }
       setLessonDocuments(docsGrouped);
+
+      // Fetch lesson-linked assignments (migration 012) plus this student's
+      // own submissions, grouped by lesson_id, so homework/classwork shows
+      // up right where the lesson content is instead of only in the
+      // separate Assignments tab. Tolerate the lesson_id column not
+      // existing yet (manual migration) — an error just leaves this empty.
+      if (lessonIdsForDocs.length > 0) {
+        const { data: lessonAssignData } = await supabase
+          .from("assignments")
+          .select("id, lesson_id, title, description, type, due_date, file_urls, created_at")
+          .in("lesson_id", lessonIdsForDocs);
+
+        const assignList = (lessonAssignData as AssignmentData[]) || [];
+        const laGrouped: Record<string, AssignmentData[]> = {};
+        if (assignList.length > 0) {
+          const assignmentIds = assignList.map((a) => a.id);
+          const { data: subData } = await supabase
+            .from("assignment_submissions")
+            .select("id, assignment_id, content, file_urls, grade, feedback, submitted_at, graded_at")
+            .eq("student_id", userData.user.id)
+            .in("assignment_id", assignmentIds);
+
+          const subMap = new Map<string, LessonAssignmentSubmissionRow>();
+          for (const s of (subData as LessonAssignmentSubmissionRow[]) || []) {
+            subMap.set(s.assignment_id, s);
+          }
+
+          for (const a of assignList) {
+            if (!a.lesson_id) continue;
+            if (!laGrouped[a.lesson_id]) laGrouped[a.lesson_id] = [];
+            laGrouped[a.lesson_id].push({ ...a, submission: subMap.get(a.id) || null });
+          }
+        }
+        setLessonAssignments(laGrouped);
+      } else {
+        setLessonAssignments({});
+      }
 
       // Resolve lesson documents that reference an existing course_materials
       // row (material_id) rather than a direct pdf_url upload — both the
@@ -968,6 +1024,49 @@ export default function StudentCourseDetailPage() {
                               <FileText className="w-4 h-4" />
                               {getLessonDocs(activeLesson).length > 1 ? `View ${doc.title}` : "View Document"}
                             </button>
+                          ))}
+                        </div>
+                      )}
+                      {(lessonAssignments[activeLesson.id] || []).length > 0 && (
+                        <div className="pt-4 border-t border-gray-100 space-y-2">
+                          <h3 className="text-sm font-semibold text-[#1C1C28]">Homework &amp; Classwork</h3>
+                          {(lessonAssignments[activeLesson.id] || []).map((a) => (
+                            <div key={a.id} className="border border-gray-100 rounded-xl p-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-medium text-[#1C1C28] text-sm">{a.title}</h4>
+                                    {typeBadge(a.type)}
+                                  </div>
+                                  {a.description && (
+                                    <p className="text-xs text-[#4D4D4D] line-clamp-2">{a.description}</p>
+                                  )}
+                                  {a.due_date && (
+                                    <p className="text-xs text-[#9CA3AF] mt-1">Due: {formatDate(a.due_date)}</p>
+                                  )}
+                                </div>
+                                <div className="flex-shrink-0 text-right">
+                                  {a.submission ? (
+                                    a.submission.graded_at ? (
+                                      <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                        {a.submission.grade || "Graded"}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">
+                                        Pending review
+                                      </span>
+                                    )
+                                  ) : (
+                                    <Link
+                                      href="/dashboard/student/assignments"
+                                      className="text-xs text-[#1F4FD8] hover:underline font-medium"
+                                    >
+                                      Submit
+                                    </Link>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}

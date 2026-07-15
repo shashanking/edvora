@@ -17,6 +17,7 @@ import {
   Eye,
   Upload,
   FolderOpen,
+  ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -51,6 +52,32 @@ interface CourseMaterialOption {
   title: string;
   file_url: string;
   file_type: string | null;
+}
+
+// Homework/classwork/assessment attached to a lesson (see migration 012 —
+// assignments already supported a session_id; this adds lesson_id so admin
+// can attach one while adding a lesson, without needing a session first).
+type AssignmentType = "homework" | "classwork" | "assessment";
+
+interface AssignmentRow {
+  id: string;
+  lesson_id: string | null;
+  type: AssignmentType;
+  title: string;
+  description: string;
+  due_date: string | null;
+}
+
+// Working copy of an assignment row inside the Add/Edit Lesson modal.
+// `dbId` set = already exists in `assignments` (edit mode); null = new,
+// gets inserted on save.
+interface DraftAssignment {
+  key: string;
+  dbId: string | null;
+  type: AssignmentType;
+  title: string;
+  description: string;
+  due_date: string;
 }
 
 // A lesson can have any number of documents (see migration 011). Each row
@@ -108,6 +135,9 @@ export default function AdminCourseContentPage() {
   const [lessons, setLessons] = useState<Record<string, CourseLesson[]>>({});
   const [materials, setMaterials] = useState<CourseMaterialOption[]>([]);
   const [lessonDocuments, setLessonDocuments] = useState<Record<string, LessonDocumentRow[]>>({});
+  const [lessonAssignments, setLessonAssignments] = useState<Record<string, AssignmentRow[]>>({});
+  const [courseTeacherId, setCourseTeacherId] = useState<string | null>(null);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
@@ -133,6 +163,10 @@ export default function AdminCourseContentPage() {
   const [draftDocs, setDraftDocs] = useState<DraftDocument[]>([]);
   const [lessonDocMode, setLessonDocMode] = useState<"upload" | "material">("upload");
   const [pendingMaterialId, setPendingMaterialId] = useState("");
+  // Homework/classwork attached to the lesson being added/edited — working
+  // copy, only written to `assignments` when the lesson is saved.
+  const [draftAssignments, setDraftAssignments] = useState<DraftAssignment[]>([]);
+  const [removedAssignmentIds, setRemovedAssignmentIds] = useState<string[]>([]);
   const [savingLesson, setSavingLesson] = useState(false);
 
   // Delete confirmation
@@ -184,6 +218,23 @@ export default function AdminCourseContentPage() {
       .order("created_at", { ascending: false });
     setMaterials((materialsData as CourseMaterialOption[]) || []);
 
+    // Assignments require a non-null teacher_id (FK to profiles). Admin
+    // isn't a teacher, so lesson-attached assignments created from this
+    // page are filed under the course's assigned teacher when one exists,
+    // falling back to the logged-in admin's own id otherwise.
+    const { data: courseTeacherData } = await supabase
+      .from("course_teachers")
+      .select("teacher_id")
+      .eq("course_id", courseId)
+      .limit(1)
+      .maybeSingle();
+    setCourseTeacherId((courseTeacherData as { teacher_id: string } | null)?.teacher_id ?? null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setAdminUserId(user?.id ?? null);
+
     // Fetch all lessons for these modules
     if (mods.length > 0) {
       const moduleIds = mods.map((m) => m.id);
@@ -218,12 +269,31 @@ export default function AdminCourseContentPage() {
           docsGrouped[doc.lesson_id].push(doc);
         }
         setLessonDocuments(docsGrouped);
+
+        // Fetch lesson-linked assignments (migration 012). Tolerate the
+        // lesson_id column not existing yet in prod (manual migration) —
+        // an error here just leaves lessonAssignments empty, same
+        // graceful-degrade pattern as lesson_documents above.
+        const { data: assignData } = await supabase
+          .from("assignments")
+          .select("id, lesson_id, type, title, description, due_date")
+          .in("lesson_id", allLessons.map((l) => l.id));
+
+        const assignGrouped: Record<string, AssignmentRow[]> = {};
+        for (const a of (assignData as AssignmentRow[]) || []) {
+          if (!a.lesson_id) continue;
+          if (!assignGrouped[a.lesson_id]) assignGrouped[a.lesson_id] = [];
+          assignGrouped[a.lesson_id].push(a);
+        }
+        setLessonAssignments(assignGrouped);
       } else {
         setLessonDocuments({});
+        setLessonAssignments({});
       }
     } else {
       setLessons({});
       setLessonDocuments({});
+      setLessonAssignments({});
     }
 
     setLoading(false);
@@ -355,6 +425,8 @@ export default function AdminCourseContentPage() {
     setDraftDocs([]);
     setLessonDocMode("upload");
     setPendingMaterialId("");
+    setDraftAssignments([]);
+    setRemovedAssignmentIds([]);
     setShowLessonModal(true);
   };
 
@@ -377,7 +449,49 @@ export default function AdminCourseContentPage() {
     );
     setLessonDocMode("upload");
     setPendingMaterialId("");
+    setDraftAssignments(
+      (lessonAssignments[lesson.id] || []).map((a) => ({
+        key: a.id,
+        dbId: a.id,
+        type: a.type,
+        title: a.title,
+        description: a.description,
+        due_date: a.due_date ? a.due_date.slice(0, 10) : "",
+      }))
+    );
+    setRemovedAssignmentIds([]);
     setShowLessonModal(true);
+  };
+
+  const addDraftAssignment = () => {
+    setDraftAssignments((prev) => [
+      ...prev,
+      {
+        key: `new-${Date.now()}-${prev.length}`,
+        dbId: null,
+        type: "homework",
+        title: "",
+        description: "",
+        due_date: "",
+      },
+    ]);
+  };
+
+  const updateDraftAssignment = (key: string, patch: Partial<DraftAssignment>) => {
+    setDraftAssignments((prev) => prev.map((a) => (a.key === key ? { ...a, ...patch } : a)));
+  };
+
+  // Existing (already-saved) assignments are deleted on save via
+  // removedAssignmentIds rather than a blanket delete-and-reinsert like
+  // lesson_documents uses — assignment_submissions cascades off
+  // assignments.id, so re-inserting on every save would silently wipe a
+  // student's submission/grade history for anything left untouched.
+  const removeDraftAssignment = (key: string) => {
+    setDraftAssignments((prev) => {
+      const target = prev.find((a) => a.key === key);
+      if (target?.dbId) setRemovedAssignmentIds((ids) => [...ids, target.dbId as string]);
+      return prev.filter((a) => a.key !== key);
+    });
   };
 
   // Add a freshly-uploaded PDF to the working document list (doesn't touch
@@ -485,6 +599,32 @@ export default function AdminCourseContentPage() {
               ")"
           );
         }
+      }
+    }
+
+    // Sync assignments: only touch what actually changed (new drafts +
+    // explicit removals), never a blanket delete-and-reinsert — see
+    // removeDraftAssignment for why (submission cascade).
+    if (lessonId) {
+      const newAssignments = draftAssignments.filter((a) => !a.dbId && a.title.trim());
+      if (newAssignments.length > 0) {
+        const { error: assignError } = await supabase.from("assignments").insert(
+          newAssignments.map((a) => ({
+            course_id: courseId,
+            lesson_id: lessonId,
+            teacher_id: courseTeacherId || adminUserId,
+            type: a.type,
+            title: a.title.trim(),
+            description: a.description.trim(),
+            due_date: a.due_date || null,
+          }))
+        );
+        if (assignError) {
+          toast.error("Lesson saved, but homework/classwork couldn't be stored (" + assignError.message + ")");
+        }
+      }
+      if (removedAssignmentIds.length > 0) {
+        await supabase.from("assignments").delete().in("id", removedAssignmentIds);
       }
     }
 
@@ -635,6 +775,7 @@ export default function AdminCourseContentPage() {
                       <div className="divide-y divide-gray-50">
                         {modLessons.map((lesson, lesIdx) => {
                           const docs = getLessonDocs(lesson);
+                          const lessonAssignmentCount = (lessonAssignments[lesson.id] || []).length;
                           return (
                           <div
                             key={lesson.id}
@@ -665,6 +806,12 @@ export default function AdminCourseContentPage() {
                               >
                                 <Eye className="w-3 h-3" /> {docs.length > 1 ? `Documents (${docs.length})` : "Document"}
                               </button>
+                            )}
+                            {lessonAssignmentCount > 0 && (
+                              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                <ClipboardList className="w-3 h-3" />
+                                {lessonAssignmentCount > 1 ? `Assignments (${lessonAssignmentCount})` : "Assignment"}
+                              </span>
                             )}
                             {lesson.duration_minutes && (
                               <span className="flex items-center gap-1 text-xs text-[#9CA3AF]">
@@ -932,6 +1079,76 @@ export default function AdminCourseContentPage() {
                     </button>
                   </div>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+                  Homework / Classwork
+                </label>
+                <p className="text-xs text-[#9CA3AF] mb-2">
+                  Attach gradable assignments to this lesson — students see these on their
+                  Assignments tab and submit there, same flow teachers already use.
+                </p>
+
+                {draftAssignments.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {draftAssignments.map((a) => (
+                      <div
+                        key={a.key}
+                        className="p-3 bg-[#F8F9FB] rounded-lg border border-gray-100 space-y-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={a.type}
+                            onChange={(e) =>
+                              updateDraftAssignment(a.key, { type: e.target.value as AssignmentType })
+                            }
+                            className="px-2 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                          >
+                            <option value="homework">Homework</option>
+                            <option value="classwork">Classwork</option>
+                            <option value="assessment">Assessment</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={a.title}
+                            onChange={(e) => updateDraftAssignment(a.key, { title: e.target.value })}
+                            placeholder="Title"
+                            className="flex-1 px-3 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                          />
+                          <input
+                            type="date"
+                            value={a.due_date}
+                            onChange={(e) => updateDraftAssignment(a.key, { due_date: e.target.value })}
+                            className="px-2 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeDraftAssignment(a.key)}
+                            className="p-1.5 text-[#9CA3AF] hover:text-red-500 rounded flex-shrink-0"
+                            title="Remove"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <textarea
+                          value={a.description}
+                          onChange={(e) => updateDraftAssignment(a.key, { description: e.target.value })}
+                          placeholder="Instructions for students"
+                          rows={2}
+                          className="w-full px-3 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={addDraftAssignment}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1F4FD8] bg-[#1F4FD8]/10 rounded-lg hover:bg-[#1F4FD8]/20 transition-colors"
+                >
+                  <ClipboardList className="w-3.5 h-3.5" /> Add homework / classwork
+                </button>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">

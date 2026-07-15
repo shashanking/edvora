@@ -37,13 +37,19 @@ interface LiveSession {
 
 interface Assignment {
   id: string;
-  session_id: string;
+  session_id: string | null;
+  lesson_id: string | null;
   title: string;
   description: string;
   type: string | null; // homework | classwork | assessment
   due_date: string | null;
   file_urls: string[] | null;
   allowed_file_types: string[] | null;
+}
+
+interface LessonInfo {
+  id: string;
+  title: string;
 }
 
 interface Submission {
@@ -104,6 +110,7 @@ export default function StudentAssignmentsPage() {
   const [courses, setCourses] = useState<EnrolledCourse[]>([]);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string>("");
   const [sessions, setSessions] = useState<LiveSession[]>([]);
+  const [lessons, setLessons] = useState<LessonInfo[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, Submission>>(new Map());
 
@@ -147,9 +154,9 @@ export default function StudentAssignmentsPage() {
     })();
   }, []);
 
-  /* ---- 2. fetch sessions + assignments + submissions when course changes ---- */
+  /* ---- 2. fetch sessions + lessons + assignments + submissions when course changes ---- */
   const fetchCourseData = useCallback(
-    async (enrollmentId: string) => {
+    async (enrollmentId: string, courseId: string) => {
       if (!userId || !enrollmentId) return;
       setLoadingData(true);
 
@@ -163,20 +170,30 @@ export default function StudentAssignmentsPage() {
       const sessionRows: LiveSession[] = (sessionData as any[]) || [];
       setSessions(sessionRows);
 
-      const sessionIds = sessionRows.map((s) => s.id);
+      // Get all lessons for this course (for lesson-linked homework/classwork)
+      const { data: moduleData } = await supabase
+        .from("course_modules")
+        .select("id")
+        .eq("course_id", courseId);
+      const moduleIds = ((moduleData as { id: string }[]) || []).map((m) => m.id);
 
-      if (sessionIds.length === 0) {
-        setAssignments([]);
-        setSubmissions(new Map());
-        setLoadingData(false);
-        return;
+      let lessonRows: LessonInfo[] = [];
+      if (moduleIds.length > 0) {
+        const { data: lessonData } = await supabase
+          .from("course_lessons")
+          .select("id, title")
+          .in("module_id", moduleIds);
+        lessonRows = (lessonData as LessonInfo[]) || [];
       }
+      setLessons(lessonRows);
 
-      // Fetch assignments linked to these sessions
+      // Fetch every assignment for this course — both session-linked
+      // (live class assignments) and lesson-linked (admin homework/classwork
+      // attached via Manage Content, see migration 012).
       const { data: assignmentData } = await supabase
         .from("assignments")
-        .select("id, session_id, title, description, type, due_date, file_urls, allowed_file_types")
-        .in("session_id", sessionIds);
+        .select("id, session_id, lesson_id, title, description, type, due_date, file_urls, allowed_file_types")
+        .eq("course_id", courseId);
 
       const assignmentRows: Assignment[] = (assignmentData as any[]) || [];
       setAssignments(assignmentRows);
@@ -203,10 +220,11 @@ export default function StudentAssignmentsPage() {
   );
 
   useEffect(() => {
-    if (selectedEnrollmentId) {
-      fetchCourseData(selectedEnrollmentId);
+    const course = courses.find((c) => c.enrollment_id === selectedEnrollmentId);
+    if (selectedEnrollmentId && course) {
+      fetchCourseData(selectedEnrollmentId, course.course_id);
     }
-  }, [selectedEnrollmentId, fetchCourseData]);
+  }, [selectedEnrollmentId, courses, fetchCourseData]);
 
   /* ---- 3. submit assignment ---- */
   const handleSubmit = async (assignment: Assignment) => {
@@ -268,6 +286,11 @@ export default function StudentAssignmentsPage() {
   const getAssignmentForSession = (sessionId: string) =>
     assignments.find((a) => a.session_id === sessionId) || null;
 
+  const getAssignmentsForLesson = (lessonId: string) =>
+    assignments.filter((a) => a.lesson_id === lessonId);
+
+  const lessonsWithHomework = lessons.filter((l) => getAssignmentsForLesson(l.id).length > 0);
+
   const isDueSoon = (date: string | null) => {
     if (!date) return false;
     const diff = new Date(date).getTime() - Date.now();
@@ -279,6 +302,234 @@ export default function StudentAssignmentsPage() {
     return new Date(date).getTime() < Date.now();
   };
 
+  /* ---- shared assignment info + submission form/result, reused for both
+     session-linked and lesson-linked assignments ---- */
+  const renderAssignmentBody = (assignment: Assignment) => {
+    const submission = submissions.get(assignment.id) || null;
+    return (
+      <div className="space-y-4">
+        {/* Assignment info */}
+        <div>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h4 className="font-poppins font-semibold text-[#1C1C28]">
+              {assignment.title}
+            </h4>
+            {assignment.type && (
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${typeBadgeColor(
+                  assignment.type
+                )}`}
+              >
+                {assignment.type}
+              </span>
+            )}
+            {assignment.due_date && isDueSoon(assignment.due_date) && !submission && (
+              <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> Due soon
+              </span>
+            )}
+          </div>
+          {assignment.description && (
+            <p className="text-sm text-[#4D4D4D] leading-relaxed">
+              {assignment.description}
+            </p>
+          )}
+          {assignment.due_date && (
+            <p
+              className={`text-xs mt-2 flex items-center gap-1 ${
+                isPastDue(assignment.due_date) && !submission
+                  ? "text-red-500"
+                  : "text-[#9CA3AF]"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Due: {formatDateTime(assignment.due_date)}
+            </p>
+          )}
+        </div>
+
+        {/* Teacher attached files */}
+        {assignment.file_urls && assignment.file_urls.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
+              Attached Files
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {assignment.file_urls.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs text-[#1C1C28] font-medium transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-[#1F4FD8]" />
+                  {fileNameFromUrl(url)}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Submission area */}
+        {!submission ? (
+          /* Submission form */
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
+            <p className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
+              Your Submission
+            </p>
+
+            {/* Text content (optional) */}
+            <textarea
+              placeholder="Add notes or answer text (optional)"
+              value={draftContent[assignment.id] || ""}
+              onChange={(e) =>
+                setDraftContent((prev) => ({
+                  ...prev,
+                  [assignment.id]: e.target.value,
+                }))
+              }
+              rows={3}
+              className="w-full px-3 py-2.5 text-sm text-[#1C1C28] bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]/30 focus:border-[#1F4FD8] resize-none transition-all placeholder:text-[#9CA3AF]"
+            />
+
+            {/* File upload */}
+            <FileUpload
+              bucket="submissions"
+              folder={`student-${userId}/assignment-${assignment.id}`}
+              accept={
+                assignment.allowed_file_types && assignment.allowed_file_types.length > 0
+                  ? assignment.allowed_file_types.join(",")
+                  : undefined
+              }
+              label="Upload your file"
+              onUpload={(url) => {
+                setDraftFiles((prev) => ({
+                  ...prev,
+                  [assignment.id]: [
+                    ...(prev[assignment.id] || []),
+                    url,
+                  ],
+                }));
+              }}
+            />
+
+            {/* Uploaded file list */}
+            {(draftFiles[assignment.id] || []).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {draftFiles[assignment.id].map((url, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs text-[#4D4D4D]"
+                  >
+                    <FileText className="w-3 h-3" />
+                    {fileNameFromUrl(url)}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Submit button */}
+            <button
+              onClick={() => handleSubmit(assignment)}
+              disabled={submitting[assignment.id]}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting[assignment.id] ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Submit Assignment
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          /* Already submitted */
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4.5 h-4.5 text-green-500" />
+                <span className="text-sm font-semibold text-green-600">
+                  Submitted
+                </span>
+                <span className="text-xs text-[#9CA3AF]">
+                  on {formatDateTime(submission.submitted_at)}
+                </span>
+              </div>
+              {submission.graded_at ? (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                  <Award className="w-3.5 h-3.5" />
+                  Graded
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
+                  <Clock className="w-3.5 h-3.5" />
+                  Pending review
+                </span>
+              )}
+            </div>
+
+            {/* Show submitted content */}
+            {submission.content && (
+              <div className="text-sm text-[#4D4D4D] bg-gray-50 rounded-lg p-3">
+                {submission.content}
+              </div>
+            )}
+
+            {/* Show submitted files */}
+            {submission.file_urls && submission.file_urls.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {submission.file_urls.map((url, i) => (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs text-[#1C1C28] font-medium transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#1F4FD8]" />
+                    {fileNameFromUrl(url)}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* Grade & feedback */}
+            {submission.graded_at && (
+              <div className="bg-green-50/60 border border-green-100 rounded-xl p-4 space-y-2">
+                {submission.grade && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
+                      Grade:
+                    </span>
+                    <span className="text-sm font-bold text-green-700">
+                      {submission.grade}
+                    </span>
+                  </div>
+                )}
+                {submission.feedback && (
+                  <div>
+                    <span className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
+                      Teacher Feedback
+                    </span>
+                    <p className="text-sm text-[#1C1C28] mt-1 leading-relaxed italic">
+                      &quot;{submission.feedback}&quot;
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   /* ---------- render ---------- */
 
   return (
@@ -286,7 +537,7 @@ export default function StudentAssignmentsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Assignments</h1>
-        <p className="text-[#4D4D4D] text-sm mt-1">View and submit your session assignments</p>
+        <p className="text-[#4D4D4D] text-sm mt-1">View and submit your homework, classwork, and session assignments</p>
       </div>
 
       {/* Loading courses */}
@@ -328,24 +579,25 @@ export default function StudentAssignmentsPage() {
             <div className="flex items-center justify-center py-20">
               <div className="w-8 h-8 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
             </div>
-          ) : sessions.length === 0 ? (
-            /* No sessions empty state */
+          ) : sessions.length === 0 && lessonsWithHomework.length === 0 ? (
+            /* No assignments empty state */
             <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <ClipboardList className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-[#4D4D4D] font-medium">No sessions scheduled</p>
+              <p className="text-[#4D4D4D] font-medium">No assignments yet</p>
               <p className="text-sm text-[#9CA3AF] mt-1">
-                Sessions for this course will appear here
+                Sessions and lesson homework for this course will appear here
               </p>
             </div>
           ) : (
+            <div className="space-y-8">
+            {sessions.length > 0 && (
             /* Session list */
             <div className="space-y-4">
               {sessions.map((session) => {
                 const isCompleted = session.status === "completed";
                 const assignment = getAssignmentForSession(session.id);
-                const submission = assignment ? submissions.get(assignment.id) : null;
 
                 return (
                   <div
@@ -419,232 +671,39 @@ export default function StudentAssignmentsPage() {
                           <span>No assignment for this session</span>
                         </div>
                       ) : (
-                        /* Assignment content */
-                        <div className="space-y-4">
-                          {/* Assignment info */}
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <h4 className="font-poppins font-semibold text-[#1C1C28]">
-                                {assignment.title}
-                              </h4>
-                              {assignment.type && (
-                                <span
-                                  className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${typeBadgeColor(
-                                    assignment.type
-                                  )}`}
-                                >
-                                  {assignment.type}
-                                </span>
-                              )}
-                              {assignment.due_date && isDueSoon(assignment.due_date) && !submission && (
-                                <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  <AlertCircle className="w-3 h-3" /> Due soon
-                                </span>
-                              )}
-                            </div>
-                            {assignment.description && (
-                              <p className="text-sm text-[#4D4D4D] leading-relaxed">
-                                {assignment.description}
-                              </p>
-                            )}
-                            {assignment.due_date && (
-                              <p
-                                className={`text-xs mt-2 flex items-center gap-1 ${
-                                  isPastDue(assignment.due_date) && !submission
-                                    ? "text-red-500"
-                                    : "text-[#9CA3AF]"
-                                }`}
-                              >
-                                <Clock className="w-3.5 h-3.5" />
-                                Due: {formatDateTime(assignment.due_date)}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Teacher attached files */}
-                          {assignment.file_urls && assignment.file_urls.length > 0 && (
-                            <div className="space-y-1.5">
-                              <p className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
-                                Attached Files
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {assignment.file_urls.map((url, i) => (
-                                  <a
-                                    key={i}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs text-[#1C1C28] font-medium transition-colors"
-                                  >
-                                    <Download className="w-3.5 h-3.5 text-[#1F4FD8]" />
-                                    {fileNameFromUrl(url)}
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Submission area */}
-                          {!submission ? (
-                            /* Submission form */
-                            <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
-                              <p className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
-                                Your Submission
-                              </p>
-
-                              {/* Text content (optional) */}
-                              <textarea
-                                placeholder="Add notes or answer text (optional)"
-                                value={draftContent[assignment.id] || ""}
-                                onChange={(e) =>
-                                  setDraftContent((prev) => ({
-                                    ...prev,
-                                    [assignment.id]: e.target.value,
-                                  }))
-                                }
-                                rows={3}
-                                className="w-full px-3 py-2.5 text-sm text-[#1C1C28] bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]/30 focus:border-[#1F4FD8] resize-none transition-all placeholder:text-[#9CA3AF]"
-                              />
-
-                              {/* File upload */}
-                              <FileUpload
-                                bucket="submissions"
-                                folder={`student-${userId}/assignment-${assignment.id}`}
-                                accept={
-                                  assignment.allowed_file_types && assignment.allowed_file_types.length > 0
-                                    ? assignment.allowed_file_types.join(",")
-                                    : undefined
-                                }
-                                label="Upload your file"
-                                onUpload={(url) => {
-                                  setDraftFiles((prev) => ({
-                                    ...prev,
-                                    [assignment.id]: [
-                                      ...(prev[assignment.id] || []),
-                                      url,
-                                    ],
-                                  }));
-                                }}
-                              />
-
-                              {/* Uploaded file list */}
-                              {(draftFiles[assignment.id] || []).length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {draftFiles[assignment.id].map((url, i) => (
-                                    <span
-                                      key={i}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs text-[#4D4D4D]"
-                                    >
-                                      <FileText className="w-3 h-3" />
-                                      {fileNameFromUrl(url)}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Submit button */}
-                              <button
-                                onClick={() => handleSubmit(assignment)}
-                                disabled={submitting[assignment.id]}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {submitting[assignment.id] ? (
-                                  <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Submitting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Send className="w-4 h-4" />
-                                    Submit Assignment
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          ) : (
-                            /* Already submitted */
-                            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-                              <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div className="flex items-center gap-2">
-                                  <CheckCircle className="w-4.5 h-4.5 text-green-500" />
-                                  <span className="text-sm font-semibold text-green-600">
-                                    Submitted
-                                  </span>
-                                  <span className="text-xs text-[#9CA3AF]">
-                                    on {formatDateTime(submission.submitted_at)}
-                                  </span>
-                                </div>
-                                {submission.graded_at ? (
-                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
-                                    <Award className="w-3.5 h-3.5" />
-                                    Graded
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
-                                    <Clock className="w-3.5 h-3.5" />
-                                    Pending review
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Show submitted content */}
-                              {submission.content && (
-                                <div className="text-sm text-[#4D4D4D] bg-gray-50 rounded-lg p-3">
-                                  {submission.content}
-                                </div>
-                              )}
-
-                              {/* Show submitted files */}
-                              {submission.file_urls && submission.file_urls.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {submission.file_urls.map((url, i) => (
-                                    <a
-                                      key={i}
-                                      href={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs text-[#1C1C28] font-medium transition-colors"
-                                    >
-                                      <FileText className="w-3.5 h-3.5 text-[#1F4FD8]" />
-                                      {fileNameFromUrl(url)}
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Grade & feedback */}
-                              {submission.graded_at && (
-                                <div className="bg-green-50/60 border border-green-100 rounded-xl p-4 space-y-2">
-                                  {submission.grade && (
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
-                                        Grade:
-                                      </span>
-                                      <span className="text-sm font-bold text-green-700">
-                                        {submission.grade}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {submission.feedback && (
-                                    <div>
-                                      <span className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
-                                        Teacher Feedback
-                                      </span>
-                                      <p className="text-sm text-[#1C1C28] mt-1 leading-relaxed italic">
-                                        &quot;{submission.feedback}&quot;
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        renderAssignmentBody(assignment)
                       )}
                     </div>
                   </div>
                 );
               })}
+            </div>
+            )}
+
+            {lessonsWithHomework.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-sm font-semibold text-[#1C1C28]">
+                  Lesson Homework &amp; Classwork
+                </h2>
+                {lessonsWithHomework.map((lesson) => (
+                  <div key={lesson.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="px-5 py-4 flex items-center gap-3 border-b border-gray-50">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#1F4FD8]/10">
+                        <BookOpen className="w-4.5 h-4.5 text-[#1F4FD8]" />
+                      </div>
+                      <h3 className="font-poppins font-semibold text-[#1C1C28] text-sm truncate">
+                        {lesson.title}
+                      </h3>
+                    </div>
+                    <div className="px-5 py-4 space-y-6">
+                      {getAssignmentsForLesson(lesson.id).map((assignment) => (
+                        <div key={assignment.id}>{renderAssignmentBody(assignment)}</div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             </div>
           )}
         </>

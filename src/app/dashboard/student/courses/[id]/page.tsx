@@ -59,6 +59,19 @@ interface Lesson {
 interface LessonDoc {
   url: string;
   type: string;
+  title: string;
+}
+
+// A lesson can have any number of documents (migration 011). Each row is
+// either a direct upload (pdf_url) or a link to an existing
+// course_materials row (material_id).
+interface LessonDocumentRow {
+  id: string;
+  lesson_id: string;
+  title: string | null;
+  pdf_url: string | null;
+  material_id: string | null;
+  display_order: number;
 }
 
 interface ProgressRecord {
@@ -127,6 +140,7 @@ export default function StudentCourseDetailPage() {
   const [lessonMaterialsMap, setLessonMaterialsMap] = useState<
     Record<string, { file_url: string; file_type: string | null }>
   >({});
+  const [lessonDocuments, setLessonDocuments] = useState<Record<string, LessonDocumentRow[]>>({});
   const [progress, setProgress] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -149,7 +163,7 @@ export default function StudentCourseDetailPage() {
   const [materials, setMaterials] = useState<MaterialData[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
-  const [viewingLessonPdf, setViewingLessonPdf] = useState<Lesson | null>(null);
+  const [viewingLessonDoc, setViewingLessonDoc] = useState<LessonDoc | null>(null);
 
   // Lesson gating: count of live_sessions that are completed or live for this enrollment
   const [completedSessionCount, setCompletedSessionCount] = useState<number>(0);
@@ -315,9 +329,35 @@ export default function StudentCourseDetailPage() {
       }
       setLessons(grouped);
 
+      // Fetch multi-document attachments (migration 011). Tolerate the
+      // table not existing yet (manual migration — see
+      // supabase/migrations/011_lesson_documents.sql) — falls back to the
+      // legacy single pdf_url/material_id columns on the lesson itself.
+      const lessonIdsForDocs = allLessons.map((l) => l.id);
+      const docsGrouped: Record<string, LessonDocumentRow[]> = {};
+      if (lessonIdsForDocs.length > 0) {
+        const { data: docsData } = await supabase
+          .from("lesson_documents")
+          .select("*")
+          .in("lesson_id", lessonIdsForDocs)
+          .order("display_order", { ascending: true });
+        for (const doc of (docsData as LessonDocumentRow[]) || []) {
+          if (!docsGrouped[doc.lesson_id]) docsGrouped[doc.lesson_id] = [];
+          docsGrouped[doc.lesson_id].push(doc);
+        }
+      }
+      setLessonDocuments(docsGrouped);
+
       // Resolve lesson documents that reference an existing course_materials
-      // row (material_id) rather than a direct pdf_url upload
-      const materialIds = [...new Set(allLessons.map((l) => l.material_id).filter(Boolean))] as string[];
+      // row (material_id) rather than a direct pdf_url upload — both the
+      // legacy single column and the new lesson_documents rows can point at
+      // a material, so gather material_ids from both.
+      const materialIds = [
+        ...new Set([
+          ...allLessons.map((l) => l.material_id).filter(Boolean),
+          ...Object.values(docsGrouped).flat().map((d) => d.material_id).filter(Boolean),
+        ]),
+      ] as string[];
       if (materialIds.length > 0) {
         const { data: materialsData } = await supabase
           .from("course_materials")
@@ -519,15 +559,30 @@ export default function StudentCourseDetailPage() {
   // decision rather than something a student can toggle themselves.
   // Students can still see their own status below, just not change it.
 
-  // Resolve a lesson's viewable document, whether it was uploaded directly
-  // (pdf_url) or attached from an existing course material (material_id)
-  const getLessonDoc = (lesson: Lesson): LessonDoc | null => {
-    if (lesson.pdf_url) return { url: lesson.pdf_url, type: "pdf" };
-    if (lesson.material_id) {
-      const mat = lessonMaterialsMap[lesson.material_id];
-      if (mat) return { url: mat.file_url, type: (mat.file_type || "pdf").toLowerCase() };
+  // Resolve a lesson's viewable documents. Prefers the multi-document
+  // lesson_documents rows (migration 011); falls back to the legacy single
+  // pdf_url/material_id columns on the lesson itself when there are none
+  // (e.g. migration not applied yet in this environment, or the lesson
+  // predates it).
+  const getLessonDocs = (lesson: Lesson): LessonDoc[] => {
+    const rows = lessonDocuments[lesson.id];
+    const resolve = (row: { pdf_url: string | null; material_id: string | null }, idx: number): LessonDoc | null => {
+      if (row.pdf_url) return { url: row.pdf_url, type: "pdf", title: `Document ${idx + 1}` };
+      if (row.material_id) {
+        const mat = lessonMaterialsMap[row.material_id];
+        if (mat) return { url: mat.file_url, type: (mat.file_type || "pdf").toLowerCase(), title: `Document ${idx + 1}` };
+      }
+      return null;
+    };
+
+    if (rows && rows.length > 0) {
+      return rows.map((r, idx) => resolve(r, idx)).filter((d): d is LessonDoc => d !== null);
     }
-    return null;
+    if (lesson.pdf_url || lesson.material_id) {
+      const doc = resolve(lesson, 0);
+      return doc ? [doc] : [];
+    }
+    return [];
   };
 
   const getEmbedUrl = (url: string): string | null => {
@@ -646,11 +701,11 @@ export default function StudentCourseDetailPage() {
         onClose={() => setViewingMaterial(null)}
       />
       <MaterialViewer
-        open={!!viewingLessonPdf}
-        title={viewingLessonPdf?.title || ""}
-        fileUrl={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.url) || ""}
-        fileType={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.type) || "pdf"}
-        onClose={() => setViewingLessonPdf(null)}
+        open={!!viewingLessonDoc}
+        title={viewingLessonDoc?.title || ""}
+        fileUrl={viewingLessonDoc?.url || ""}
+        fileType={viewingLessonDoc?.type || "pdf"}
+        onClose={() => setViewingLessonDoc(null)}
       />
 
       {/* Header */}
@@ -832,9 +887,12 @@ export default function StudentCourseDetailPage() {
                                           <Video className="w-3 h-3" /> Video
                                         </span>
                                       )}
-                                      {getLessonDoc(lesson) && (
+                                      {getLessonDocs(lesson).length > 0 && (
                                         <span className="flex items-center gap-0.5 text-xs text-emerald-600">
-                                          <FileText className="w-3 h-3" /> Document
+                                          <FileText className="w-3 h-3" />
+                                          {getLessonDocs(lesson).length > 1
+                                            ? `Documents (${getLessonDocs(lesson).length})`
+                                            : "Document"}
                                         </span>
                                       )}
                                     </div>
@@ -899,15 +957,18 @@ export default function StudentCourseDetailPage() {
                           {activeLesson.content}
                         </div>
                       )}
-                      {getLessonDoc(activeLesson) && (
-                        <div className="pt-4 border-t border-gray-100">
-                          <button
-                            onClick={() => setViewingLessonPdf(activeLesson)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4FD8]/10 text-[#1F4FD8] text-sm font-medium rounded-xl hover:bg-[#1F4FD8]/20 transition-colors"
-                          >
-                            <FileText className="w-4 h-4" />
-                            View Document
-                          </button>
+                      {getLessonDocs(activeLesson).length > 0 && (
+                        <div className="pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+                          {getLessonDocs(activeLesson).map((doc, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setViewingLessonDoc(doc)}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4FD8]/10 text-[#1F4FD8] text-sm font-medium rounded-xl hover:bg-[#1F4FD8]/20 transition-colors"
+                            >
+                              <FileText className="w-4 h-4" />
+                              {getLessonDocs(activeLesson).length > 1 ? `View ${doc.title}` : "View Document"}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>

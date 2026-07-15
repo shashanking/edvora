@@ -53,6 +53,30 @@ interface CourseMaterialOption {
   file_type: string | null;
 }
 
+// A lesson can have any number of documents (see migration 011). Each row
+// is either a direct upload (pdf_url) or a link to an existing
+// course_materials row (material_id) — mutually exclusive per row, same as
+// the old single-document columns, just no longer capped at one per lesson.
+interface LessonDocumentRow {
+  id: string;
+  lesson_id: string;
+  title: string | null;
+  pdf_url: string | null;
+  material_id: string | null;
+  display_order: number;
+}
+
+// Working copy of a lesson-document row used inside the Add/Edit Lesson
+// modal before it's persisted. `dbId` is set for rows that already exist in
+// lesson_documents (edit mode); rows without it are new and get inserted on
+// save.
+interface DraftDocument {
+  key: string; // stable client-side key for React list rendering
+  dbId: string | null;
+  pdf_url: string | null;
+  material_id: string | null;
+}
+
 interface ModuleFormData {
   title: string;
   description: string;
@@ -63,8 +87,6 @@ interface LessonFormData {
   content: string;
   video_url: string;
   duration_minutes: string;
-  pdf_url: string;
-  material_id: string;
 }
 
 // Lesson document viewing/uploading is scoped to PDFs for now — the in-app
@@ -85,9 +107,10 @@ export default function AdminCourseContentPage() {
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [lessons, setLessons] = useState<Record<string, CourseLesson[]>>({});
   const [materials, setMaterials] = useState<CourseMaterialOption[]>([]);
+  const [lessonDocuments, setLessonDocuments] = useState<Record<string, LessonDocumentRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-  const [viewingLessonDoc, setViewingLessonDoc] = useState<CourseLesson | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
 
   // Module modal state
   const [showModuleModal, setShowModuleModal] = useState(false);
@@ -104,10 +127,12 @@ export default function AdminCourseContentPage() {
     content: "",
     video_url: "",
     duration_minutes: "",
-    pdf_url: "",
-    material_id: "",
   });
+  // Documents currently attached to the lesson being added/edited (working
+  // copy — only written to lesson_documents when the lesson is saved).
+  const [draftDocs, setDraftDocs] = useState<DraftDocument[]>([]);
   const [lessonDocMode, setLessonDocMode] = useState<"upload" | "material">("upload");
+  const [pendingMaterialId, setPendingMaterialId] = useState("");
   const [savingLesson, setSavingLesson] = useState(false);
 
   // Delete confirmation
@@ -169,17 +194,74 @@ export default function AdminCourseContentPage() {
         .order("display_order", { ascending: true });
 
       const grouped: Record<string, CourseLesson[]> = {};
-      for (const lesson of (lessonsData as CourseLesson[]) || []) {
+      const allLessons = (lessonsData as CourseLesson[]) || [];
+      for (const lesson of allLessons) {
         if (!grouped[lesson.module_id]) grouped[lesson.module_id] = [];
         grouped[lesson.module_id].push(lesson);
       }
       setLessons(grouped);
+
+      // Fetch multi-document attachments (migration 011). Tolerate the
+      // table not existing yet in prod (manual migration, see CLAUDE.md
+      // note in 011_lesson_documents.sql) — falls back to the legacy
+      // single pdf_url/material_id columns on course_lessons when empty.
+      if (allLessons.length > 0) {
+        const { data: docsData } = await supabase
+          .from("lesson_documents")
+          .select("*")
+          .in("lesson_id", allLessons.map((l) => l.id))
+          .order("display_order", { ascending: true });
+
+        const docsGrouped: Record<string, LessonDocumentRow[]> = {};
+        for (const doc of (docsData as LessonDocumentRow[]) || []) {
+          if (!docsGrouped[doc.lesson_id]) docsGrouped[doc.lesson_id] = [];
+          docsGrouped[doc.lesson_id].push(doc);
+        }
+        setLessonDocuments(docsGrouped);
+      } else {
+        setLessonDocuments({});
+      }
     } else {
       setLessons({});
+      setLessonDocuments({});
     }
 
     setLoading(false);
   }, [courseId]);
+
+  // A lesson's resolved document list: lesson_documents rows if any exist,
+  // otherwise the legacy single pdf_url/material_id columns wrapped as a
+  // one-item list (backward compat for lessons attached before this
+  // migration, or before it's been applied to this environment).
+  const getLessonDocs = useCallback(
+    (lesson: CourseLesson): LessonDocumentRow[] => {
+      const rows = lessonDocuments[lesson.id];
+      if (rows && rows.length > 0) return rows;
+      if (lesson.pdf_url || lesson.material_id) {
+        return [
+          {
+            id: `legacy-${lesson.id}`,
+            lesson_id: lesson.id,
+            title: null,
+            pdf_url: lesson.pdf_url,
+            material_id: lesson.material_id,
+            display_order: 0,
+          },
+        ];
+      }
+      return [];
+    },
+    [lessonDocuments]
+  );
+
+  const resolveDocUrl = useCallback(
+    (doc: { pdf_url: string | null; material_id: string | null }): string => {
+      if (doc.pdf_url) return doc.pdf_url;
+      if (doc.material_id) return materials.find((m) => m.id === doc.material_id)?.file_url || "";
+      return "";
+    },
+    [materials]
+  );
 
   useEffect(() => {
     fetchData();
@@ -269,8 +351,10 @@ export default function AdminCourseContentPage() {
   const openAddLesson = (moduleId: string) => {
     setEditingLesson(null);
     setLessonModuleId(moduleId);
-    setLessonForm({ title: "", content: "", video_url: "", duration_minutes: "", pdf_url: "", material_id: "" });
+    setLessonForm({ title: "", content: "", video_url: "", duration_minutes: "" });
+    setDraftDocs([]);
     setLessonDocMode("upload");
+    setPendingMaterialId("");
     setShowLessonModal(true);
   };
 
@@ -282,11 +366,44 @@ export default function AdminCourseContentPage() {
       content: lesson.content || "",
       video_url: lesson.video_url || "",
       duration_minutes: lesson.duration_minutes?.toString() || "",
-      pdf_url: lesson.pdf_url || "",
-      material_id: lesson.material_id || "",
     });
-    setLessonDocMode(lesson.material_id ? "material" : "upload");
+    setDraftDocs(
+      getLessonDocs(lesson).map((d) => ({
+        key: d.id,
+        dbId: d.id.startsWith("legacy-") ? null : d.id,
+        pdf_url: d.pdf_url,
+        material_id: d.material_id,
+      }))
+    );
+    setLessonDocMode("upload");
+    setPendingMaterialId("");
     setShowLessonModal(true);
+  };
+
+  // Add a freshly-uploaded PDF to the working document list (doesn't touch
+  // the DB yet — persisted when the lesson is saved).
+  const addDraftDocFromUpload = (url: string) => {
+    setDraftDocs((prev) => [
+      ...prev,
+      { key: `new-${Date.now()}-${prev.length}`, dbId: null, pdf_url: url, material_id: null },
+    ]);
+  };
+
+  const addDraftDocFromMaterial = () => {
+    if (!pendingMaterialId) return;
+    if (draftDocs.some((d) => d.material_id === pendingMaterialId)) {
+      toast.error("That material is already attached to this lesson");
+      return;
+    }
+    setDraftDocs((prev) => [
+      ...prev,
+      { key: `new-${Date.now()}-${prev.length}`, dbId: null, pdf_url: null, material_id: pendingMaterialId },
+    ]);
+    setPendingMaterialId("");
+  };
+
+  const removeDraftDoc = (key: string) => {
+    setDraftDocs((prev) => prev.filter((d) => d.key !== key));
   };
 
   const saveLesson = async () => {
@@ -296,14 +413,20 @@ export default function AdminCourseContentPage() {
     }
     setSavingLesson(true);
 
+    // Legacy pdf_url/material_id columns are kept in sync with the first
+    // attached document as a fallback for any environment where migration
+    // 011 (lesson_documents) hasn't been applied yet — see that file.
+    const firstDoc = draftDocs[0];
     const payload = {
       title: lessonForm.title.trim(),
       content: lessonForm.content.trim() || null,
       video_url: lessonForm.video_url.trim() || null,
       duration_minutes: lessonForm.duration_minutes ? parseInt(lessonForm.duration_minutes) : null,
-      pdf_url: lessonDocMode === "upload" ? lessonForm.pdf_url.trim() || null : null,
-      material_id: lessonDocMode === "material" ? lessonForm.material_id || null : null,
+      pdf_url: firstDoc?.pdf_url || null,
+      material_id: firstDoc?.material_id || null,
     };
+
+    let lessonId: string | null = editingLesson?.id ?? null;
 
     if (editingLesson) {
       const { error } = await supabase
@@ -313,27 +436,59 @@ export default function AdminCourseContentPage() {
 
       if (error) {
         toast.error("Failed to update lesson");
-      } else {
-        toast.success("Lesson updated");
+        setSavingLesson(false);
+        return;
       }
     } else {
       const currentLessons = lessons[lessonModuleId!] || [];
       const maxOrder =
         currentLessons.length > 0 ? Math.max(...currentLessons.map((l) => l.display_order)) : 0;
 
-      const { error } = await supabase.from("course_lessons").insert({
-        ...payload,
-        module_id: lessonModuleId,
-        display_order: maxOrder + 1,
-      });
+      const { data: inserted, error } = await supabase
+        .from("course_lessons")
+        .insert({
+          ...payload,
+          module_id: lessonModuleId,
+          display_order: maxOrder + 1,
+        })
+        .select("id")
+        .single();
 
       if (error) {
         toast.error("Failed to create lesson");
-      } else {
-        toast.success("Lesson created");
+        setSavingLesson(false);
+        return;
+      }
+      lessonId = (inserted as { id: string } | null)?.id ?? null;
+    }
+
+    // Sync the full document list into lesson_documents: replace whatever
+    // was there with the current working list. Best-effort — if the table
+    // doesn't exist yet in this environment (migration 011 not applied),
+    // the lesson itself is still saved with its first doc via the legacy
+    // columns above, so this failure is non-fatal.
+    if (lessonId) {
+      await supabase.from("lesson_documents").delete().eq("lesson_id", lessonId);
+      if (draftDocs.length > 0) {
+        const { error: docsError } = await supabase.from("lesson_documents").insert(
+          draftDocs.map((d, idx) => ({
+            lesson_id: lessonId,
+            pdf_url: d.pdf_url,
+            material_id: d.material_id,
+            display_order: idx,
+          }))
+        );
+        if (docsError) {
+          toast.error(
+            "Lesson saved, but documents beyond the first couldn't be stored (" +
+              docsError.message +
+              ")"
+          );
+        }
       }
     }
 
+    toast.success(editingLesson ? "Lesson updated" : "Lesson created");
     setSavingLesson(false);
     setShowLessonModal(false);
     fetchData();
@@ -357,15 +512,11 @@ export default function AdminCourseContentPage() {
       <Toaster position="top-right" />
 
       <MaterialViewer
-        open={!!viewingLessonDoc}
-        title={viewingLessonDoc?.title || ""}
-        fileUrl={
-          viewingLessonDoc?.pdf_url ||
-          materials.find((m) => m.id === viewingLessonDoc?.material_id)?.file_url ||
-          ""
-        }
+        open={!!viewingDoc}
+        title={viewingDoc?.title || ""}
+        fileUrl={viewingDoc?.url || ""}
         fileType="pdf"
-        onClose={() => setViewingLessonDoc(null)}
+        onClose={() => setViewingDoc(null)}
       />
 
       {/* Header */}
@@ -482,7 +633,9 @@ export default function AdminCourseContentPage() {
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-50">
-                        {modLessons.map((lesson, lesIdx) => (
+                        {modLessons.map((lesson, lesIdx) => {
+                          const docs = getLessonDocs(lesson);
+                          return (
                           <div
                             key={lesson.id}
                             className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50/50 transition-colors"
@@ -499,13 +652,18 @@ export default function AdminCourseContentPage() {
                                 <Video className="w-3 h-3" /> Video
                               </span>
                             )}
-                            {(lesson.pdf_url || lesson.material_id) && (
+                            {docs.length > 0 && (
                               <button
-                                onClick={() => setViewingLessonDoc(lesson)}
+                                onClick={() =>
+                                  setViewingDoc({
+                                    title: docs.length > 1 ? `${lesson.title} (1 of ${docs.length})` : lesson.title,
+                                    url: resolveDocUrl(docs[0]),
+                                  })
+                                }
                                 className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full hover:bg-emerald-100 transition-colors"
-                                title="Preview document"
+                                title={docs.length > 1 ? `Preview first of ${docs.length} documents` : "Preview document"}
                               >
-                                <Eye className="w-3 h-3" /> Document
+                                <Eye className="w-3 h-3" /> {docs.length > 1 ? `Documents (${docs.length})` : "Document"}
                               </button>
                             )}
                             {lesson.duration_minutes && (
@@ -532,7 +690,8 @@ export default function AdminCourseContentPage() {
                               </button>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
@@ -658,12 +817,54 @@ export default function AdminCourseContentPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
-                  Lesson Document
+                  Lesson Documents
                 </label>
                 <p className="text-xs text-[#9CA3AF] mb-2">
-                  Upload a PDF for students to view in-app, or attach one already uploaded to
-                  this course&apos;s materials. Viewing is in-app only — no download button.
+                  Attach any number of documents (e.g. a reading and a homework doc) — upload new
+                  PDFs or pick ones already uploaded to this course&apos;s materials. Viewing is
+                  in-app only — no download button.
                 </p>
+
+                {draftDocs.length > 0 && (
+                  <div className="space-y-1.5 mb-3">
+                    {draftDocs.map((d, idx) => {
+                      const label = d.pdf_url
+                        ? `Uploaded PDF ${idx + 1}`
+                        : materials.find((m) => m.id === d.material_id)?.title || "Material";
+                      return (
+                        <div
+                          key={d.key}
+                          className="flex items-center gap-2 px-3 py-2 bg-[#F8F9FB] rounded-lg border border-gray-100"
+                        >
+                          <FileText className="w-4 h-4 text-[#1F4FD8] flex-shrink-0" />
+                          <span className="text-xs text-[#1C1C28] truncate flex-1">{label}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setViewingDoc({
+                                title: label,
+                                url: d.pdf_url || materials.find((m) => m.id === d.material_id)?.file_url || "",
+                              })
+                            }
+                            className="p-1 text-[#9CA3AF] hover:text-[#1F4FD8] rounded flex-shrink-0"
+                            title="Preview"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeDraftDoc(d.key)}
+                            className="p-1 text-[#9CA3AF] hover:text-red-500 rounded flex-shrink-0"
+                            title="Remove"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="flex gap-2 mb-3">
                   <button
                     type="button"
@@ -690,23 +891,15 @@ export default function AdminCourseContentPage() {
                 </div>
 
                 {lessonDocMode === "upload" ? (
-                  <>
-                    <FileUpload
-                      bucket="lesson-pdfs"
-                      folder={`course-${courseId}`}
-                      accept=".pdf,application/pdf"
-                      maxSizeMB={25}
-                      onUpload={(url) => setLessonForm((f) => ({ ...f, pdf_url: url }))}
-                      label="Click to upload a PDF"
-                    />
-                    {lessonForm.pdf_url && (
-                      <p className="text-xs text-[#9CA3AF] mt-1.5">
-                        {editingLesson?.pdf_url === lessonForm.pdf_url
-                          ? "Current document kept — upload a new file to replace it."
-                          : "New document ready to save."}
-                      </p>
-                    )}
-                  </>
+                  <FileUpload
+                    key={draftDocs.length}
+                    bucket="lesson-pdfs"
+                    folder={`course-${courseId}`}
+                    accept=".pdf,application/pdf"
+                    maxSizeMB={50}
+                    onUpload={(url) => addDraftDocFromUpload(url)}
+                    label="Click to upload a PDF — adds to the list above"
+                  />
                 ) : materials.filter(isPdfMaterial).length === 0 ? (
                   <p className="text-xs text-[#9CA3AF] px-4 py-3 bg-gray-50 rounded-xl">
                     No PDF materials uploaded for this course yet. Upload one from{" "}
@@ -716,18 +909,28 @@ export default function AdminCourseContentPage() {
                     first.
                   </p>
                 ) : (
-                  <select
-                    value={lessonForm.material_id}
-                    onChange={(e) => setLessonForm((f) => ({ ...f, material_id: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] text-sm focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent"
-                  >
-                    <option value="">Select a material</option>
-                    {materials.filter(isPdfMaterial).map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.title}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={pendingMaterialId}
+                      onChange={(e) => setPendingMaterialId(e.target.value)}
+                      className="flex-1 px-4 py-2.5 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] text-sm focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent"
+                    >
+                      <option value="">Select a material</option>
+                      {materials.filter(isPdfMaterial).map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={addDraftDocFromMaterial}
+                      disabled={!pendingMaterialId}
+                      className="px-4 py-2.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-sm font-semibold rounded-xl hover:bg-[#1F4FD8]/20 disabled:opacity-50 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
                 )}
               </div>
               <div>

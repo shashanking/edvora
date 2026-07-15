@@ -55,6 +55,19 @@ interface CourseLesson {
 interface LessonDoc {
   url: string;
   type: string;
+  title: string;
+}
+
+// A lesson can have any number of documents (migration 011). Each row is
+// either a direct upload (pdf_url) or a link to an existing
+// course_materials row (material_id).
+interface LessonDocumentRow {
+  id: string;
+  lesson_id: string;
+  title: string | null;
+  pdf_url: string | null;
+  material_id: string | null;
+  display_order: number;
 }
 
 interface CourseInfo {
@@ -167,8 +180,9 @@ export default function TeacherCourseDetailPage() {
   const [lessonMaterialsMap, setLessonMaterialsMap] = useState<
     Record<string, { file_url: string; file_type: string | null }>
   >({});
+  const [lessonDocuments, setLessonDocuments] = useState<Record<string, LessonDocumentRow[]>>({});
   const [lessonsLoading, setLessonsLoading] = useState(false);
-  const [viewingLessonPdf, setViewingLessonPdf] = useState<CourseLesson | null>(null);
+  const [viewingLessonDoc, setViewingLessonDoc] = useState<LessonDoc | null>(null);
 
   // A course can have several enrolled students on the same teacher, each
   // progressing independently (1:1 pacing). "Current module" is therefore
@@ -510,8 +524,33 @@ export default function TeacherCourseDetailPage() {
       }
       setCourseLessons(grouped);
 
-      // Resolve lesson documents attached via material_id (existing course material)
-      const materialIds = [...new Set(allLessons.map((l) => l.material_id).filter(Boolean))] as string[];
+      // Fetch multi-document attachments (migration 011). Tolerate the
+      // table not existing yet (manual migration — see
+      // supabase/migrations/011_lesson_documents.sql) — falls back to the
+      // legacy single pdf_url/material_id columns on the lesson itself.
+      const docsGrouped: Record<string, LessonDocumentRow[]> = {};
+      if (allLessons.length > 0) {
+        const { data: docsData } = await supabase
+          .from("lesson_documents")
+          .select("*")
+          .in("lesson_id", allLessons.map((l) => l.id))
+          .order("display_order", { ascending: true });
+        for (const doc of (docsData as LessonDocumentRow[]) || []) {
+          if (!docsGrouped[doc.lesson_id]) docsGrouped[doc.lesson_id] = [];
+          docsGrouped[doc.lesson_id].push(doc);
+        }
+      }
+      setLessonDocuments(docsGrouped);
+
+      // Resolve lesson documents attached via material_id (existing course
+      // material) — both the legacy single column and the new
+      // lesson_documents rows can point at a material.
+      const materialIds = [
+        ...new Set([
+          ...allLessons.map((l) => l.material_id).filter(Boolean),
+          ...Object.values(docsGrouped).flat().map((d) => d.material_id).filter(Boolean),
+        ]),
+      ] as string[];
       if (materialIds.length > 0) {
         const { data: materialsData } = await supabase
           .from("course_materials")
@@ -656,15 +695,28 @@ export default function TeacherCourseDetailPage() {
     setSavingRemark(false);
   };
 
-  // Resolve a lesson's viewable document, whether it was uploaded directly
-  // (pdf_url) or attached from an existing course material (material_id)
-  const getLessonDoc = (lesson: CourseLesson): LessonDoc | null => {
-    if (lesson.pdf_url) return { url: lesson.pdf_url, type: "pdf" };
-    if (lesson.material_id) {
-      const mat = lessonMaterialsMap[lesson.material_id];
-      if (mat) return { url: mat.file_url, type: (mat.file_type || "pdf").toLowerCase() };
+  // Resolve a lesson's viewable documents. Prefers the multi-document
+  // lesson_documents rows (migration 011); falls back to the legacy single
+  // pdf_url/material_id columns when there are none.
+  const getLessonDocs = (lesson: CourseLesson): LessonDoc[] => {
+    const rows = lessonDocuments[lesson.id];
+    const resolve = (row: { pdf_url: string | null; material_id: string | null }, idx: number): LessonDoc | null => {
+      if (row.pdf_url) return { url: row.pdf_url, type: "pdf", title: `Document ${idx + 1}` };
+      if (row.material_id) {
+        const mat = lessonMaterialsMap[row.material_id];
+        if (mat) return { url: mat.file_url, type: (mat.file_type || "pdf").toLowerCase(), title: `Document ${idx + 1}` };
+      }
+      return null;
+    };
+
+    if (rows && rows.length > 0) {
+      return rows.map((r, idx) => resolve(r, idx)).filter((d): d is LessonDoc => d !== null);
     }
-    return null;
+    if (lesson.pdf_url || lesson.material_id) {
+      const doc = resolve(lesson, 0);
+      return doc ? [doc] : [];
+    }
+    return [];
   };
 
   const formatDate = (d: string) =>
@@ -740,11 +792,11 @@ export default function TeacherCourseDetailPage() {
       <Toaster position="top-right" />
 
       <MaterialViewer
-        open={!!viewingLessonPdf}
-        title={viewingLessonPdf?.title || ""}
-        fileUrl={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.url) || ""}
-        fileType={(viewingLessonPdf && getLessonDoc(viewingLessonPdf)?.type) || "pdf"}
-        onClose={() => setViewingLessonPdf(null)}
+        open={!!viewingLessonDoc}
+        title={viewingLessonDoc?.title || ""}
+        fileUrl={viewingLessonDoc?.url || ""}
+        fileType={viewingLessonDoc?.type || "pdf"}
+        onClose={() => setViewingLessonDoc(null)}
       />
 
       {/* Header */}
@@ -889,12 +941,20 @@ export default function TeacherCourseDetailPage() {
                                   <Clock className="w-3 h-3" /> {lesson.duration_minutes}m
                                 </span>
                               )}
-                              {getLessonDoc(lesson) && (
+                              {getLessonDocs(lesson).length > 0 && (
                                 <button
-                                  onClick={() => setViewingLessonPdf(lesson)}
+                                  onClick={() => setViewingLessonDoc(getLessonDocs(lesson)[0])}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-xs font-semibold rounded-lg hover:bg-[#1F4FD8]/20 transition-colors flex-shrink-0"
+                                  title={
+                                    getLessonDocs(lesson).length > 1
+                                      ? `Preview first of ${getLessonDocs(lesson).length} documents`
+                                      : "Preview document"
+                                  }
                                 >
-                                  <Eye className="w-3.5 h-3.5" /> View Document
+                                  <Eye className="w-3.5 h-3.5" />
+                                  {getLessonDocs(lesson).length > 1
+                                    ? `Documents (${getLessonDocs(lesson).length})`
+                                    : "View Document"}
                                 </button>
                               )}
                               {lessonViewStudentId && (

@@ -12,6 +12,7 @@ interface Session {
   status: string;
   zoom_join_url: string | null;
   course_title: string;
+  lesson_title: string | null;
   rating?: number | null;
   rating_comment?: string | null;
 }
@@ -99,6 +100,21 @@ export default function StudentLiveClassesPage() {
         .in("id", courseIds);
       const courseMap = new Map(((courses as any[]) || []).map((c) => [c.id, c.title]));
 
+      // Resolve current lesson titles live rather than the static `title`
+      // string baked in at creation, which goes stale if the lesson is
+      // renamed later in Manage Content.
+      const lessonIds = [...new Set(rows.map((s) => s.lesson_id).filter(Boolean))] as string[];
+      const lessonTitleMap = new Map<string, string>();
+      if (lessonIds.length > 0) {
+        const { data: lessonRows } = await supabase
+          .from("course_lessons")
+          .select("id, title")
+          .in("id", lessonIds);
+        ((lessonRows as { id: string; title: string }[]) || []).forEach((l) =>
+          lessonTitleMap.set(l.id, l.title)
+        );
+      }
+
       setSessions(
         rows.map((s: any) => ({
           id: s.id,
@@ -108,6 +124,7 @@ export default function StudentLiveClassesPage() {
           status: s.status,
           zoom_join_url: s.zoom_join_url,
           course_title: courseMap.get(s.course_id) || "Unknown",
+          lesson_title: s.lesson_id ? lessonTitleMap.get(s.lesson_id) || null : null,
         }))
       );
       setLoading(false);
@@ -146,6 +163,9 @@ export default function StudentLiveClassesPage() {
             </span>
           )}
           <h3 className="font-poppins font-semibold text-[#1C1C28] mt-2">{s.title}</h3>
+          {s.lesson_title && (
+            <p className="text-xs text-[#1F4FD8] mt-0.5">Lesson: {s.lesson_title}</p>
+          )}
           <div className="flex items-center gap-4 mt-2 text-xs text-[#9CA3AF]">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />

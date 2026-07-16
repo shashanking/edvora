@@ -31,13 +31,14 @@ export async function POST(req: NextRequest) {
 
     // ---------- Body ----------
     const body = await req.json();
-    const { course_id, title, scheduled_at, duration_minutes, student_id } =
+    const { course_id, title, scheduled_at, duration_minutes, student_id, lesson_id } =
       body as {
         course_id: string;
         title: string;
         scheduled_at: string;
         duration_minutes: number;
         student_id?: string;
+        lesson_id?: string;
       };
 
     if (!course_id || !title || !scheduled_at || !duration_minutes) {
@@ -71,6 +72,9 @@ export async function POST(req: NextRequest) {
 
     if (student_id) {
       insertPayload.student_id = student_id;
+    }
+    if (lesson_id) {
+      insertPayload.lesson_id = lesson_id;
     }
 
     const { data: session, error: insertError } = await supabase

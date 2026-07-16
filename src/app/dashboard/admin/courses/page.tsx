@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Plus, Search, Edit2, Trash2, Eye, MoreVertical, FileText } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Eye, MoreVertical, FileText, Video } from "lucide-react";
 import Link from "next/link";
 
 interface Course {
@@ -177,6 +177,13 @@ export default function AdminCoursesPage() {
                           title="Manage Content"
                         >
                           <FileText className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={`/dashboard/admin/courses/${course.id}/sessions`}
+                          className="p-2 text-[#4D4D4D] hover:text-[#1F4FD8] hover:bg-blue-50 rounded-lg transition-all"
+                          title="Live Sessions"
+                        >
+                          <Video className="w-4 h-4" />
                         </Link>
                         <Link
                           href={`/dashboard/admin/courses/${course.id}/edit`}

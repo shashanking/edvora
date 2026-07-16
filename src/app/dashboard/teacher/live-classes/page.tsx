@@ -42,11 +42,18 @@ interface SessionRow {
   course_title: string;
   course_id: string;
   student_id: string | null;
+  lesson_title: string | null;
 }
 
 interface CourseOption {
   id: string;
   title: string;
+}
+
+interface LessonOption {
+  id: string;
+  title: string;
+  module_title: string;
 }
 
 interface StudentOption {
@@ -61,6 +68,7 @@ const defaultForm = {
   scheduled_at: "",
   duration_minutes: 60,
   student_id: "",
+  lesson_id: "",
 };
 
 export default function TeacherLiveClassesPage() {
@@ -70,6 +78,8 @@ export default function TeacherLiveClassesPage() {
   const [showModal, setShowModal] = useState(false);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
+  const [lessons, setLessons] = useState<LessonOption[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [fetchingRecordings, setFetchingRecordings] = useState<string | null>(null);
@@ -80,6 +90,47 @@ export default function TeacherLiveClassesPage() {
     const t = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  // Load lessons for the lesson picker whenever the selected course changes
+  useEffect(() => {
+    (async () => {
+      if (!form.course_id) {
+        setLessons([]);
+        return;
+      }
+      setLoadingLessons(true);
+      const { data: moduleData } = await supabase
+        .from("course_modules")
+        .select("id, title")
+        .eq("course_id", form.course_id)
+        .order("display_order", { ascending: true });
+      const modules = (moduleData as { id: string; title: string }[]) || [];
+      const moduleIds = modules.map((m) => m.id);
+      const moduleTitleMap = new Map(modules.map((m) => [m.id, m.title]));
+
+      if (moduleIds.length === 0) {
+        setLessons([]);
+        setLoadingLessons(false);
+        return;
+      }
+
+      const { data: lessonData } = await supabase
+        .from("course_lessons")
+        .select("id, title, module_id, display_order")
+        .in("module_id", moduleIds)
+        .order("display_order", { ascending: true });
+
+      const rows = (lessonData as { id: string; title: string; module_id: string }[]) || [];
+      setLessons(
+        rows.map((l) => ({
+          id: l.id,
+          title: l.title,
+          module_title: moduleTitleMap.get(l.module_id) || "",
+        }))
+      );
+      setLoadingLessons(false);
+    })();
+  }, [form.course_id, supabase]);
 
   const fetchSessions = async () => {
     const {
@@ -100,6 +151,21 @@ export default function TeacherLiveClassesPage() {
 
     const rows = (data as any[]) || [];
     const courseIds = [...new Set(rows.map((s) => s.course_id))];
+
+    // Resolve current lesson titles live (rather than trusting the static
+    // `title` string baked in at creation, which goes stale if the lesson
+    // is renamed later in Manage Content).
+    const lessonIds = [...new Set(rows.map((s) => s.lesson_id).filter(Boolean))] as string[];
+    const lessonTitleMap = new Map<string, string>();
+    if (lessonIds.length > 0) {
+      const { data: lessonRows } = await supabase
+        .from("course_lessons")
+        .select("id, title")
+        .in("id", lessonIds);
+      ((lessonRows as { id: string; title: string }[]) || []).forEach((l) =>
+        lessonTitleMap.set(l.id, l.title)
+      );
+    }
 
     // Also fetch teacher's courses for the form
     const { data: ct } = await supabase
@@ -148,6 +214,7 @@ export default function TeacherLiveClassesPage() {
           course_title: courseMap.get(s.course_id) || "Unknown",
           course_id: s.course_id,
           student_id: s.student_id,
+          lesson_title: s.lesson_id ? lessonTitleMap.get(s.lesson_id) || null : null,
         }))
         .filter((s: SessionRow) =>
           (s.status === "scheduled" || s.status === "live") &&
@@ -177,6 +244,7 @@ export default function TeacherLiveClassesPage() {
           scheduled_at: new Date(form.scheduled_at).toISOString(),
           duration_minutes: form.duration_minutes,
           student_id: form.student_id || undefined,
+          lesson_id: form.lesson_id || undefined,
         }),
       });
 
@@ -313,6 +381,9 @@ export default function TeacherLiveClassesPage() {
           <h3 className="font-poppins font-semibold text-[#1C1C28]">
             {s.title}
           </h3>
+          {s.lesson_title && (
+            <p className="text-xs text-[#1F4FD8] mt-0.5">Lesson: {s.lesson_title}</p>
+          )}
           <div className="flex items-center gap-4 mt-2 text-xs text-[#9CA3AF]">
             <span className="inline-flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
@@ -476,7 +547,7 @@ export default function TeacherLiveClassesPage() {
                 <select
                   value={form.course_id}
                   onChange={(e) =>
-                    setForm({ ...form, course_id: e.target.value })
+                    setForm({ ...form, course_id: e.target.value, lesson_id: "" })
                   }
                   required
                   className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
@@ -485,6 +556,33 @@ export default function TeacherLiveClassesPage() {
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+                  Lesson
+                </label>
+                <select
+                  value={form.lesson_id}
+                  onChange={(e) =>
+                    setForm({ ...form, lesson_id: e.target.value })
+                  }
+                  disabled={!form.course_id || loadingLessons}
+                  className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-[#9CA3AF]"
+                >
+                  <option value="">
+                    {!form.course_id
+                      ? "Select a course first"
+                      : loadingLessons
+                      ? "Loading lessons..."
+                      : "No lesson (makeup / extra session)"}
+                  </option>
+                  {lessons.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.module_title} — {l.title}
                     </option>
                   ))}
                 </select>

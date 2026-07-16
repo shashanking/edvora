@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Video, Calendar, Clock, ExternalLink } from "lucide-react";
+import { Video, Calendar, Clock, ExternalLink, Lock } from "lucide-react";
 
 interface Session {
   id: string;
@@ -13,6 +13,7 @@ interface Session {
   zoom_join_url: string | null;
   course_title: string;
   lesson_title: string | null;
+  locked: boolean;
   rating?: number | null;
   rating_comment?: string | null;
 }
@@ -115,6 +116,45 @@ export default function StudentLiveClassesPage() {
         );
       }
 
+      // A session should only be joinable once the lesson before it has
+      // been marked complete — showing every session (the fix above) is
+      // not the same as letting a student jump ahead to a future class.
+      // Walk each course's sessions in order; once we hit the first
+      // lesson-linked session whose lesson isn't done yet, every
+      // lesson-linked session after it is locked. Sessions with no
+      // lesson_id (teacher-scheduled makeups/extras) are never locked and
+      // never block anything, since they're not part of the sequence.
+      const completedMap = new Map<string, boolean>();
+      if (lessonIds.length > 0) {
+        const { data: progressRows } = await supabase
+          .from("lesson_progress")
+          .select("lesson_id, completed")
+          .eq("student_id", user.id)
+          .in("lesson_id", lessonIds);
+        ((progressRows as { lesson_id: string; completed: boolean }[]) || []).forEach((p) =>
+          completedMap.set(p.lesson_id, p.completed)
+        );
+      }
+
+      const lockedIds = new Set<string>();
+      const byCourse = new Map<string, typeof rows>();
+      for (const s of rows) {
+        if (!byCourse.has(s.course_id)) byCourse.set(s.course_id, []);
+        byCourse.get(s.course_id)!.push(s);
+      }
+      for (const group of byCourse.values()) {
+        group.sort((a, b) => (a.session_number ?? 0) - (b.session_number ?? 0));
+        let blocked = false;
+        for (const s of group) {
+          if (!s.lesson_id) continue;
+          if (blocked) {
+            lockedIds.add(s.id);
+          } else if (!completedMap.get(s.lesson_id)) {
+            blocked = true;
+          }
+        }
+      }
+
       setSessions(
         rows.map((s: any) => ({
           id: s.id,
@@ -125,6 +165,7 @@ export default function StudentLiveClassesPage() {
           zoom_join_url: s.zoom_join_url,
           course_title: courseMap.get(s.course_id) || "Unknown",
           lesson_title: s.lesson_id ? lessonTitleMap.get(s.lesson_id) || null : null,
+          locked: lockedIds.has(s.id),
         }))
       );
       setLoading(false);
@@ -150,7 +191,9 @@ export default function StudentLiveClassesPage() {
   const renderSessionCard = (s: Session) => (
     <div
       key={s.id}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow"
+      className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-shadow ${
+        s.locked ? "opacity-70" : "hover:shadow-md"
+      }`}
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
@@ -178,7 +221,12 @@ export default function StudentLiveClassesPage() {
             <span>{s.duration_minutes} min</span>
           </div>
         </div>
-        {s.zoom_join_url ? (
+        {s.locked ? (
+          <span className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#9CA3AF] bg-gray-100 rounded-xl">
+            <Lock className="w-3.5 h-3.5" />
+            Finish the previous session first
+          </span>
+        ) : s.zoom_join_url ? (
           isWithinJoinWindow(s.scheduled_at, s.duration_minutes, nowMs) ? (
             <a
               href={s.zoom_join_url}

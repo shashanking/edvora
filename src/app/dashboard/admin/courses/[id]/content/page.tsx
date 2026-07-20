@@ -549,19 +549,27 @@ export default function AdminCourseContentPage() {
     }
 
     // Assignments with a blank Title are silently dropped below (the
-    // insert/update filters require a.title.trim()) — that's fine for an
-    // empty row the admin added and decided not to use, but if they've
-    // already written instructions or attached a file, dropping it without
-    // any feedback looks like "adding homework/classwork just doesn't
-    // work". Catch it here instead of losing the work silently.
-    const blankTitleAssignments = draftAssignments.filter(
-      (a) => !a.title.trim() && (a.description.trim() || a.file_urls.length > 0)
-    );
-    if (blankTitleAssignments.length > 0) {
-      toast.error(
-        `Add a title to ${blankTitleAssignments.length > 1 ? "each" : "the"} homework/classwork item before saving — without one it won't be stored`
-      );
-      return;
+    // insert/update filters require a.title.trim()) — root cause of the
+    // "I attached a document but it never shows up" reports (e.g. Digraphs
+    // - WEEK 33): the Type dropdown right next to the title box already
+    // reads "Classwork"/"Homework", so admins skip typing a separate title,
+    // upload a file, hit Save, and the whole item — file reference
+    // included — just never reaches `assignments` with no visible error.
+    // A prior fix added a blocking toast here instead, but that still lost
+    // the work (admin has to notice the toast, retype, and re-attach).
+    // Default the title from the type instead of rejecting the save — an
+    // admin can always rename it later, but an attached file should never
+    // be able to silently vanish. Truly empty rows (no title, no
+    // description, no file) are still dropped without complaint, same as
+    // before.
+    const draftAssignmentsToSave = draftAssignments.map((a) => {
+      if (!a.title.trim() && (a.description.trim() || a.file_urls.length > 0)) {
+        return { ...a, title: a.type.charAt(0).toUpperCase() + a.type.slice(1) };
+      }
+      return a;
+    });
+    if (draftAssignmentsToSave.some((a, i) => a.title !== draftAssignments[i].title)) {
+      setDraftAssignments(draftAssignmentsToSave);
     }
 
     setSavingLesson(true);
@@ -645,7 +653,7 @@ export default function AdminCourseContentPage() {
     // explicit removals), never a blanket delete-and-reinsert — see
     // removeDraftAssignment for why (submission cascade).
     if (lessonId) {
-      const newAssignments = draftAssignments.filter((a) => !a.dbId && a.title.trim());
+      const newAssignments = draftAssignmentsToSave.filter((a) => !a.dbId && a.title.trim());
       if (newAssignments.length > 0) {
         const { error: assignError } = await supabase.from("assignments").insert(
           newAssignments.map((a) => ({
@@ -667,7 +675,7 @@ export default function AdminCourseContentPage() {
       // the due date on homework opened via the Assignment badge — so push
       // their current draft values back to the row instead of leaving edits
       // stuck client-side.
-      const existingAssignments = draftAssignments.filter((a) => a.dbId && a.title.trim());
+      const existingAssignments = draftAssignmentsToSave.filter((a) => a.dbId && a.title.trim());
       for (const a of existingAssignments) {
         const { error: updateError } = await supabase
           .from("assignments")

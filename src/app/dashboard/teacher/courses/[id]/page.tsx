@@ -25,6 +25,7 @@ import {
   Star,
   Eye,
   ExternalLink,
+  Edit3,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -108,7 +109,11 @@ interface AssignmentData {
   title: string;
   description: string;
   type: string;
-  due_date: string | null;
+  // Relative deadline (migration 013) — this list mixes session-linked and
+  // lesson-linked assignments across potentially many students, so there's
+  // no single per-student date to show here; see the assignment detail
+  // page (linked below) for the actual per-student computed due date.
+  duration_days: number | null;
   created_at: string;
   submission_count: number;
   graded_count: number;
@@ -119,6 +124,7 @@ interface RemarkData {
   content: string;
   type: string;
   created_at: string;
+  student_id: string;
   student: { full_name: string; avatar_url: string | null } | null;
 }
 
@@ -145,6 +151,15 @@ export default function TeacherCourseDetailPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [enrolledStudents, setEnrolledStudents] = useState<StudentInfo[]>([]);
+  // Subset of enrolledStudents actually assigned to *this* teacher
+  // (enrollments.teacher_id — migration 004's 1:1 pacing model). A course
+  // can have several co-teachers, but lesson-progress writes are
+  // authorized per-student against enrollments.teacher_id (see
+  // /api/teacher/lesson-progress), so the Lessons tab's "viewing lessons
+  // for" picker is scoped to this list rather than every student enrolled
+  // in the course — otherwise a teacher could pick a student who isn't
+  // theirs and silently get a 403 when marking a lesson complete.
+  const [myAssignedStudents, setMyAssignedStudents] = useState<StudentInfo[]>([]);
 
   // Post-session: attendance
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
@@ -169,6 +184,10 @@ export default function TeacherCourseDetailPage() {
   const [newRemarkStudent, setNewRemarkStudent] = useState("");
   const [newRemarkContent, setNewRemarkContent] = useState("");
   const [newRemarkType, setNewRemarkType] = useState("feedback");
+  // When set, the Add Remark form is repurposed to edit this existing
+  // remark instead of creating a new one (same modal/form, same pattern as
+  // teacher/assignments/page.tsx's editingAssignment).
+  const [editingRemarkId, setEditingRemarkId] = useState<string | null>(null);
 
   // Materials
   const [materials, setMaterials] = useState<MaterialData[]>([]);
@@ -183,6 +202,11 @@ export default function TeacherCourseDetailPage() {
   const [lessonDocuments, setLessonDocuments] = useState<Record<string, LessonDocumentRow[]>>({});
   const [lessonsLoading, setLessonsLoading] = useState(false);
   const [viewingLessonDoc, setViewingLessonDoc] = useState<LessonDoc | null>(null);
+  // Course material preview — view-only, matches the student-side pattern
+  // (src/app/dashboard/student/courses/[id]/page.tsx) instead of the raw
+  // <a href download> link this tab used to have. Neither teachers nor
+  // students should be able to download course material.
+  const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
 
   // A course can have several enrolled students on the same teacher, each
   // progressing independently (1:1 pacing). "Current module" is therefore
@@ -254,7 +278,7 @@ export default function TeacherCourseDetailPage() {
     // Enrolled students
     const { data: enrollments } = await supabase
       .from("enrollments")
-      .select("student_id")
+      .select("student_id, teacher_id")
       .eq("course_id", courseId)
       .eq("status", "active");
 
@@ -268,9 +292,19 @@ export default function TeacherCourseDetailPage() {
         .in("id", studentIds);
       const studentList = (students as StudentInfo[]) || [];
       setEnrolledStudents(studentList);
-      // Default the Lessons tab's "viewing as" student to the first
-      // enrolled student so current-week scoping has something to key off.
-      setLessonViewStudentId((prev) => prev || studentList[0]?.id || "");
+
+      // Resolve which of these students are actually assigned to *this*
+      // teacher (enrollments.teacher_id), for the Lessons tab picker.
+      const myStudentIds = new Set(
+        ((enrollments as any[]) || [])
+          .filter((e) => e.teacher_id === userData.user.id)
+          .map((e) => e.student_id)
+      );
+      const myStudentList = studentList.filter((s) => myStudentIds.has(s.id));
+      setMyAssignedStudents(myStudentList);
+      // Default the Lessons tab's "viewing lessons for" student to the
+      // first student actually assigned to this teacher.
+      setLessonViewStudentId((prev) => prev || myStudentList[0]?.id || "");
     }
 
     setLoading(false);
@@ -337,7 +371,13 @@ export default function TeacherCourseDetailPage() {
         setLessonViewProgress((prev) => ({ ...prev, [lessonId]: prevValue }));
         toast.error(data.error || "Failed to update lesson progress");
       } else {
-        toast.success(completed ? "Marked complete" : "Marked incomplete");
+        toast.success(
+          completed && data.attendanceMarked
+            ? "Marked complete — attendance recorded as Present"
+            : completed
+              ? "Marked complete"
+              : "Marked incomplete"
+        );
       }
     } catch {
       setLessonViewProgress((prev) => ({ ...prev, [lessonId]: prevValue }));
@@ -407,11 +447,21 @@ export default function TeacherCourseDetailPage() {
   const fetchAssignments = useCallback(async () => {
     if (!user) return;
     setAssignmentsLoading(true);
+    // Scoped to the course only, not to this teacher's own teacher_id.
+    // Lesson-linked assignments (migration 012) are created from the admin
+    // Manage Content page and filed under whichever teacher happens to be
+    // first in course_teachers for the course (see
+    // src/app/dashboard/admin/courses/[id]/content/page.tsx) — on a
+    // co-taught course that's effectively arbitrary, so filtering by
+    // teacher_id here hid homework/classwork from every teacher except
+    // whoever it landed on. Any teacher assigned to this course (RLS —
+    // see supabase/migrations/014_teacher_visibility_rls.sql) can see all
+    // of the course's assignments, matching how the Lessons/Materials tabs
+    // already work.
     const { data: assignData } = await supabase
       .from("assignments")
-      .select("id, title, description, type, due_date, created_at")
+      .select("id, title, description, type, duration_days, created_at")
       .eq("course_id", courseId)
-      .eq("teacher_id", user.id)
       .order("created_at", { ascending: false });
 
     const list = (assignData as any[]) || [];
@@ -670,29 +720,52 @@ export default function TeacherCourseDetailPage() {
     setSavingRemark(false);
   };
 
-  // Save remark from remarks tab
+  // Save remark from remarks tab — creates a new remark, or (when
+  // editingRemarkId is set) updates the existing one in place. Editing is
+  // restricted to a teacher's own remarks by RLS ("Teachers can manage
+  // their remarks" USING teacher_id = auth.uid()), and this tab's list is
+  // already fetched with .eq("teacher_id", user.id), so every remark shown
+  // here is editable.
   const saveNewRemark = async () => {
     if (!user || !newRemarkStudent || !newRemarkContent.trim()) return;
     setSavingRemark(true);
 
-    const { error } = await supabase.from("remarks").insert({
-      student_id: newRemarkStudent,
-      teacher_id: user.id,
-      course_id: courseId,
-      content: newRemarkContent.trim(),
-      type: newRemarkType,
-    });
+    const { error } = editingRemarkId
+      ? await supabase
+          .from("remarks")
+          .update({
+            content: newRemarkContent.trim(),
+            type: newRemarkType,
+          })
+          .eq("id", editingRemarkId)
+      : await supabase.from("remarks").insert({
+          student_id: newRemarkStudent,
+          teacher_id: user.id,
+          course_id: courseId,
+          content: newRemarkContent.trim(),
+          type: newRemarkType,
+        });
 
     if (error) {
-      toast.error("Failed to save remark");
+      toast.error(editingRemarkId ? "Failed to update remark" : "Failed to save remark");
     } else {
-      toast.success("Remark added!");
+      toast.success(editingRemarkId ? "Remark updated!" : "Remark added!");
       setNewRemarkContent("");
       setNewRemarkStudent("");
+      setEditingRemarkId(null);
       setShowAddRemark(false);
       fetchRemarks();
     }
     setSavingRemark(false);
+  };
+
+  // Open the Add Remark form pre-filled for editing an existing remark.
+  const openEditRemark = (remark: RemarkData) => {
+    setEditingRemarkId(remark.id);
+    setNewRemarkStudent(remark.student_id);
+    setNewRemarkContent(remark.content);
+    setNewRemarkType(remark.type);
+    setShowAddRemark(true);
   };
 
   // Resolve a lesson's viewable documents. Prefers the multi-document
@@ -799,6 +872,14 @@ export default function TeacherCourseDetailPage() {
         onClose={() => setViewingLessonDoc(null)}
       />
 
+      <MaterialViewer
+        open={!!viewingMaterial}
+        title={viewingMaterial?.title || ""}
+        fileUrl={viewingMaterial?.file_url || ""}
+        fileType={viewingMaterial?.file_type || null}
+        onClose={() => setViewingMaterial(null)}
+      />
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
@@ -872,15 +953,26 @@ export default function TeacherCourseDetailPage() {
           {/* ==================== LESSONS TAB ==================== */}
           {activeTab === "lessons" && (
             <div className="space-y-4">
-              {enrolledStudents.length > 0 && (
+              {myAssignedStudents.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-3 px-1">
-                  <label className="text-xs font-medium text-[#4D4D4D]">Viewing lessons as:</label>
+                  <label className="text-xs font-medium text-[#4D4D4D]">
+                    Viewing lessons for
+                    {lessonViewStudentId && (
+                      <>
+                        {" — "}
+                        <span className="text-[#1C1C28] font-semibold">
+                          {myAssignedStudents.find((s) => s.id === lessonViewStudentId)?.full_name}
+                        </span>
+                      </>
+                    )}
+                    :
+                  </label>
                   <select
                     value={lessonViewStudentId}
                     onChange={(e) => setLessonViewStudentId(e.target.value)}
                     className="px-3 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-[#1C1C28] text-xs focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
                   >
-                    {enrolledStudents.map((st) => (
+                    {myAssignedStudents.map((st) => (
                       <option key={st.id} value={st.id}>
                         {st.full_name}
                       </option>
@@ -893,6 +985,12 @@ export default function TeacherCourseDetailPage() {
                     </span>
                   )}
                 </div>
+              ) : (
+                enrolledStudents.length > 0 && (
+                  <p className="text-xs text-[#9CA3AF] px-1">
+                    None of this course&apos;s enrolled students are assigned to you yet.
+                  </p>
+                )
               )}
               {lessonsLoading ? (
                 <div className="flex justify-center py-12">
@@ -1283,8 +1381,10 @@ export default function TeacherCourseDetailPage() {
                             {typeBadge(a.type)}
                           </div>
                           <p className="text-xs text-[#4D4D4D] line-clamp-2">{a.description}</p>
-                          {a.due_date && (
-                            <p className="text-xs text-[#9CA3AF] mt-1">Due: {formatDate(a.due_date)}</p>
+                          {a.duration_days != null && (
+                            <p className="text-xs text-[#9CA3AF] mt-1">
+                              {a.duration_days} day{a.duration_days === 1 ? "" : "s"} to submit
+                            </p>
                           )}
                         </div>
                         <div className="flex-shrink-0 text-right space-y-1">
@@ -1314,20 +1414,39 @@ export default function TeacherCourseDetailPage() {
               {/* Add remark button */}
               <div className="flex justify-end">
                 <button
-                  onClick={() => setShowAddRemark(!showAddRemark)}
+                  onClick={() => {
+                    if (showAddRemark) {
+                      setShowAddRemark(false);
+                      setEditingRemarkId(null);
+                      setNewRemarkStudent("");
+                      setNewRemarkContent("");
+                    } else {
+                      setEditingRemarkId(null);
+                      setNewRemarkStudent("");
+                      setNewRemarkContent("");
+                      setNewRemarkType("feedback");
+                      setShowAddRemark(true);
+                    }
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-medium rounded-xl hover:bg-[#1a45c2] transition-all"
                 >
                   <Plus className="w-4 h-4" /> Add Remark
                 </button>
               </div>
 
-              {/* Add remark form */}
+              {/* Add / Edit remark form */}
               {showAddRemark && (
                 <div className="border border-[#1F4FD8]/20 bg-[#1F4FD8]/5 rounded-xl p-4 space-y-3">
+                  {editingRemarkId && (
+                    <p className="text-xs font-semibold text-[#1F4FD8] uppercase tracking-wide">
+                      Editing remark
+                    </p>
+                  )}
                   <select
                     value={newRemarkStudent}
                     onChange={(e) => setNewRemarkStudent(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]/20"
+                    disabled={!!editingRemarkId}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]/20 disabled:bg-gray-100 disabled:text-[#9CA3AF]"
                   >
                     <option value="">Select student</option>
                     {enrolledStudents.map((st) => (
@@ -1369,10 +1488,15 @@ export default function TeacherCourseDetailPage() {
                       className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4FD8] text-white text-sm font-medium rounded-xl hover:bg-[#1a45c2] transition-all disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
-                      {savingRemark ? "Saving..." : "Save"}
+                      {savingRemark ? "Saving..." : editingRemarkId ? "Update" : "Save"}
                     </button>
                     <button
-                      onClick={() => setShowAddRemark(false)}
+                      onClick={() => {
+                        setShowAddRemark(false);
+                        setEditingRemarkId(null);
+                        setNewRemarkStudent("");
+                        setNewRemarkContent("");
+                      }}
                       className="px-4 py-2 text-sm text-[#4D4D4D] hover:bg-gray-100 rounded-xl"
                     >
                       Cancel
@@ -1409,6 +1533,14 @@ export default function TeacherCourseDetailPage() {
                         </div>
                         <p className="text-sm text-[#4D4D4D] whitespace-pre-wrap">{r.content}</p>
                       </div>
+                      <button
+                        onClick={() => openEditRemark(r)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#1F4FD8] hover:bg-[#1F4FD8]/10 rounded-lg transition-all flex-shrink-0"
+                        title="Edit remark"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
                     </div>
                   </div>
                 ))
@@ -1456,15 +1588,14 @@ export default function TeacherCourseDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <a
-                      href={m.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setViewingMaterial(m)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4FD8] hover:bg-[#1a45c2] text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View
-                    </a>
+                    </button>
                   </div>
                 ))
               )}

@@ -18,6 +18,12 @@ import {
   Award,
   AlertCircle,
 } from "lucide-react";
+import {
+  computeEffectiveDueDate,
+  isDueSoon as isDueSoonUtil,
+  isPastDue as isPastDueUtil,
+  submissionTimeliness,
+} from "@/src/lib/assignment-deadline";
 
 /* ---------- types ---------- */
 
@@ -25,6 +31,9 @@ interface EnrolledCourse {
   enrollment_id: string;
   course_id: string;
   course_title: string;
+  // Per-student start reference for lesson-linked assignments' relative
+  // deadline (migration 013) — see src/lib/assignment-deadline.ts.
+  enrolled_at: string | null;
 }
 
 interface LiveSession {
@@ -42,7 +51,10 @@ interface Assignment {
   title: string;
   description: string;
   type: string | null; // homework | classwork | assessment
-  due_date: string | null;
+  // Relative deadline (migration 013) — "submit within N days of my own
+  // start reference" (session date for session-linked, enrollment date for
+  // lesson-linked). Computed per-assignment in renderAssignmentBody below.
+  duration_days: number | null;
   file_urls: string[] | null;
   allowed_file_types: string[] | null;
 }
@@ -133,7 +145,7 @@ export default function StudentAssignmentsPage() {
 
       const { data: enrollments } = await supabase
         .from("enrollments")
-        .select("id, course_id, courses(title)")
+        .select("id, course_id, enrolled_at, courses(title)")
         .eq("student_id", user.id)
         .in("status", ["active", "completed"]);
 
@@ -142,6 +154,7 @@ export default function StudentAssignmentsPage() {
         enrollment_id: e.id,
         course_id: e.course_id,
         course_title: (e.courses as any)?.title || "Untitled Course",
+        enrolled_at: e.enrolled_at || null,
       }));
 
       setCourses(mapped);
@@ -192,7 +205,7 @@ export default function StudentAssignmentsPage() {
       // attached via Manage Content, see migration 012).
       const { data: assignmentData } = await supabase
         .from("assignments")
-        .select("id, session_id, lesson_id, title, description, type, due_date, file_urls, allowed_file_types")
+        .select("id, session_id, lesson_id, title, description, type, duration_days, file_urls, allowed_file_types")
         .eq("course_id", courseId);
 
       const assignmentRows: Assignment[] = (assignmentData as any[]) || [];
@@ -225,6 +238,11 @@ export default function StudentAssignmentsPage() {
       fetchCourseData(selectedEnrollmentId, course.course_id);
     }
   }, [selectedEnrollmentId, courses, fetchCourseData]);
+
+  // Start reference for lesson-linked assignments' relative deadline —
+  // this student's own enrollment date for the currently selected course.
+  const selectedEnrolledAt =
+    courses.find((c) => c.enrollment_id === selectedEnrollmentId)?.enrolled_at || null;
 
   /* ---- 3. submit assignment ---- */
   const handleSubmit = async (assignment: Assignment) => {
@@ -291,21 +309,14 @@ export default function StudentAssignmentsPage() {
 
   const lessonsWithHomework = lessons.filter((l) => getAssignmentsForLesson(l.id).length > 0);
 
-  const isDueSoon = (date: string | null) => {
-    if (!date) return false;
-    const diff = new Date(date).getTime() - Date.now();
-    return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
-  };
-
-  const isPastDue = (date: string | null) => {
-    if (!date) return false;
-    return new Date(date).getTime() < Date.now();
-  };
-
   /* ---- shared assignment info + submission form/result, reused for both
-     session-linked and lesson-linked assignments ---- */
-  const renderAssignmentBody = (assignment: Assignment) => {
+     session-linked and lesson-linked assignments. `startReference` is this
+     student's own start point for this assignment — the session's date for
+     session-linked homework, or their course enrollment date for
+     lesson-linked homework (see migration 013 / assignment-deadline.ts) ---- */
+  const renderAssignmentBody = (assignment: Assignment, startReference: string | null) => {
     const submission = submissions.get(assignment.id) || null;
+    const dueDate = computeEffectiveDueDate(startReference, assignment.duration_days);
     return (
       <div className="space-y-4">
         {/* Assignment info */}
@@ -323,7 +334,7 @@ export default function StudentAssignmentsPage() {
                 {assignment.type}
               </span>
             )}
-            {assignment.due_date && isDueSoon(assignment.due_date) && !submission && (
+            {dueDate && isDueSoonUtil(dueDate) && !submission && (
               <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" /> Due soon
               </span>
@@ -334,16 +345,16 @@ export default function StudentAssignmentsPage() {
               {assignment.description}
             </p>
           )}
-          {assignment.due_date && (
+          {dueDate && (
             <p
               className={`text-xs mt-2 flex items-center gap-1 ${
-                isPastDue(assignment.due_date) && !submission
+                isPastDueUtil(dueDate) && !submission
                   ? "text-red-500"
                   : "text-[#9CA3AF]"
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
-              Due: {formatDateTime(assignment.due_date)}
+              Due: {formatDateTime(dueDate)}
             </p>
           )}
         </div>
@@ -460,6 +471,17 @@ export default function StudentAssignmentsPage() {
                 <span className="text-xs text-[#9CA3AF]">
                   on {formatDateTime(submission.submitted_at)}
                 </span>
+                {(() => {
+                  const timeliness = submissionTimeliness(dueDate, submission.submitted_at);
+                  if (!timeliness) return null;
+                  return timeliness.onTime ? (
+                    <span className="text-xs font-medium text-green-600">On time</span>
+                  ) : (
+                    <span className="text-xs font-medium text-red-500">
+                      Late by {timeliness.daysLate} day{timeliness.daysLate === 1 ? "" : "s"}
+                    </span>
+                  );
+                })()}
               </div>
               {submission.graded_at ? (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
@@ -671,7 +693,7 @@ export default function StudentAssignmentsPage() {
                           <span>No assignment for this session</span>
                         </div>
                       ) : (
-                        renderAssignmentBody(assignment)
+                        renderAssignmentBody(assignment, session.scheduled_at)
                       )}
                     </div>
                   </div>
@@ -697,7 +719,9 @@ export default function StudentAssignmentsPage() {
                     </div>
                     <div className="px-5 py-4 space-y-6">
                       {getAssignmentsForLesson(lesson.id).map((assignment) => (
-                        <div key={assignment.id}>{renderAssignmentBody(assignment)}</div>
+                        <div key={assignment.id}>
+                          {renderAssignmentBody(assignment, selectedEnrolledAt)}
+                        </div>
                       ))}
                     </div>
                   </div>

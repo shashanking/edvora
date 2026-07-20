@@ -23,6 +23,7 @@ import {
 import toast from "react-hot-toast";
 import FileUpload from "@/src/components/shared/FileUpload";
 import Link from "next/link";
+import { computeEffectiveDueDate, formatDueInWords, isPastDue } from "@/src/lib/assignment-deadline";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -49,7 +50,11 @@ interface AssignmentRow {
   title: string;
   description: string | null;
   type: string;
-  due_date: string | null;
+  // Relative deadline (migration 013) — "submit within N days of this
+  // session's date". A live_sessions row is 1:1 with a single student's
+  // enrollment (see migration 004), so session.scheduled_at already IS
+  // that student's own start reference — no separate lookup needed.
+  duration_days: number | null;
   file_urls: string[];
   allowed_file_types: string[];
   session_id: string;
@@ -74,7 +79,7 @@ interface AssignmentForm {
   title: string;
   description: string;
   type: string;
-  due_date: string;
+  duration_days: string; // free-text "N days" input; "" = no deadline
   file_urls: string[];
   allowed_file_types: string[];
 }
@@ -83,7 +88,7 @@ const defaultForm: AssignmentForm = {
   title: "",
   description: "",
   type: "homework",
-  due_date: "",
+  duration_days: "",
   file_urls: [],
   allowed_file_types: [],
 };
@@ -229,7 +234,7 @@ export default function TeacherAssignmentsPage() {
           title: a.title,
           description: a.description,
           type: a.type || "homework",
-          due_date: a.due_date,
+          duration_days: a.duration_days ?? null,
           file_urls: a.file_urls || [],
           allowed_file_types: a.allowed_file_types || [],
           session_id: a.session_id,
@@ -278,9 +283,7 @@ export default function TeacherAssignmentsPage() {
       title: assignment.title,
       description: assignment.description || "",
       type: assignment.type || "homework",
-      due_date: assignment.due_date
-        ? new Date(assignment.due_date).toISOString().slice(0, 16)
-        : "",
+      duration_days: assignment.duration_days != null ? String(assignment.duration_days) : "",
       file_urls: assignment.file_urls || [],
       allowed_file_types: assignment.allowed_file_types || [],
     });
@@ -300,7 +303,7 @@ export default function TeacherAssignmentsPage() {
       title: form.title,
       description: form.description || null,
       type: form.type,
-      due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      duration_days: form.duration_days.trim() ? parseInt(form.duration_days, 10) : null,
       file_urls: form.file_urls,
       allowed_file_types: form.allowed_file_types,
     };
@@ -608,15 +611,24 @@ export default function TeacherAssignmentsPage() {
                             </p>
                           )}
                           <div className="flex items-center gap-4 mt-2 ml-6 text-xs text-[#9CA3AF]">
-                            {session.assignment.due_date && (
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" />
-                                Due:{" "}
-                                {new Date(
-                                  session.assignment.due_date
-                                ).toLocaleDateString()}
-                              </span>
-                            )}
+                            {session.assignment.duration_days != null && (() => {
+                              const effectiveDue = computeEffectiveDueDate(
+                                session.scheduled_at,
+                                session.assignment.duration_days
+                              );
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1 ${
+                                    isPastDue(effectiveDue) ? "text-red-500" : ""
+                                  }`}
+                                >
+                                  <Clock className="w-3.5 h-3.5" />
+                                  {session.assignment.duration_days} day
+                                  {session.assignment.duration_days === 1 ? "" : "s"} to submit
+                                  {effectiveDue && ` — ${formatDueInWords(effectiveDue)}`}
+                                </span>
+                              );
+                            })()}
                             <span className="inline-flex items-center gap-1">
                               <Users className="w-3.5 h-3.5" />
                               {session.assignment.submission_count} submissions
@@ -752,19 +764,25 @@ export default function TeacherAssignmentsPage() {
                 </select>
               </div>
 
-              {/* Due date */}
+              {/* Deadline */}
               <div>
                 <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
-                  Due Date
+                  Days to Submit
                 </label>
                 <input
-                  type="datetime-local"
-                  value={form.due_date}
+                  type="number"
+                  min={1}
+                  value={form.duration_days}
                   onChange={(e) =>
-                    setForm({ ...form, due_date: e.target.value })
+                    setForm({ ...form, duration_days: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
+                  placeholder="Leave blank for no deadline"
+                  className="w-full px-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm"
                 />
+                <p className="text-xs text-[#9CA3AF] mt-1">
+                  Counted from this session&apos;s date — self-paced, so each
+                  student&apos;s session lands on a different day.
+                </p>
               </div>
 
               {/* File Upload */}

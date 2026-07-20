@@ -107,5 +107,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ success: true });
+  // Marking a lesson complete means the teacher is confirming the student
+  // actually took that class, so it should also mark attendance as Present
+  // for today — these were previously two entirely disconnected systems
+  // (a teacher could mark lessons complete all day and attendance stayed
+  // empty unless separately filled in via the Sessions tab / Attendance
+  // page). Only wired for the completed=true direction: un-completing a
+  // lesson is a correction to progress tracking, not a statement that the
+  // student was actually absent, so it intentionally leaves any existing
+  // attendance record alone.
+  //
+  // There's no session_id in scope here (lesson completion isn't tied to a
+  // specific live_sessions row), so "today" (server date) is used as the
+  // attendance date — the same date-keyed shape the Sessions tab and
+  // Attendance page already write to (attendance is unique per
+  // course_id/student_id/date).
+  let attendanceMarked = false;
+  if (completed) {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const { error: attendanceError } = await supabaseAdmin.from("attendance").upsert(
+      {
+        course_id: courseModule.course_id,
+        student_id: studentId,
+        teacher_id: user.id,
+        date: todayStr,
+        status: "present",
+      },
+      { onConflict: "course_id,student_id,date" }
+    );
+    if (!attendanceError) {
+      attendanceMarked = true;
+    }
+    // Best-effort — a failure here shouldn't fail the lesson-progress
+    // write, which is the primary action the teacher took.
+  }
+
+  return NextResponse.json({ success: true, attendanceMarked });
 }

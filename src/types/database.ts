@@ -206,6 +206,12 @@ export interface Database {
           title: string;
           description: string;
           due_date: string | null;
+          // Relative deadline (migration 013) — "submit within N days of
+          // the student's own start reference" (session date or enrollment
+          // date, see src/lib/assignment-deadline.ts). due_date above is
+          // left in the schema unused rather than dropped; new code should
+          // read/write duration_days instead.
+          duration_days: number | null;
           type: AssignmentType;
           parent_assignment_id: string | null;
           file_urls: Record<string, unknown>[];
@@ -219,6 +225,7 @@ export interface Database {
           title: string;
           description: string;
           due_date?: string | null;
+          duration_days?: number | null;
           type?: AssignmentType;
           parent_assignment_id?: string | null;
           file_urls?: Record<string, unknown>[];
@@ -229,6 +236,7 @@ export interface Database {
           title?: string;
           description?: string;
           due_date?: string | null;
+          duration_days?: number | null;
           type?: AssignmentType;
           parent_assignment_id?: string | null;
           file_urls?: Record<string, unknown>[];

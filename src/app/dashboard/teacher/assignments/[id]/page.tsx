@@ -18,6 +18,11 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import {
+  computeEffectiveDueDate,
+  formatDueInWords,
+  submissionTimeliness,
+} from "@/src/lib/assignment-deadline";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -28,7 +33,13 @@ interface AssignmentDetail {
   title: string;
   description: string | null;
   type: string;
-  due_date: string | null;
+  // Relative deadline (migration 013). For a session-linked assignment
+  // this session is 1:1 with a single student's enrollment (migration
+  // 004), so `session_scheduled_at` alone gives that student's effective
+  // due date. For a lesson-linked assignment, every submitting student has
+  // their own enrollment date — see `effectiveDueDate` computed per row in
+  // SubmissionRow below instead.
+  duration_days: number | null;
   file_urls: string[];
   allowed_file_types: string[];
   course_id: string;
@@ -37,6 +48,7 @@ interface AssignmentDetail {
   course_title: string;
   session_number: number;
   session_title: string;
+  session_scheduled_at: string | null;
   lesson_title: string | null;
 }
 
@@ -52,6 +64,10 @@ interface SubmissionRow {
   feedback: string | null;
   score: number | null;
   graded_at: string | null;
+  // This student's own effective due date — session date (session-linked)
+  // or their enrollment date (lesson-linked) + duration_days. Null = no
+  // deadline set.
+  effectiveDueDate: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -102,12 +118,12 @@ export default function AssignmentDetailPage() {
       // Fetch session info (session-linked assignments) or lesson info
       // (lesson-linked homework/classwork — see migration 012, admin's
       // Manage Content flow. session_id is null for these.)
-      let sessionData: { session_number: number; title: string } | null = null;
+      let sessionData: { session_number: number; title: string; scheduled_at: string | null } | null = null;
       let lessonData: { title: string } | null = null;
       if (a.session_id) {
         const { data } = await supabase
           .from("live_sessions")
-          .select("session_number, title")
+          .select("session_number, title, scheduled_at")
           .eq("id", a.session_id)
           .single();
         sessionData = data;
@@ -125,7 +141,7 @@ export default function AssignmentDetailPage() {
         title: a.title,
         description: a.description,
         type: a.type || "homework",
-        due_date: a.due_date,
+        duration_days: a.duration_days ?? null,
         file_urls: a.file_urls || [],
         allowed_file_types: a.allowed_file_types || [],
         course_id: a.course_id,
@@ -134,6 +150,7 @@ export default function AssignmentDetailPage() {
         course_title: (courseData as any)?.title || "Unknown",
         session_number: sessionData?.session_number || 0,
         session_title: sessionData?.title || "Unknown Session",
+        session_scheduled_at: sessionData?.scheduled_at || null,
         lesson_title: lessonData?.title || null,
       };
       setAssignment(detail);
@@ -163,11 +180,30 @@ export default function AssignmentDetailPage() {
         });
       }
 
+      // Lesson-linked assignments are shared across every student in the
+      // course, so unlike a session (1:1 per enrollment) there's no single
+      // start reference — each submitting student's own enrollment date is
+      // their start reference instead (see migration 013 / assignment-deadline.ts).
+      let enrolledAtByStudent = new Map<string, string>();
+      if (a.lesson_id && studentIds.length) {
+        const { data: enrollRows } = await supabase
+          .from("enrollments")
+          .select("student_id, enrolled_at")
+          .eq("course_id", a.course_id)
+          .in("student_id", studentIds);
+        ((enrollRows as any[]) || []).forEach((e) => {
+          enrolledAtByStudent.set(e.student_id, e.enrolled_at);
+        });
+      }
+
       const mapped: SubmissionRow[] = rows.map((s) => {
         const profile = profileMap.get(s.student_id) || {
           name: "Unknown",
           email: "",
         };
+        const startReference = a.session_id
+          ? sessionData?.scheduled_at || null
+          : enrolledAtByStudent.get(s.student_id) || null;
         return {
           id: s.id,
           student_id: s.student_id,
@@ -180,6 +216,7 @@ export default function AssignmentDetailPage() {
           feedback: s.feedback || null,
           score: s.score ?? null,
           graded_at: s.graded_at || null,
+          effectiveDueDate: computeEffectiveDueDate(startReference, a.duration_days ?? null),
         };
       });
 
@@ -339,14 +376,19 @@ export default function AssignmentDetailPage() {
             )}
 
             <div className="flex items-center gap-5 mt-4 text-sm text-[#9CA3AF]">
-              {assignment.due_date && (
+              {assignment.duration_days != null && (
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
-                  Due: {new Date(assignment.due_date).toLocaleDateString()}{" "}
-                  {new Date(assignment.due_date).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {assignment.duration_days} day{assignment.duration_days === 1 ? "" : "s"} to submit
+                  {assignment.session_id &&
+                    (() => {
+                      const due = computeEffectiveDueDate(
+                        assignment.session_scheduled_at,
+                        assignment.duration_days
+                      );
+                      return due ? ` (${formatDueInWords(due)})` : "";
+                    })()}
+                  {!assignment.session_id && " — counted from each student's own enrollment date"}
                 </span>
               )}
               <span className="inline-flex items-center gap-1.5">
@@ -454,6 +496,17 @@ export default function AssignmentDetailPage() {
                       <Clock className="w-3 h-3" />
                       {new Date(sub.submitted_at).toLocaleString()}
                     </p>
+                    {(() => {
+                      const timeliness = submissionTimeliness(sub.effectiveDueDate, sub.submitted_at);
+                      if (!timeliness) return null;
+                      return timeliness.onTime ? (
+                        <p className="text-xs text-green-600 font-medium mt-0.5">On time</p>
+                      ) : (
+                        <p className="text-xs text-red-500 font-medium mt-0.5">
+                          Late by {timeliness.daysLate} day{timeliness.daysLate === 1 ? "" : "s"}
+                        </p>
+                      );
+                    })()}
                     {sub.graded_at && (
                       <p className="inline-flex items-center gap-1 text-xs text-green-600 font-medium mt-0.5 ml-3">
                         <CheckCircle2 className="w-3 h-3" />

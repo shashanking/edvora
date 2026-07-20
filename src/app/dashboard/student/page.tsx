@@ -16,22 +16,29 @@ export default async function StudentDashboardPage() {
     .eq("id", user.id)
     .single()) as { data: { full_name: string } | null };
 
-  const { count: courseCount, error: courseCountError } = await supabase
-    .from("enrollments")
-    .select("*", { count: "exact", head: true })
-    .eq("student_id", user.id)
-    .in("status", ["active", "completed"]);
-
-  const { count: assignmentCount, error: assignmentCountError } = await supabase
-    .from("assignment_submissions")
-    .select("*", { count: "exact", head: true })
-    .eq("student_id", user.id);
-
-  const { data: enrollments, error: enrollmentsError } = (await supabase
-    .from("enrollments")
-    .select("course_id")
-    .eq("student_id", user.id)
-    .in("status", ["active", "completed"])) as { data: { course_id: string }[] | null; error: unknown };
+  const [
+    { count: courseCount, error: courseCountError },
+    { count: assignmentCount, error: assignmentCountError },
+    { data: enrollments, error: enrollmentsError },
+  ] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("*", { count: "exact", head: true })
+      .eq("student_id", user.id)
+      .in("status", ["active", "completed"]),
+    supabase
+      .from("assignment_submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("student_id", user.id),
+    supabase
+      .from("enrollments")
+      .select("course_id")
+      .eq("student_id", user.id)
+      .in("status", ["active", "completed"]) as unknown as Promise<{
+      data: { course_id: string }[] | null;
+      error: unknown;
+    }>,
+  ]);
 
   const enrolledCourseIds = enrollments?.map((enrollment) => enrollment.course_id) ?? [];
 

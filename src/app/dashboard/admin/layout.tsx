@@ -19,7 +19,7 @@ export default async function AdminDashboardLayout({
 
   const { data: profile } = (await supabase
     .from("profiles")
-    .select("*")
+    .select("full_name, email, role")
     .eq("id", user.id)
     .single()) as { data: { full_name: string; email: string; role: string } | null };
 

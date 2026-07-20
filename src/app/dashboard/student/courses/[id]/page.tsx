@@ -27,6 +27,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import MaterialViewer from "@/src/components/shared/MaterialViewer";
+import {
+  computeEffectiveDueDate,
+  isDueSoon as isDueSoonUtil,
+  submissionTimeliness,
+} from "@/src/lib/assignment-deadline";
 
 type Tab = "lessons" | "sessions" | "assignments" | "remarks" | "materials";
 
@@ -92,10 +97,19 @@ interface Session {
 interface AssignmentData {
   id: string;
   lesson_id?: string | null;
+  session_id?: string | null;
   title: string;
   description: string;
   type: string;
-  due_date: string | null;
+  // Relative deadline (migration 013) — "submit within N days of this
+  // student's start reference" (their enrollment date for lesson-linked
+  // homework, or the linked session's date for session-linked homework).
+  duration_days: number | null;
+  // Computed from duration_days + this student's own start reference —
+  // see src/lib/assignment-deadline.ts. Set when the row is fetched below;
+  // null means no deadline (duration_days was null) or start reference
+  // unavailable.
+  effectiveDueDate: string | null;
   file_urls: any[];
   created_at: string;
   submission?: {
@@ -264,10 +278,10 @@ export default function StudentCourseDetailPage() {
   );
 
   const upcomingAssignments = assignments.filter(
-    (a) => a.due_date && new Date(a.due_date) >= now && !a.submission
+    (a) => a.effectiveDueDate && new Date(a.effectiveDueDate) >= now && !a.submission
   );
   const pastAssignments = assignments.filter(
-    (a) => a.submission || (a.due_date && new Date(a.due_date) < now) || !a.due_date
+    (a) => a.submission || (a.effectiveDueDate && new Date(a.effectiveDueDate) < now) || !a.effectiveDueDate
   );
 
   // Auto-complete sessions on load
@@ -375,7 +389,7 @@ export default function StudentCourseDetailPage() {
       if (lessonIdsForDocs.length > 0) {
         const { data: lessonAssignData } = await supabase
           .from("assignments")
-          .select("id, lesson_id, title, description, type, due_date, file_urls, created_at")
+          .select("id, lesson_id, title, description, type, duration_days, file_urls, created_at")
           .in("lesson_id", lessonIdsForDocs);
 
         const assignList = (lessonAssignData as AssignmentData[]) || [];
@@ -393,10 +407,17 @@ export default function StudentCourseDetailPage() {
             subMap.set(s.assignment_id, s);
           }
 
+          // These are all lesson-linked (filtered by lesson_id above), so
+          // this student's own enrollment date is the start reference for
+          // every one of them.
           for (const a of assignList) {
             if (!a.lesson_id) continue;
             if (!laGrouped[a.lesson_id]) laGrouped[a.lesson_id] = [];
-            laGrouped[a.lesson_id].push({ ...a, submission: subMap.get(a.id) || null });
+            laGrouped[a.lesson_id].push({
+              ...a,
+              effectiveDueDate: computeEffectiveDueDate(enrollmentData.enrolled_at, a.duration_days),
+              submission: subMap.get(a.id) || null,
+            });
           }
         }
         setLessonAssignments(laGrouped);
@@ -480,13 +501,18 @@ export default function StudentCourseDetailPage() {
     setSessionsLoading(false);
   }, [courseId, user]);
 
-  // Fetch assignments
+  // Fetch assignments — this tab mixes session-linked and lesson-linked
+  // assignments for the whole course, so unlike the per-lesson fetch above
+  // (which is exclusively lesson-linked) each row here needs its own start
+  // reference resolved: a session-linked assignment's session date, or
+  // this student's enrollment date for a lesson-linked one. See migration
+  // 013 / src/lib/assignment-deadline.ts.
   const fetchAssignments = useCallback(async () => {
     if (!user) return;
     setAssignmentsLoading(true);
     const { data: assignData } = await supabase
       .from("assignments")
-      .select("id, title, description, type, due_date, file_urls, created_at")
+      .select("id, session_id, lesson_id, title, description, type, duration_days, file_urls, created_at")
       .eq("course_id", courseId)
       .order("created_at", { ascending: false });
 
@@ -504,14 +530,35 @@ export default function StudentCourseDetailPage() {
         subMap.set(s.assignment_id, s);
       }
 
+      const sessionIds = [...new Set(assignList.map((a) => a.session_id).filter(Boolean))] as string[];
+      let sessionScheduledAtMap = new Map<string, string>();
+      if (sessionIds.length > 0) {
+        const { data: sessionRows } = await supabase
+          .from("live_sessions")
+          .select("id, scheduled_at")
+          .in("id", sessionIds);
+        ((sessionRows as any[]) || []).forEach((s) => {
+          if (s.scheduled_at) sessionScheduledAtMap.set(s.id, s.scheduled_at);
+        });
+      }
+
       setAssignments(
-        assignList.map((a) => ({ ...a, submission: subMap.get(a.id) || null }))
+        assignList.map((a) => {
+          const startReference = a.session_id
+            ? sessionScheduledAtMap.get(a.session_id) || null
+            : enrolledAt;
+          return {
+            ...a,
+            effectiveDueDate: computeEffectiveDueDate(startReference, a.duration_days),
+            submission: subMap.get(a.id) || null,
+          };
+        })
       );
     } else {
       setAssignments([]);
     }
     setAssignmentsLoading(false);
-  }, [courseId, user]);
+  }, [courseId, user, enrolledAt]);
 
   // Fetch remarks
   const fetchRemarks = useCallback(async () => {
@@ -1041,8 +1088,8 @@ export default function StudentCourseDetailPage() {
                                   {a.description && (
                                     <p className="text-xs text-[#4D4D4D] line-clamp-2">{a.description}</p>
                                   )}
-                                  {a.due_date && (
-                                    <p className="text-xs text-[#9CA3AF] mt-1">Due: {formatDate(a.due_date)}</p>
+                                  {a.effectiveDueDate && (
+                                    <p className="text-xs text-[#9CA3AF] mt-1">Due: {formatDate(a.effectiveDueDate)}</p>
                                   )}
                                 </div>
                                 <div className="flex-shrink-0 text-right">
@@ -1184,7 +1231,7 @@ export default function StudentCourseDetailPage() {
                       <h3 className="text-sm font-semibold text-[#1C1C28] mb-3">Pending Assignments</h3>
                       <div className="space-y-3">
                         {upcomingAssignments.map((a) => {
-                          const isDueSoon = a.due_date && (new Date(a.due_date).getTime() - now.getTime()) < 3 * 24 * 60 * 60 * 1000;
+                          const isDueSoon = isDueSoonUtil(a.effectiveDueDate);
                           return (
                             <div key={a.id} className="border border-gray-100 rounded-xl p-4">
                               <div className="flex items-start justify-between gap-3">
@@ -1194,9 +1241,9 @@ export default function StudentCourseDetailPage() {
                                     {typeBadge(a.type)}
                                   </div>
                                   <p className="text-xs text-[#4D4D4D] line-clamp-2">{a.description}</p>
-                                  {a.due_date && (
+                                  {a.effectiveDueDate && (
                                     <p className={`text-xs mt-1 ${isDueSoon ? "text-red-500 font-medium" : "text-[#9CA3AF]"}`}>
-                                      Due: {formatDate(a.due_date)} {isDueSoon && " - Due soon!"}
+                                      Due: {formatDate(a.effectiveDueDate)} {isDueSoon && " - Due soon!"}
                                     </p>
                                   )}
                                 </div>
@@ -1228,9 +1275,20 @@ export default function StudentCourseDetailPage() {
                                   {typeBadge(a.type)}
                                 </div>
                                 <p className="text-xs text-[#4D4D4D] line-clamp-2">{a.description}</p>
-                                {a.due_date && (
-                                  <p className="text-xs text-[#9CA3AF] mt-1">Due: {formatDate(a.due_date)}</p>
+                                {a.effectiveDueDate && (
+                                  <p className="text-xs text-[#9CA3AF] mt-1">Due: {formatDate(a.effectiveDueDate)}</p>
                                 )}
+                                {a.submission && (() => {
+                                  const timeliness = submissionTimeliness(a.effectiveDueDate, a.submission.submitted_at);
+                                  if (!timeliness) return null;
+                                  return timeliness.onTime ? (
+                                    <p className="text-xs text-green-600 font-medium mt-0.5">On time</p>
+                                  ) : (
+                                    <p className="text-xs text-red-500 font-medium mt-0.5">
+                                      Late by {timeliness.daysLate} day{timeliness.daysLate === 1 ? "" : "s"}
+                                    </p>
+                                  );
+                                })()}
                               </div>
                               <div className="flex-shrink-0 text-right">
                                 {a.submission ? (

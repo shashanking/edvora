@@ -65,7 +65,11 @@ interface AssignmentRow {
   type: AssignmentType;
   title: string;
   description: string;
-  due_date: string | null;
+  // Relative deadline (migration 013) — "submit within N days of the
+  // student's own enrollment date", replacing the old fixed due_date. See
+  // src/lib/assignment-deadline.ts for how it's turned into a per-student
+  // date across admin/teacher/student views.
+  duration_days: number | null;
   file_urls: string[] | null;
 }
 
@@ -78,7 +82,7 @@ interface DraftAssignment {
   type: AssignmentType;
   title: string;
   description: string;
-  due_date: string;
+  duration_days: string; // free-text "N days" input; "" = no deadline
   file_urls: string[];
 }
 
@@ -278,7 +282,7 @@ export default function AdminCourseContentPage() {
         // graceful-degrade pattern as lesson_documents above.
         const { data: assignData } = await supabase
           .from("assignments")
-          .select("id, lesson_id, type, title, description, due_date, file_urls")
+          .select("id, lesson_id, type, title, description, duration_days, file_urls")
           .in("lesson_id", allLessons.map((l) => l.id));
 
         const assignGrouped: Record<string, AssignmentRow[]> = {};
@@ -458,7 +462,7 @@ export default function AdminCourseContentPage() {
         type: a.type,
         title: a.title,
         description: a.description,
-        due_date: a.due_date ? a.due_date.slice(0, 10) : "",
+        duration_days: a.duration_days != null ? String(a.duration_days) : "",
         file_urls: a.file_urls || [],
       }))
     );
@@ -475,7 +479,7 @@ export default function AdminCourseContentPage() {
         type: "homework",
         title: "",
         description: "",
-        due_date: "",
+        duration_days: "",
         file_urls: [],
       },
     ]);
@@ -543,6 +547,23 @@ export default function AdminCourseContentPage() {
       toast.error("Lesson title is required");
       return;
     }
+
+    // Assignments with a blank Title are silently dropped below (the
+    // insert/update filters require a.title.trim()) — that's fine for an
+    // empty row the admin added and decided not to use, but if they've
+    // already written instructions or attached a file, dropping it without
+    // any feedback looks like "adding homework/classwork just doesn't
+    // work". Catch it here instead of losing the work silently.
+    const blankTitleAssignments = draftAssignments.filter(
+      (a) => !a.title.trim() && (a.description.trim() || a.file_urls.length > 0)
+    );
+    if (blankTitleAssignments.length > 0) {
+      toast.error(
+        `Add a title to ${blankTitleAssignments.length > 1 ? "each" : "the"} homework/classwork item before saving — without one it won't be stored`
+      );
+      return;
+    }
+
     setSavingLesson(true);
 
     // Legacy pdf_url/material_id columns are kept in sync with the first
@@ -634,12 +655,32 @@ export default function AdminCourseContentPage() {
             type: a.type,
             title: a.title.trim(),
             description: a.description.trim(),
-            due_date: a.due_date || null,
+            duration_days: a.duration_days.trim() ? parseInt(a.duration_days, 10) : null,
             file_urls: a.file_urls,
           }))
         );
         if (assignError) {
           toast.error("Lesson saved, but homework/classwork couldn't be stored (" + assignError.message + ")");
+        }
+      }
+      // Existing assignments (dbId set) are edited in place — e.g. changing
+      // the due date on homework opened via the Assignment badge — so push
+      // their current draft values back to the row instead of leaving edits
+      // stuck client-side.
+      const existingAssignments = draftAssignments.filter((a) => a.dbId && a.title.trim());
+      for (const a of existingAssignments) {
+        const { error: updateError } = await supabase
+          .from("assignments")
+          .update({
+            type: a.type,
+            title: a.title.trim(),
+            description: a.description.trim(),
+            duration_days: a.duration_days.trim() ? parseInt(a.duration_days, 10) : null,
+            file_urls: a.file_urls,
+          })
+          .eq("id", a.dbId as string);
+        if (updateError) {
+          toast.error("Lesson saved, but an assignment update couldn't be stored (" + updateError.message + ")");
         }
       }
       if (removedAssignmentIds.length > 0) {
@@ -827,10 +868,14 @@ export default function AdminCourseContentPage() {
                               </button>
                             )}
                             {lessonAssignmentCount > 0 && (
-                              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                              <button
+                                onClick={() => openEditLesson(lesson)}
+                                className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full hover:bg-amber-100 transition-colors"
+                                title={lessonAssignmentCount > 1 ? `Edit ${lessonAssignmentCount} assignments` : "Edit assignment"}
+                              >
                                 <ClipboardList className="w-3 h-3" />
                                 {lessonAssignmentCount > 1 ? `Assignments (${lessonAssignmentCount})` : "Assignment"}
-                              </span>
+                              </button>
                             )}
                             {lesson.duration_minutes && (
                               <span className="flex items-center gap-1 text-xs text-[#9CA3AF]">
@@ -1063,8 +1108,9 @@ export default function AdminCourseContentPage() {
                     folder={`course-${courseId}`}
                     accept=".pdf,application/pdf"
                     maxSizeMB={50}
+                    multiple
                     onUpload={(url) => addDraftDocFromUpload(url)}
-                    label="Click to upload a PDF — adds to the list above"
+                    label="Click to upload PDF(s) — adds to the list above"
                   />
                 ) : materials.filter(isPdfMaterial).length === 0 ? (
                   <p className="text-xs text-[#9CA3AF] px-4 py-3 bg-gray-50 rounded-xl">
@@ -1105,7 +1151,9 @@ export default function AdminCourseContentPage() {
                 </label>
                 <p className="text-xs text-[#9CA3AF] mb-2">
                   Attach gradable assignments to this lesson — students see these on their
-                  Assignments tab and submit there, same flow teachers already use.
+                  Assignments tab and submit there, same flow teachers already use. Since the
+                  course is self-paced, the deadline is a number of days from each student's
+                  own enrollment date, not a fixed calendar date.
                 </p>
 
                 {draftAssignments.length > 0 && (
@@ -1131,15 +1179,24 @@ export default function AdminCourseContentPage() {
                             type="text"
                             value={a.title}
                             onChange={(e) => updateDraftAssignment(a.key, { title: e.target.value })}
-                            placeholder="Title"
+                            placeholder="Title *"
+                            title="Required — without a title this item won't be saved"
                             className="flex-1 px-3 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
                           />
-                          <input
-                            type="date"
-                            value={a.due_date}
-                            onChange={(e) => updateDraftAssignment(a.key, { due_date: e.target.value })}
-                            className="px-2 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
-                          />
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <input
+                              type="number"
+                              min={1}
+                              value={a.duration_days}
+                              onChange={(e) =>
+                                updateDraftAssignment(a.key, { duration_days: e.target.value })
+                              }
+                              placeholder="No limit"
+                              title="Days to submit, counted from each student's own enrollment date"
+                              className="w-20 px-2 py-1.5 border border-[#D4D4D4] rounded-lg bg-white text-xs text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]"
+                            />
+                            <span className="text-xs text-[#9CA3AF]">days</span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => removeDraftAssignment(a.key)}

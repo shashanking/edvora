@@ -1,0 +1,31 @@
+-- Assignments used a single, fixed due_date (TIMESTAMPTZ) for every student
+-- taking a course — but Edvora courses are self-paced, so different
+-- students reach the same assignment weeks apart. A shared calendar
+-- deadline isn't fair: one student might get 2 days to finish homework
+-- they only just unlocked, while another has had 3 weeks.
+--
+-- This replaces the deadline model with a RELATIVE one: duration_days holds
+-- "submit within N days of starting", and each student's actual due date is
+-- computed in application code (see src/lib/assignment-deadline.ts) from
+-- their own start reference:
+--   - session-linked assignments (assignments.session_id) -> that
+--     student's live_sessions.scheduled_at (live_sessions is 1:1 per
+--     enrollment — see migration 004's "1:1 pacing model" comment)
+--   - lesson-linked assignments (assignments.lesson_id, migration 012)
+--     -> that student's enrollments.enrolled_at for the course
+--     (lesson_progress has no reliable "lesson started" timestamp — every
+--     write site only ever fires on completion, e.g.
+--     api/teacher/lesson-progress and api/admin/seed-lesson-progress, never
+--     on a student opening/starting a lesson)
+--
+-- due_date is left in place, unused, rather than dropped: that's
+-- non-destructive, it stays readable for any historical assignment created
+-- under the old fixed-date model, and dropping a column is riskier than
+-- leaving an unused one idle. NULL duration_days means "no deadline" (same
+-- semantics NULL due_date had before).
+--
+-- NOTE: like prior migrations in this repo, this is NOT auto-applied — run
+-- it manually via the Supabase SQL editor. The statement is idempotent
+-- (IF NOT EXISTS) and safe to run more than once.
+
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS duration_days INTEGER;

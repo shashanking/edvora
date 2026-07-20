@@ -16,24 +16,26 @@ export default async function AdminDashboardPage() {
     .eq("id", user.id)
     .single()) as { data: { full_name: string } | null };
 
-  const { count: totalCourses } = await supabase
-    .from("courses")
-    .select("*", { count: "exact", head: true });
-
-  const { count: totalStudents } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("role", "student");
-
-  const { count: totalTeachers } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("role", "teacher");
-
-  const { count: totalPayments } = await supabase
-    .from("payments")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "completed");
+  const [
+    { count: totalCourses },
+    { count: totalStudents },
+    { count: totalTeachers },
+    { count: totalPayments },
+  ] = await Promise.all([
+    supabase.from("courses").select("*", { count: "exact", head: true }),
+    supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "student"),
+    supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "teacher"),
+    supabase
+      .from("payments")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "completed"),
+  ]);
 
   const stats = [
     { label: "Total Courses", value: totalCourses ?? 0, icon: <BookOpen className="w-6 h-6" />, color: "bg-blue-50 text-[#1F4FD8]" },

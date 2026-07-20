@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import FileUpload from "@/src/components/shared/FileUpload";
+import MaterialViewer from "@/src/components/shared/MaterialViewer";
 
 interface MaterialRow {
   id: string;
@@ -64,6 +65,10 @@ export default function TeacherMaterialsPage() {
   const [showModal, setShowModal] = useState(false);
   const [filterCourseId, setFilterCourseId] = useState("");
   const [userId, setUserId] = useState("");
+  // View-only preview — no direct download link. Course material must not
+  // be downloadable by teachers or students; matches the pattern already
+  // used for lesson documents and (student-side) course materials.
+  const [viewingMaterial, setViewingMaterial] = useState<MaterialRow | null>(null);
 
   const [form, setForm] = useState({
     course_id: "",
@@ -202,6 +207,14 @@ export default function TeacherMaterialsPage() {
 
   return (
     <div className="space-y-6">
+      <MaterialViewer
+        open={!!viewingMaterial}
+        title={viewingMaterial?.title || ""}
+        fileUrl={viewingMaterial?.file_url || ""}
+        fileType={viewingMaterial?.file_type || null}
+        onClose={() => setViewingMaterial(null)}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -291,15 +304,14 @@ export default function TeacherMaterialsPage() {
                   </div>
                 </div>
               </div>
-              <a
-                href={m.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => setViewingMaterial(m)}
                 className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#1F4FD8] hover:bg-[#1a45c2] text-white text-xs font-semibold rounded-lg transition-colors"
               >
                 <Eye className="w-3.5 h-3.5" />
                 View
-              </a>
+              </button>
             </div>
           ))}
         </div>

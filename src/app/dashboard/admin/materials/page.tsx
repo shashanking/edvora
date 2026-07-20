@@ -74,10 +74,21 @@ export default function AdminMaterialsPage() {
     course_id: "",
     title: "",
     description: "",
-    file_url: "",
-    file_type: "",
-    file_size: 0,
   });
+  // Files staged for upload in the current modal session. course_materials.title
+  // is NOT NULL and is a per-row, human-meaningful label (used e.g. as the
+  // dropdown text when attaching an existing material to a lesson), so a batch
+  // of files can't all share the single Title field the way lesson_documents
+  // (no title column) can — each staged file gets its own derived title below.
+  const [stagedFiles, setStagedFiles] = useState<
+    { url: string; name: string; type: string; size: number }[]
+  >([]);
+
+  // "some_report-v2.pdf" -> "some report v2"
+  const titleFromFileName = (fileName: string) => {
+    const base = fileName.replace(/\.[^/.]+$/, "");
+    return base.replace(/[-_]+/g, " ").trim() || fileName;
+  };
 
   useEffect(() => {
     fetchData();
@@ -107,8 +118,15 @@ export default function AdminMaterialsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.course_id || !form.title || !form.file_url) {
-      toast.error("Course, title, and file are required");
+    if (!form.course_id || stagedFiles.length === 0) {
+      toast.error("Course and at least one file are required");
+      return;
+    }
+    // Single file: the Title field is that material's title (required, as before).
+    // Multiple files: Title is an optional shared prefix, and each material's
+    // title falls back to a name derived from its own file.
+    if (stagedFiles.length === 1 && !form.title) {
+      toast.error("Title is required");
       return;
     }
 
@@ -121,27 +139,45 @@ export default function AdminMaterialsPage() {
       return;
     }
 
-    const { error: insertError } = await supabase
-      .from("course_materials")
-      .insert({
-        course_id: form.course_id,
-        uploaded_by: user.id,
-        title: form.title,
-        description: form.description || null,
-        file_url: form.file_url,
-        file_type: form.file_type || null,
-        file_size: form.file_size || null,
-      } as any);
+    const rows = stagedFiles.map((f) => ({
+      course_id: form.course_id,
+      uploaded_by: user.id,
+      title:
+        stagedFiles.length === 1
+          ? form.title
+          : form.title
+          ? `${form.title} — ${titleFromFileName(f.name)}`
+          : titleFromFileName(f.name),
+      description: form.description || null,
+      file_url: f.url,
+      file_type: f.type || null,
+      file_size: f.size || null,
+    }));
+
+    const { error: insertError } = await supabase.from("course_materials").insert(rows as any);
 
     if (insertError) {
       toast.error(insertError.message);
     } else {
-      toast.success("Material uploaded successfully");
+      toast.success(
+        rows.length > 1 ? `${rows.length} materials uploaded successfully` : "Material uploaded successfully"
+      );
       setShowModal(false);
-      setForm({ course_id: "", title: "", description: "", file_url: "", file_type: "", file_size: 0 });
+      setForm({ course_id: "", title: "", description: "" });
+      setStagedFiles([]);
       fetchData();
     }
     setSaving(false);
+  };
+
+  const removeStagedFile = (url: string) => {
+    setStagedFiles((prev) => prev.filter((f) => f.url !== url));
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setForm({ course_id: "", title: "", description: "" });
+    setStagedFiles([]);
   };
 
   const deleteMaterial = async (id: string) => {
@@ -308,7 +344,7 @@ export default function AdminMaterialsPage() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-poppins font-bold text-[#1C1C28]">Upload Material</h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-[#4D4D4D]" />
@@ -333,7 +369,9 @@ export default function AdminMaterialsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Title</label>
+                <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+                  Title {stagedFiles.length > 1 && <span className="text-[#9CA3AF] font-normal">(optional prefix — each file also gets its own name)</span>}
+                </label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -356,21 +394,43 @@ export default function AdminMaterialsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">File</label>
+                <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">
+                  File{stagedFiles.length !== 1 ? "s" : ""}
+                </label>
+
+                {stagedFiles.length > 0 && (
+                  <div className="space-y-1.5 mb-3">
+                    {stagedFiles.map((f) => (
+                      <div
+                        key={f.url}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#F8F9FB] rounded-lg border border-gray-100"
+                      >
+                        <FileText className="w-4 h-4 text-[#1F4FD8] flex-shrink-0" />
+                        <span className="text-xs text-[#1C1C28] truncate flex-1">{f.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeStagedFile(f.url)}
+                          className="p-1 text-[#9CA3AF] hover:text-red-500 rounded flex-shrink-0"
+                          title="Remove"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <FileUpload
+                  key={stagedFiles.length}
                   bucket="materials"
                   folder={form.course_id ? `course-${form.course_id}` : ""}
                   accept="*"
                   maxSizeMB={50}
-                  onUpload={(url, _fileName, fileType, fileSize) => {
-                    setForm((prev) => ({
-                      ...prev,
-                      file_url: url,
-                      file_type: fileType,
-                      file_size: fileSize,
-                    }));
+                  multiple
+                  onUpload={(url, fileName, fileType, fileSize) => {
+                    setStagedFiles((prev) => [...prev, { url, name: fileName, type: fileType, size: fileSize }]);
                   }}
-                  label="Click to upload a file"
+                  label="Click to upload file(s) — adds to the list above"
                 />
               </div>
 
@@ -388,7 +448,7 @@ export default function AdminMaterialsPage() {
                   Save Material
                 </button>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                   className="px-6 py-2.5 text-[#4D4D4D] border border-[#D4D4D4] rounded-xl hover:bg-gray-50 transition-all text-sm"
                 >
                   Cancel

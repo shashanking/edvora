@@ -488,18 +488,22 @@ export default function StudentCourseDetailPage() {
     setLoading(false);
   }, [courseId]);
 
-  // Fetch sessions
+  // Fetch sessions — scoped to this student's own enrollment. live_sessions
+  // are 1:1 per enrollment (migration 004), so filtering by course_id alone
+  // would (once the RLS gap from migration 001 is closed by migration 015)
+  // return nothing for a co-enrolled course, or — before that RLS fix —
+  // incorrectly showed every other student's sessions in the same course.
   const fetchSessions = useCallback(async () => {
-    if (!user) return;
+    if (!user || !enrollmentId) return;
     setSessionsLoading(true);
     const { data } = await supabase
       .from("live_sessions")
       .select("id, title, scheduled_at, duration_minutes, status, zoom_join_url, recording_url")
-      .eq("course_id", courseId)
+      .eq("enrollment_id", enrollmentId)
       .order("scheduled_at", { ascending: false });
     setSessions((data as Session[]) || []);
     setSessionsLoading(false);
-  }, [courseId, user]);
+  }, [enrollmentId, user]);
 
   // Fetch assignments — this tab mixes session-linked and lesson-linked
   // assignments for the whole course, so unlike the per-lesson fetch above

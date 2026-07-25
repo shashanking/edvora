@@ -18,8 +18,7 @@ type TestimonialPage = {
   card: Testimonial[];
 };
 
-// Neutral person-silhouette placeholder. Scales to fill its circular container
-// so testimonials don't imply real photos.
+// Fallback shown when a testimonial has no photo.
 const PersonAvatar = () => (
   <div className="h-full w-full rounded-full bg-[#E8EEFB] flex items-center justify-center">
     <svg
@@ -32,6 +31,17 @@ const PersonAvatar = () => (
     </svg>
   </div>
 );
+
+const TestimonialAvatar = ({ testimonial }: { testimonial: Testimonial }) =>
+  testimonial.imageUrl ? (
+    <img
+      src={testimonial.imageUrl}
+      alt={testimonial.name}
+      className="h-full w-full object-cover rounded-full"
+    />
+  ) : (
+    <PersonAvatar />
+  );
 
 const testimonials: Testimonial[] = [
   {
@@ -197,7 +207,7 @@ const handlePrev = () => {
                       : "w-6 h-6 sm:w-8 sm:h-8 md:w-16 md:h-16 lg:w-24 lg:h-24"
                 }`}
               >
-                <PersonAvatar />
+                <TestimonialAvatar testimonial={testimonial} />
               </div>
             );
           })}
@@ -215,7 +225,7 @@ const handlePrev = () => {
                 {/* Card header */}
                 <div className="flex items-center gap-2 sm:gap-3 md:gap-4 mb-3 md:mb-6">
                   <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-12 md:h-12 lg:w-15 lg:h-15 rounded-full flex items-center justify-center text-2xl overflow-hidden">
-                    <PersonAvatar />
+                    <TestimonialAvatar testimonial={testimonial} />
                   </div>
                   <div>
                     <h3 className="text-[#2B2B2B] font-poppins text-[12px] sm:text-[14px] md:text-base lg:text-lg leading-tight">

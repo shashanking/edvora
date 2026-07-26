@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import { SITE_URL } from "@/src/lib/siteConfig";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Addify Academy - Personalized Online Learning",
+    // Page-level titles render as "Page | Addify Academy".
     template: "%s | Addify Academy",
   },
   description:
@@ -35,6 +38,13 @@ export const metadata: Metadata = {
       "Personalized 1-on-1 online tutoring for young learners and adults.",
     type: "website",
     siteName: "Addify Academy",
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Addify Academy - Personalized Online Learning",
+    description:
+      "Personalized 1-on-1 online tutoring for young learners and adults.",
   },
 };
 

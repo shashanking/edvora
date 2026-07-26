@@ -3,6 +3,7 @@ import { aboutPage } from "./aboutPage";
 import { adultLearnersPage } from "./adultLearnersPage";
 import { advantage } from "./advantage";
 import { blog } from "./blog";
+import { blogFaqItem } from "./blogFaqItem";
 import { blogPage } from "./blogPage";
 import { contact } from "./contact";
 import { course } from "./course";
@@ -24,6 +25,7 @@ export const schemaTypes = [
     aboutPage,
     advantage,
     blog,
+    blogFaqItem,
     blogPage,
     course,
     contact,

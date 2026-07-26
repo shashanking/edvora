@@ -3,11 +3,21 @@ import { sanityClient } from "@/src/lib/sanityClient";
 import PageHero from "@/src/components/core/PageHero";
 import BlogList from "@/src/components/pages/BlogList";
 import Footer from "@/src/components/core/Footer";
+import { absoluteUrl } from "@/src/lib/siteConfig";
+import { breadcrumbSchema, organizationSchema } from "@/src/lib/schema";
 
 export const metadata: Metadata = {
   title: "Blogs",
   description:
     "Learning insights, study tips, and education guidance from the mentors at Addify Academy.",
+  alternates: { canonical: absoluteUrl("/blogs") },
+  openGraph: {
+    type: "website",
+    title: "Blogs | Addify Academy",
+    description:
+      "Learning insights, study tips, and education guidance from the mentors at Addify Academy.",
+    url: absoluteUrl("/blogs"),
+  },
 };
 
 export const revalidate = 300;
@@ -24,8 +34,24 @@ export default async function BlogsPage() {
     header = null;
   }
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      organizationSchema(),
+      breadcrumbSchema([
+        { name: "Home", url: "/" },
+        { name: "Blogs", url: "/blogs" },
+      ]),
+    ],
+  };
+
   return (
     <main className="min-h-screen bg-[#FAF9F8]">
+      <script
+        type="application/ld+json"
+        // JSON-LD must be a raw string; safe because it's our own structured data.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <PageHero
         eyebrow="Blogs"
         heading={header?.title || "Insights & Articles"}

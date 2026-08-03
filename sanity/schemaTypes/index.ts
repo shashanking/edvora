@@ -15,7 +15,10 @@ import { howItWorks } from "./howItWorks";
 import { ourEducators } from "./ourEducators";
 import { overview } from "./overview";
 import { pricing } from "./pricing";
+import { privacyPolicy } from "./privacyPolicy";
+import { refundPolicy } from "./refundPolicy";
 import { resource } from "./resource";
+import { termsConditions } from "./termsConditions";
 import { testimonials } from "./testimonials";
 import { youngLearnersPage } from "./youngLearnersPage";
 
@@ -36,7 +39,10 @@ export const schemaTypes = [
     ourEducators,
     overview,
     pricing,
+    privacyPolicy,
+    refundPolicy,
     resource,
+    termsConditions,
     testimonials,
     youngLearnersPage,
     adultLearnersPage,

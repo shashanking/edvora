@@ -157,6 +157,19 @@ export async function createZoomMeeting(
 
   const data = await res.json();
 
+  // Zoom silently downgrades auto_recording to "none" when the plan doesn't
+  // include cloud recording or the account's cloud storage is full. The request
+  // still returns 201, so without this check recordings stop appearing with no
+  // error anywhere — which is exactly how three months of sessions went
+  // unrecorded before anyone noticed.
+  if (data.settings?.auto_recording !== "cloud") {
+    console.warn(
+      `Zoom accepted meeting ${data.id} but set auto_recording="${data.settings?.auto_recording}" ` +
+        `instead of "cloud". This session will NOT be recorded. ` +
+        `Check the Zoom plan and cloud storage usage.`
+    );
+  }
+
   return {
     meeting_id: String(data.id),
     join_url: data.join_url,

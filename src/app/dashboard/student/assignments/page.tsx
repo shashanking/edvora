@@ -359,6 +359,9 @@ export default function StudentAssignmentsPage() {
    */
   const keepForWeek = (a: Assignment, startReference: string | null) => {
     if (!weekOnly) return true;
+    // Never filter out the assignment the student explicitly navigated to,
+    // or the deep link would land on a page that doesn't show it.
+    if (a.id === focusAssignmentId) return true;
     const due = computeEffectiveDueDate(startReference, a.duration_days);
     if (!due) return true;
     if (isInWeek(due, weekRange)) return true;
@@ -373,8 +376,14 @@ export default function StudentAssignmentsPage() {
   const lessonsWithHomework = lessons.filter((l) => getAssignmentsForLesson(l.id).length > 0);
 
   // Session-linked homework follows its session, so scope by the session date.
+  const focusedSessionId = focusAssignmentId
+    ? assignments.find((a) => a.id === focusAssignmentId)?.session_id ?? null
+    : null;
+
   const visibleSessions = weekOnly
-    ? sessions.filter((s) => isInWeek(s.scheduled_at, weekRange))
+    ? sessions.filter(
+        (s) => isInWeek(s.scheduled_at, weekRange) || s.id === focusedSessionId
+      )
     : sessions;
 
   const hiddenSessionCount = sessions.length - visibleSessions.length;

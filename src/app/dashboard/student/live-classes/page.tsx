@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { Video, Calendar, Clock, ExternalLink, Lock } from "lucide-react";
+import { getWeekRange, isInWeek, formatWeekRange } from "@/src/lib/week";
 
 interface Session {
   id: string;
@@ -37,6 +38,7 @@ export default function StudentLiveClassesPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [weekOnly, setWeekOnly] = useState(true);
 
   useEffect(() => {
     const t = setInterval(() => setNowMs(Date.now()), 30_000);
@@ -176,17 +178,33 @@ export default function StudentLiveClassesPage() {
   const isSessionOver = (s: Session) =>
     new Date(s.scheduled_at).getTime() + s.duration_minutes * 60 * 1000 <= nowMs;
 
+  // Classes run on a weekly recurring pattern, so the default view is this
+  // week — what the student actually has on. `weekOnly` can be switched off
+  // to see the whole schedule rather than hiding it outright.
+  const weekRange = getWeekRange();
+  const weekLabel = formatWeekRange(weekRange);
+
   // Upcoming = scheduled/live and not yet ended, soonest first.
-  const upcomingSessions = sessions
+  const allUpcomingSessions = sessions
     .filter((s) => (s.status === "scheduled" || s.status === "live") && !isSessionOver(s))
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+  const upcomingSessions = weekOnly
+    ? allUpcomingSessions.filter((s) => isInWeek(s.scheduled_at, weekRange))
+    : allUpcomingSessions;
+
+  const hiddenUpcomingCount = allUpcomingSessions.length - upcomingSessions.length;
 
   // Completed (or scheduled/live sessions whose time has simply passed —
   // auto-complete usually catches these, but don't hide them if it hasn't
   // run yet), most recent first.
-  const completedSessions = sessions
+  const allCompletedSessions = sessions
     .filter((s) => s.status === "completed" || ((s.status === "scheduled" || s.status === "live") && isSessionOver(s)))
     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+
+  const completedSessions = weekOnly
+    ? allCompletedSessions.filter((s) => isInWeek(s.scheduled_at, weekRange))
+    : allCompletedSessions;
 
   const renderSessionCard = (s: Session) => (
     <div
@@ -250,39 +268,66 @@ export default function StudentLiveClassesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Live Classes</h1>
-        <p className="text-[#4D4D4D] text-sm mt-1">Join upcoming sessions and rate completed ones</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Live Classes</h1>
+          <p className="text-[#4D4D4D] text-sm mt-1">
+            {weekOnly
+              ? `This week's schedule · ${weekLabel}`
+              : "Your full class schedule"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setWeekOnly((v) => !v)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-[#D4D4D4] rounded-xl bg-white text-sm font-medium text-[#1C1C28] hover:bg-gray-50 transition-colors"
+        >
+          <Calendar className="w-4 h-4 text-[#1F4FD8]" />
+          {weekOnly ? "Show all classes" : "Show this week only"}
+        </button>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
         </div>
-      ) : sessions.length === 0 ? (
+      ) : upcomingSessions.length === 0 && completedSessions.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
           <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
             <Video className="w-8 h-8 text-gray-400" />
           </div>
-          <p className="text-[#4D4D4D] font-medium">No live classes</p>
-          <p className="text-sm text-[#9CA3AF] mt-1">Scheduled sessions will appear here</p>
+          <p className="text-[#4D4D4D] font-medium">
+            {weekOnly && sessions.length > 0 ? "No classes this week" : "No live classes"}
+          </p>
+          <p className="text-sm text-[#9CA3AF] mt-1">
+            {weekOnly && sessions.length > 0
+              ? "Switch to \"Show all classes\" to see your full schedule"
+              : "Scheduled sessions will appear here"}
+          </p>
         </div>
       ) : (
         <div className="space-y-6">
           {upcomingSessions.length > 0 && (
             <div className="space-y-3">
               <h2 className="text-lg font-semibold text-[#1C1C28] mb-3">
-                Upcoming Classes
+                {weekOnly ? "This Week's Classes" : "Upcoming Classes"}
                 <span className="ml-2 text-sm font-normal text-[#9CA3AF]">
                   ({upcomingSessions.length})
                 </span>
+                {weekOnly && hiddenUpcomingCount > 0 && (
+                  <span className="ml-2 text-sm font-normal text-[#9CA3AF]">
+                    · {hiddenUpcomingCount} more after this week
+                  </span>
+                )}
               </h2>
               <div className="space-y-3">{upcomingSessions.map(renderSessionCard)}</div>
             </div>
           )}
           {completedSessions.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-[#1C1C28] mb-3">Past Classes</h2>
+              <h2 className="text-lg font-semibold text-[#1C1C28] mb-3">
+                {weekOnly ? "Earlier This Week" : "Past Classes"}
+              </h2>
               <div className="space-y-3">{completedSessions.map(renderSessionCard)}</div>
             </div>
           )}

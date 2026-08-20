@@ -18,6 +18,7 @@ import {
 import toast from "react-hot-toast";
 import FileUpload from "@/src/components/shared/FileUpload";
 import MaterialViewer from "@/src/components/shared/MaterialViewer";
+import { getWeekRange, isInWeek, formatWeekRange } from "@/src/lib/week";
 
 interface MaterialRow {
   id: string;
@@ -64,6 +65,12 @@ export default function TeacherMaterialsPage() {
   const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [filterCourseId, setFilterCourseId] = useState("");
+  // Teaching runs week to week, so this page defaults to the material that
+  // belongs to the current week rather than the whole uploaded library,
+  // which grows without bound and buries what's actually being taught now.
+  // course_materials / learning_materials carry no lesson or week link, so
+  // created_at is the only date available to scope by.
+  const [weekOnly, setWeekOnly] = useState(true);
   const [userId, setUserId] = useState("");
   // View-only preview — no direct download link. Course material must not
   // be downloadable by teachers or students; matches the pattern already
@@ -192,10 +199,19 @@ export default function TeacherMaterialsPage() {
     setSaving(false);
   };
 
-  const filtered = materials.filter((m) => {
+  const weekRange = getWeekRange();
+  const weekLabel = formatWeekRange(weekRange);
+
+  const courseFiltered = materials.filter((m) => {
     if (!filterCourseId) return true;
     return m.course_id === filterCourseId;
   });
+
+  const filtered = weekOnly
+    ? courseFiltered.filter((m) => isInWeek(m.created_at, weekRange))
+    : courseFiltered;
+
+  const hiddenCount = courseFiltered.length - filtered.length;
 
   if (loading) {
     return (
@@ -219,7 +235,11 @@ export default function TeacherMaterialsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Learning Materials</h1>
-          <p className="text-[#4D4D4D] text-sm mt-1">Upload and manage course materials</p>
+          <p className="text-[#4D4D4D] text-sm mt-1">
+            {weekOnly
+              ? `This week's material · ${weekLabel}`
+              : "Upload and manage course materials"}
+          </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -253,6 +273,19 @@ export default function TeacherMaterialsPage() {
             Clear filter
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setWeekOnly((v) => !v)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#D4D4D4] rounded-xl bg-white text-sm font-medium text-[#1C1C28] hover:bg-gray-50 transition-colors"
+        >
+          <FolderOpen className="w-4 h-4 text-[#1F4FD8]" />
+          {weekOnly ? "Show full library" : "Show this week only"}
+        </button>
+        {weekOnly && hiddenCount > 0 && (
+          <span className="text-xs text-[#9CA3AF]">
+            {hiddenCount} older item{hiddenCount === 1 ? "" : "s"} hidden
+          </span>
+        )}
       </div>
 
       {/* Materials Grid */}
@@ -261,8 +294,16 @@ export default function TeacherMaterialsPage() {
           <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
             <FolderOpen className="w-8 h-8 text-gray-400" />
           </div>
-          <p className="text-[#4D4D4D] font-medium">No materials found</p>
-          <p className="text-sm text-[#9CA3AF] mt-1">Upload your first learning material</p>
+          <p className="text-[#4D4D4D] font-medium">
+            {weekOnly && courseFiltered.length > 0
+              ? "No material for this week"
+              : "No materials found"}
+          </p>
+          <p className="text-sm text-[#9CA3AF] mt-1">
+            {weekOnly && courseFiltered.length > 0
+              ? "Switch to \"Show full library\" to see everything uploaded"
+              : "Upload your first learning material"}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

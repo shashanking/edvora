@@ -32,6 +32,7 @@ import {
   isDueSoon as isDueSoonUtil,
   submissionTimeliness,
 } from "@/src/lib/assignment-deadline";
+import { getWeekRange, isInWeek, formatWeekRange } from "@/src/lib/week";
 
 type Tab = "lessons" | "sessions" | "assignments" | "remarks" | "materials";
 
@@ -275,9 +276,22 @@ export default function StudentCourseDetailPage() {
     (s.status === "scheduled" || s.status === "live") && !isSessionOver(s);
 
   // Only the very next upcoming session
-  const nextSession = sessions
+  const sortedUpcoming = sessions
     .filter((s) => isUpcoming(s))
-    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0] || null;
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+  const nextSession = sortedUpcoming[0] || null;
+
+  // Classes recur weekly, so the Sessions tab leads with what is actually on
+  // this week rather than only "the next one" plus an undifferentiated pile
+  // of past sessions.
+  const sessionWeekRange = getWeekRange();
+  const sessionWeekLabel = formatWeekRange(sessionWeekRange);
+  const thisWeekSessions = sortedUpcoming.filter(
+    (s) => isInWeek(s.scheduled_at, sessionWeekRange) && s.id !== nextSession?.id
+  );
+  const laterSessionCount = sortedUpcoming.length - thisWeekSessions.length -
+    (nextSession && isInWeek(nextSession.scheduled_at, sessionWeekRange) ? 1 : 0);
 
   // Past = completed, cancelled, or time has passed
   const pastSessions = sessions.filter(
@@ -1207,6 +1221,35 @@ export default function StudentCourseDetailPage() {
                         )
                       )}
                     </div>
+                  )}
+
+                  {/* Rest of this week */}
+                  {thisWeekSessions.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#1C1C28] mb-3">
+                        Rest of This Week
+                        <span className="ml-2 text-xs font-normal text-[#9CA3AF]">
+                          {sessionWeekLabel}
+                        </span>
+                      </h3>
+                      <div className="space-y-2">
+                        {thisWeekSessions.map((s) => (
+                          <div key={s.id} className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-[#1C1C28]">{s.title}</p>
+                              <p className="text-xs text-[#9CA3AF]">{formatDateTime(s.scheduled_at)} &middot; {s.duration_minutes} min</p>
+                            </div>
+                            {statusBadge(s.status)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {laterSessionCount > 0 && (
+                    <p className="text-xs text-[#9CA3AF]">
+                      {laterSessionCount} more session{laterSessionCount === 1 ? "" : "s"} scheduled after this week.
+                    </p>
                   )}
 
                   {/* Past Sessions */}

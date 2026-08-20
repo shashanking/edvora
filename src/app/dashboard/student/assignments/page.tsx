@@ -574,8 +574,9 @@ export default function StudentAssignmentsPage() {
                 accept filter, size cap and validator, so a student can see
                 at a glance what this assignment will take and gets a clear
                 message instead of a failed upload when they pick the wrong
-                kind of file. Assignments that tick nothing keep the single
-                unrestricted uploader they have today. */}
+                kind of file. Assignments whose stored list predates those
+                checkboxes fall back to audio / video / document, so every
+                assignment offers the three the client asked for. */}
             {(() => {
               const allowed = allowedSubmissionTypes(assignment.allowed_file_types);
 
@@ -584,17 +585,6 @@ export default function StudentAssignmentsPage() {
                   ...prev,
                   [assignment.id]: [...(prev[assignment.id] || []), { url, type }],
                 }));
-
-              if (allowed.length === 0) {
-                return (
-                  <FileUpload
-                    bucket="submissions"
-                    folder={`student-${userId}/assignment-${assignment.id}`}
-                    label="Upload your file"
-                    onUpload={(url) => addFile(url, null)}
-                  />
-                );
-              }
 
               const uploadedFor = (t: SubmissionTypeConfig) =>
                 (draftFiles[assignment.id] || []).filter((f) => f.type === t.key).length;

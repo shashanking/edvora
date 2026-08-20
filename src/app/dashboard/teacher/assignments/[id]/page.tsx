@@ -415,8 +415,8 @@ export default function AssignmentDetailPage() {
                 Labelled from the shared config rather than printing the raw
                 stored keys, which would render "doc" instead of
                 "Documents". Legacy rows hold extensions rather than type
-                keys and resolve to nothing here — those assignments accept
-                anything, same as an untick-everything assignment. */}
+                keys and resolve to the audio / video / document default, so
+                this list always shows what the student will really see. */}
             {allowedSubmissionTypes(assignment.allowed_file_types).length > 0 && (
               <div className="mt-3">
                 <span className="text-xs text-[#9CA3AF]">

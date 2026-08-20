@@ -100,22 +100,34 @@ export function getSubmissionTypeConfig(key: SubmissionType): SubmissionTypeConf
 }
 
 /**
+ * Types the client asked every assignment to offer: audio, video, document.
+ * Used when an assignment's stored `allowed_file_types` tells us nothing
+ * usable.
+ */
+const DEFAULT_SUBMISSION_TYPE_KEYS: SubmissionType[] = ["audio", "video", "doc"];
+
+/**
  * The types a student may submit for an assignment, in the canonical order
  * above.
  *
- * Returns an empty array — meaning "no restriction, keep the single
- * generic uploader" — when the author ticked nothing, or when the stored
- * values are all unrecognised. Older rows predate the checkbox row and
- * hold raw extensions (sample data seeds `['pdf','doc','docx']`), and
- * locking those students out of assignments they can currently submit
- * would be worse than staying permissive.
+ * Never returns an empty array. Rows written before the checkbox row
+ * existed hold raw extensions rather than type keys (sample data seeds
+ * `['pdf']`, `['pdf','doc','docx']`), which match no key and would
+ * otherwise collapse the student back to a single unlabelled file input.
+ * The client asked for audio / video / document on every assignment, so an
+ * unrecognisable list falls back to exactly those three rather than to the
+ * old generic box. A teacher who wants images ticks Images in the modal,
+ * which does store a real key.
  */
 export function allowedSubmissionTypes(
   allowedFileTypes: string[] | null | undefined
 ): SubmissionTypeConfig[] {
-  if (!allowedFileTypes || allowedFileTypes.length === 0) return [];
-  const ticked = new Set(allowedFileTypes.map((t) => t.toLowerCase()));
-  return SUBMISSION_TYPES.filter((t) => ticked.has(t.key));
+  const ticked = new Set((allowedFileTypes || []).map((t) => t.toLowerCase()));
+  const matched = SUBMISSION_TYPES.filter((t) => ticked.has(t.key));
+  if (matched.length > 0) return matched;
+  return SUBMISSION_TYPES.filter((t) =>
+    DEFAULT_SUBMISSION_TYPE_KEYS.includes(t.key)
+  );
 }
 
 /** File extension from a storage URL, lowercased, without the dot. */

@@ -111,9 +111,11 @@ export default function SubmissionFiles({
               className="block border border-gray-200 rounded-xl overflow-hidden hover:border-[#1F4FD8]/30 transition-colors"
               title={`Open ${name} in a new tab`}
             >
-              {/* Plain <img>: these are Supabase storage URLs from an
-                  arbitrary project host, which next/image would need
-                  configured in next.config remotePatterns. */}
+              {/* Plain <img> rather than next/image: the source host is
+                  whichever Supabase project this deployment points at, and
+                  next.config's remotePatterns hardcodes a single project —
+                  an image from any other one would fail to render entirely
+                  rather than merely go unoptimised. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={url}

@@ -51,11 +51,15 @@ export default function TeacherCoursesPage() {
         .in("course_id", courseIds)
         .eq("status", "active");
 
+      // Scoped to the course, not assignments.teacher_id. Lesson-linked
+      // assignments (migration 012) are authored by admins and filed under
+      // whichever teacher is first in course_teachers, so a teacher_id
+      // filter under-counted — often to zero — for the teacher actually
+      // running the course. Matches the course-detail Assignments tab.
       const { data: assignments } = await supabase
         .from("assignments")
         .select("course_id")
-        .in("course_id", courseIds)
-        .eq("teacher_id", user.id);
+        .in("course_id", courseIds);
 
       const studentCountMap = new Map<string, number>();
       ((enrollments as any[]) || []).forEach((e) => {

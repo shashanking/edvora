@@ -19,6 +19,8 @@ import {
   User,
   BookOpen,
   Users,
+  CalendarPlus,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { sendEnrollmentEmail } from "@/src/lib/emailjs";
@@ -40,6 +42,10 @@ interface Enrollment {
   student_email?: string;
   course_title?: string;
   teacher_name?: string;
+  // Number of live_sessions rows actually written for this enrollment.
+  // 0 on an active enrollment means the student's portal is empty — the
+  // session-creation step failed and was never retried.
+  session_count?: number;
 }
 
 interface StudentOption {
@@ -125,6 +131,7 @@ export default function AdminEnrollmentsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   /* ---------- wizard state ---------- */
   const [showModal, setShowModal] = useState(false);
@@ -212,6 +219,24 @@ export default function AdminEnrollmentsPage() {
       ((teachersData as any[]) || []).map((t: any) => [t.id, t.full_name])
     );
 
+    // Count sessions per enrollment so a silently-broken enrollment (row
+    // written, session creation failed, nothing retried) is visible in the
+    // table instead of only showing up as an empty student portal.
+    const sessionCountMap = new Map<string, number>();
+    if (rows.length) {
+      const { data: sessionRows } = await supabase
+        .from("live_sessions")
+        .select("enrollment_id")
+        .in("enrollment_id", rows.map((r) => r.id));
+      ((sessionRows as { enrollment_id: string }[]) || []).forEach((sr) => {
+        if (!sr.enrollment_id) return;
+        sessionCountMap.set(
+          sr.enrollment_id,
+          (sessionCountMap.get(sr.enrollment_id) || 0) + 1
+        );
+      });
+    }
+
     const enriched = rows.map((e) => ({
       ...e,
       student_name: studentMap.get(e.student_id)?.full_name || "Unknown",
@@ -220,6 +245,7 @@ export default function AdminEnrollmentsPage() {
       teacher_name: e.teacher_id
         ? teacherMap.get(e.teacher_id) || "Unknown"
         : "-",
+      session_count: sessionCountMap.get(e.id) || 0,
     }));
 
     setEnrollments(enriched);
@@ -607,8 +633,16 @@ export default function AdminEnrollmentsPage() {
       const totalSessions =
         selectedCourseData?.total_sessions || 8;
 
+      // Session creation is the step that actually makes the enrollment
+      // usable — without live_sessions rows the student's portal is empty
+      // no matter how healthy the enrollment row looks. It is not
+      // transactional with the enrollment insert (Zoom is an external call),
+      // so when it fails the admin has to be told clearly, and told how to
+      // fix it: the "Sessions" action on the enrollments table re-runs this
+      // exact step and skips whatever already exists.
       let sessionsCreated = 0;
       let scheduleWarning: string | null = null;
+      let scheduleFailed = false;
       try {
         const res = await fetch("/api/zoom/batch-create", {
           method: "POST",
@@ -628,28 +662,30 @@ export default function AdminEnrollmentsPage() {
         });
         const zoomData = await res.json();
         if (!res.ok) {
+          scheduleFailed = true;
           scheduleWarning =
             zoomData.error ||
             "Failed to schedule sessions for this enrollment.";
         } else {
           sessionsCreated = zoomData.total_created || 0;
-          if (zoomData.lesson_shortfall) {
+          const failedList: { session_number: number; error: string }[] =
+            zoomData.failed || [];
+          if (failedList.length > 0) {
+            // Individual session creation (Zoom API or DB write) failed —
+            // this must not be silent, or the admin has no way to know a
+            // student is missing classes.
+            scheduleFailed = true;
+            const failedNumbers = failedList.map((f) => f.session_number).join(", ");
+            scheduleWarning = `Only ${sessionsCreated} of ${zoomData.total_requested} sessions were scheduled — session${failedList.length > 1 ? "s" : ""} ${failedNumbers} failed (${failedList[0].error}). Use the "Sessions" action on this enrollment to retry.`;
+          } else if (zoomData.lesson_shortfall) {
             scheduleWarning = `Only ${zoomData.total_requested} of ${zoomData.total_sessions_target} sessions were scheduled — this course has fewer lessons built than its Total Sessions target. Add more lessons in Manage Content.`;
-          } else if (sessionsCreated < zoomData.total_requested) {
-            // Lesson count matched the target, so a shortfall here means
-            // individual session creation (Zoom API or DB write) failed for
-            // some sessions — this must not be silent, or the admin has no
-            // way to know a student is missing classes.
-            const failedNumbers = (zoomData.sessions || [])
-              .filter((s: any) => s.error)
-              .map((s: any) => s.session_number)
-              .join(", ");
-            scheduleWarning = `Only ${sessionsCreated} of ${zoomData.total_requested} sessions were actually scheduled — session${failedNumbers.includes(",") ? "s" : ""} ${failedNumbers || "some"} failed to create (Zoom or database error). Check server logs and consider re-running or manually creating the missing session(s).`;
           }
         }
       } catch {
         console.error("Zoom batch-create failed");
-        scheduleWarning = "Failed to reach the session scheduling service.";
+        scheduleFailed = true;
+        scheduleWarning =
+          "Failed to reach the session scheduling service. Use the \"Sessions\" action on this enrollment to retry.";
       }
 
       // 5. Send enrollment email
@@ -662,12 +698,20 @@ export default function AdminEnrollmentsPage() {
         });
       }
 
-      // 6. Success
-      toast.success(
-        `Enrollment created! ${sessionsCreated} session${sessionsCreated !== 1 ? "s" : ""} scheduled.`
-      );
-      if (scheduleWarning) {
-        toast.error(scheduleWarning, { duration: 7000 });
+      // 6. Report the real outcome. A "success" toast over zero scheduled
+      // sessions is exactly how a broken enrollment used to reach a student.
+      if (scheduleFailed && sessionsCreated === 0) {
+        toast.error(
+          `Enrollment created, but NO sessions were scheduled — the student will see an empty portal. ${scheduleWarning ?? ""} Retry with the "Sessions" action on this enrollment.`,
+          { duration: 12000 }
+        );
+      } else {
+        toast.success(
+          `Enrollment created! ${sessionsCreated} session${sessionsCreated !== 1 ? "s" : ""} scheduled.`
+        );
+        if (scheduleWarning) {
+          toast.error(scheduleWarning, { duration: 9000 });
+        }
       }
 
       closeModal();
@@ -700,6 +744,70 @@ export default function AdminEnrollmentsPage() {
     toast.success(`Status updated to ${newStatus}.`);
     setStatusMenuId(null);
     fetchEnrollments();
+  };
+
+  /* ================================================================ */
+  /*  Generate / top up sessions for an existing enrollment            */
+  /* ================================================================ */
+
+  /**
+   * Calls the batch-create route for an enrollment that already exists.
+   * The route resolves the teacher, course, weekly schedule and duration
+   * from the enrollment + its student_schedules rows, and skips session
+   * numbers that already exist — so this is safe to press more than once
+   * and is the retry path for an enrollment whose sessions never got
+   * created.
+   */
+  const handleGenerateSessions = async (e: Enrollment) => {
+    if (
+      !confirm(
+        `Generate the missing live sessions for ${e.student_name} on ${e.course_title}?\n\nSessions are scheduled from today onward using the student's saved weekly schedule. Existing sessions are left untouched.`
+      )
+    )
+      return;
+
+    setGeneratingId(e.id);
+    try {
+      const res = await fetch("/api/zoom/batch-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enrollment_id: e.id }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to generate sessions.", { duration: 8000 });
+        return;
+      }
+
+      if (data.total_created === 0) {
+        toast.success(
+          `Nothing to do — all ${data.total_skipped} session(s) already exist.`
+        );
+      } else {
+        toast.success(
+          `${data.total_created} session${data.total_created === 1 ? "" : "s"} created.`
+        );
+      }
+
+      if (data.failed?.length) {
+        toast.error(
+          `${data.failed.length} session(s) still failed: ${data.failed[0].error}. Press "Generate sessions" again to retry.`,
+          { duration: 9000 }
+        );
+      } else if (data.lesson_shortfall) {
+        toast.error(
+          `Only ${data.total_requested} of ${data.total_sessions_target} sessions could be scheduled — this course has fewer lessons than its Total Sessions target. Add lessons in Manage Content.`,
+          { duration: 9000 }
+        );
+      }
+
+      fetchEnrollments();
+    } catch (err: any) {
+      toast.error("Failed to reach the session scheduling service. " + (err?.message || ""));
+    } finally {
+      setGeneratingId(null);
+    }
   };
 
   const handleDelete = async (enrollmentId: string) => {
@@ -953,7 +1061,17 @@ export default function AdminEnrollmentsPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">{getStatusBadge(e.status)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col items-start gap-1">
+                        {getStatusBadge(e.status)}
+                        {e.status === "active" && e.session_count === 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            <AlertTriangle className="w-3 h-3" />
+                            No sessions
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-sm text-[#9CA3AF]">
                       {new Date(e.enrolled_at).toLocaleDateString()}
                     </td>
@@ -989,6 +1107,27 @@ export default function AdminEnrollmentsPage() {
                             </div>
                           )}
                         </div>
+                        <button
+                          onClick={() => handleGenerateSessions(e)}
+                          disabled={generatingId === e.id}
+                          title={
+                            e.session_count === 0
+                              ? "This enrollment has no live sessions — generate them from the student's weekly schedule"
+                              : "Generate any missing live sessions from the student's weekly schedule"
+                          }
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all disabled:opacity-50 ${
+                            e.session_count === 0
+                              ? "text-amber-600 hover:bg-amber-50"
+                              : "text-[#4D4D4D] hover:bg-gray-100"
+                          }`}
+                        >
+                          {generatingId === e.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CalendarPlus className="w-3.5 h-3.5" />
+                          )}
+                          Sessions
+                        </button>
                         <button
                           onClick={() => handleDelete(e.id)}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-all"

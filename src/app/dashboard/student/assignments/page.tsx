@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/src/lib/supabase/client";
+import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import FileUpload from "@/src/components/shared/FileUpload";
 import {
@@ -24,6 +25,7 @@ import {
   isPastDue as isPastDueUtil,
   submissionTimeliness,
 } from "@/src/lib/assignment-deadline";
+import { getWeekRange, isInWeek, formatWeekRange } from "@/src/lib/week";
 
 /* ---------- types ---------- */
 
@@ -118,6 +120,13 @@ function formatDateTime(iso: string) {
 export default function StudentAssignmentsPage() {
   const supabase = createClient() as any;
 
+  // Deep link target: `/dashboard/student/assignments?assignment=<id>`.
+  // Assignment cards elsewhere in the student portal (course detail, lesson
+  // panel) link straight to the individual assignment rather than dumping
+  // the student on an undifferentiated list.
+  const searchParams = useSearchParams();
+  const focusAssignmentId = searchParams.get("assignment") || "";
+
   const [userId, setUserId] = useState<string | null>(null);
   const [courses, setCourses] = useState<EnrolledCourse[]>([]);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string>("");
@@ -125,6 +134,11 @@ export default function StudentAssignmentsPage() {
   const [lessons, setLessons] = useState<LessonInfo[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, Submission>>(new Map());
+
+  // Homework is set against a weekly class rhythm, so default to this week's
+  // work only. Toggleable rather than a hard filter — a student still needs a
+  // way back to older assignments.
+  const [weekOnly, setWeekOnly] = useState(true);
 
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -160,12 +174,38 @@ export default function StudentAssignmentsPage() {
       setCourses(mapped);
       setLoadingCourses(false);
 
-      // auto-select first course
-      if (mapped.length > 0) {
-        setSelectedEnrollmentId(mapped[0].enrollment_id);
+      if (mapped.length === 0) return;
+
+      // A deep-linked assignment may belong to a course other than the first
+      // one, so resolve its course before falling back to the default.
+      if (focusAssignmentId) {
+        const { data: target } = await supabase
+          .from("assignments")
+          .select("course_id")
+          .eq("id", focusAssignmentId)
+          .maybeSingle();
+        const targetCourseId = (target as { course_id: string } | null)?.course_id;
+        const match = targetCourseId
+          ? mapped.find((c) => c.course_id === targetCourseId)
+          : undefined;
+        if (match) {
+          setSelectedEnrollmentId(match.enrollment_id);
+          return;
+        }
       }
+
+      // auto-select first course
+      setSelectedEnrollmentId(mapped[0].enrollment_id);
     })();
-  }, []);
+  }, [focusAssignmentId]);
+
+  /* ---- 1b. scroll a deep-linked assignment into view once it renders ---- */
+  useEffect(() => {
+    if (!focusAssignmentId || loadingData) return;
+    if (!assignments.some((a) => a.id === focusAssignmentId)) return;
+    const el = document.getElementById(`assignment-${focusAssignmentId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusAssignmentId, assignments, loadingData]);
 
   /* ---- 2. fetch sessions + lessons + assignments + submissions when course changes ---- */
   const fetchCourseData = useCallback(
@@ -301,13 +341,52 @@ export default function StudentAssignmentsPage() {
   };
 
   /* ---- helpers for rendering ---- */
+  const weekRange = getWeekRange();
+  const weekLabel = formatWeekRange(weekRange);
+
   const getAssignmentForSession = (sessionId: string) =>
     assignments.find((a) => a.session_id === sessionId) || null;
 
+  /**
+   * Lesson-linked homework kept for the current week.
+   *
+   * Its effective due date is enrolled_at + duration_days (migration 013), so
+   * homework due this week is in scope. Two things are deliberately never
+   * hidden by the week filter:
+   *  - assignments with no duration_days, which have no due date at all and
+   *    would otherwise be permanently invisible;
+   *  - unsubmitted work that is already overdue, which a student still owes.
+   */
+  const keepForWeek = (a: Assignment, startReference: string | null) => {
+    if (!weekOnly) return true;
+    // Never filter out the assignment the student explicitly navigated to,
+    // or the deep link would land on a page that doesn't show it.
+    if (a.id === focusAssignmentId) return true;
+    const due = computeEffectiveDueDate(startReference, a.duration_days);
+    if (!due) return true;
+    if (isInWeek(due, weekRange)) return true;
+    return isPastDueUtil(due) && !submissions.has(a.id);
+  };
+
   const getAssignmentsForLesson = (lessonId: string) =>
-    assignments.filter((a) => a.lesson_id === lessonId);
+    assignments.filter(
+      (a) => a.lesson_id === lessonId && keepForWeek(a, selectedEnrolledAt)
+    );
 
   const lessonsWithHomework = lessons.filter((l) => getAssignmentsForLesson(l.id).length > 0);
+
+  // Session-linked homework follows its session, so scope by the session date.
+  const focusedSessionId = focusAssignmentId
+    ? assignments.find((a) => a.id === focusAssignmentId)?.session_id ?? null
+    : null;
+
+  const visibleSessions = weekOnly
+    ? sessions.filter(
+        (s) => isInWeek(s.scheduled_at, weekRange) || s.id === focusedSessionId
+      )
+    : sessions;
+
+  const hiddenSessionCount = sessions.length - visibleSessions.length;
 
   /* ---- shared assignment info + submission form/result, reused for both
      session-linked and lesson-linked assignments. `startReference` is this
@@ -317,8 +396,16 @@ export default function StudentAssignmentsPage() {
   const renderAssignmentBody = (assignment: Assignment, startReference: string | null) => {
     const submission = submissions.get(assignment.id) || null;
     const dueDate = computeEffectiveDueDate(startReference, assignment.duration_days);
+    const isFocused = focusAssignmentId === assignment.id;
     return (
-      <div className="space-y-4">
+      <div
+        id={`assignment-${assignment.id}`}
+        className={`space-y-4 scroll-mt-24 ${
+          isFocused
+            ? "-mx-3 -my-2 px-3 py-2 rounded-xl ring-2 ring-[#1F4FD8]/40 bg-[#1F4FD8]/5"
+            : ""
+        }`}
+      >
         {/* Assignment info */}
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -557,9 +644,23 @@ export default function StudentAssignmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Assignments</h1>
-        <p className="text-[#4D4D4D] text-sm mt-1">View and submit your homework, classwork, and session assignments</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-poppins font-bold text-[#1C1C28]">Assignments</h1>
+          <p className="text-[#4D4D4D] text-sm mt-1">
+            {weekOnly
+              ? `This week's homework and classwork · ${weekLabel}`
+              : "View and submit your homework, classwork, and session assignments"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setWeekOnly((v) => !v)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-[#D4D4D4] rounded-xl bg-white text-sm font-medium text-[#1C1C28] hover:bg-gray-50 transition-colors"
+        >
+          <Clock className="w-4 h-4 text-[#1F4FD8]" />
+          {weekOnly ? "Show all" : "Show this week only"}
+        </button>
       </div>
 
       {/* Loading courses */}
@@ -601,23 +702,35 @@ export default function StudentAssignmentsPage() {
             <div className="flex items-center justify-center py-20">
               <div className="w-8 h-8 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
             </div>
-          ) : sessions.length === 0 && lessonsWithHomework.length === 0 ? (
+          ) : visibleSessions.length === 0 && lessonsWithHomework.length === 0 ? (
             /* No assignments empty state */
             <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <ClipboardList className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-[#4D4D4D] font-medium">No assignments yet</p>
+              <p className="text-[#4D4D4D] font-medium">
+                {weekOnly && sessions.length > 0
+                  ? "Nothing due this week"
+                  : "No assignments yet"}
+              </p>
               <p className="text-sm text-[#9CA3AF] mt-1">
-                Sessions and lesson homework for this course will appear here
+                {weekOnly && sessions.length > 0
+                  ? "Switch to \"Show all\" to see your earlier assignments"
+                  : "Sessions and lesson homework for this course will appear here"}
               </p>
             </div>
           ) : (
             <div className="space-y-8">
-            {sessions.length > 0 && (
+            {weekOnly && hiddenSessionCount > 0 && (
+              <p className="text-xs text-[#9CA3AF]">
+                {hiddenSessionCount} session{hiddenSessionCount === 1 ? "" : "s"} outside
+                this week are hidden.
+              </p>
+            )}
+            {visibleSessions.length > 0 && (
             /* Session list */
             <div className="space-y-4">
-              {sessions.map((session) => {
+              {visibleSessions.map((session) => {
                 const isCompleted = session.status === "completed";
                 const assignment = getAssignmentForSession(session.id);
 

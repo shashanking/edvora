@@ -32,6 +32,7 @@ import {
   isDueSoon as isDueSoonUtil,
   submissionTimeliness,
 } from "@/src/lib/assignment-deadline";
+import { getWeekRange, isInWeek, formatWeekRange } from "@/src/lib/week";
 
 type Tab = "lessons" | "sessions" | "assignments" | "remarks" | "materials";
 
@@ -202,8 +203,15 @@ export default function StudentCourseDetailPage() {
   const [completedSessionCount, setCompletedSessionCount] = useState<number>(0);
 
   // Lesson gating: lessons with display_order <= maxUnlockedOrder are accessible.
-  // At minimum, lesson 1 is always unlocked.
-  const maxUnlockedOrder = Math.max(1, completedSessionCount);
+  //
+  // This used to be `Math.max(1, completedSessionCount)`, which kept lesson 1
+  // unlocked even at zero completed classes — so a brand-new student could
+  // open its video and documents before ever attending a class. Content
+  // unlocks per completed class, so with zero completed classes nothing is
+  // unlocked. This matches the hard block the Materials tab already applies
+  // (`completedSessionCount === 0`).
+  const maxUnlockedOrder = completedSessionCount;
+  const lessonsLocked = completedSessionCount === 0;
 
   // Determine the student's current module based on actual lesson
   // completion, not elapsed calendar time. The "current module" is the
@@ -268,9 +276,22 @@ export default function StudentCourseDetailPage() {
     (s.status === "scheduled" || s.status === "live") && !isSessionOver(s);
 
   // Only the very next upcoming session
-  const nextSession = sessions
+  const sortedUpcoming = sessions
     .filter((s) => isUpcoming(s))
-    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0] || null;
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+  const nextSession = sortedUpcoming[0] || null;
+
+  // Classes recur weekly, so the Sessions tab leads with what is actually on
+  // this week rather than only "the next one" plus an undifferentiated pile
+  // of past sessions.
+  const sessionWeekRange = getWeekRange();
+  const sessionWeekLabel = formatWeekRange(sessionWeekRange);
+  const thisWeekSessions = sortedUpcoming.filter(
+    (s) => isInWeek(s.scheduled_at, sessionWeekRange) && s.id !== nextSession?.id
+  );
+  const laterSessionCount = sortedUpcoming.length - thisWeekSessions.length -
+    (nextSession && isInWeek(nextSession.scheduled_at, sessionWeekRange) ? 1 : 0);
 
   // Past = completed, cancelled, or time has passed
   const pastSessions = sessions.filter(
@@ -874,7 +895,22 @@ export default function StudentCourseDetailPage() {
 
         <div className="p-5">
           {/* ==================== LESSONS TAB ==================== */}
-          {activeTab === "lessons" && (
+          {activeTab === "lessons" && lessonsLocked ? (
+            /* Hard block before the first completed class — same guard and
+               wording the Materials tab uses, so video + documents can't be
+               opened ahead of lesson 1 actually being taught. */
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-amber-50 rounded-full flex items-center justify-center">
+                <Lock className="w-8 h-8 text-amber-400" />
+              </div>
+              <p className="text-[#4D4D4D] font-medium">Lessons locked</p>
+              <p className="text-sm text-[#9CA3AF] mt-1">
+                Lesson content will be available after your first class
+              </p>
+            </div>
+          ) : null}
+
+          {activeTab === "lessons" && !lessonsLocked && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Sidebar */}
               <div className="lg:col-span-1 space-y-3">
@@ -916,10 +952,10 @@ export default function StudentCourseDetailPage() {
                             {modIdx + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-poppins font-semibold text-[#1C1C28] text-sm truncate">
+                            <h3 className="font-poppins font-semibold text-[#1C1C28] text-base truncate">
                               {mod.title}
                             </h3>
-                            <p className="text-xs text-[#9CA3AF] mt-0.5">
+                            <p className="text-sm text-[#9CA3AF] mt-0.5">
                               {modCompleted}/{modLessons.length} lessons
                             </p>
                           </div>
@@ -975,7 +1011,7 @@ export default function StudentCourseDetailPage() {
                                     className="flex-1 min-w-0 text-left"
                                   >
                                     <p
-                                      className={`text-sm truncate ${
+                                      className={`text-base truncate ${
                                         isCompleted
                                           ? "text-[#9CA3AF] line-through"
                                           : "text-[#1C1C28] font-medium"
@@ -1032,7 +1068,7 @@ export default function StudentCourseDetailPage() {
                     )}
                     <div className="p-6">
                       <div className="flex items-start justify-between gap-4 mb-4">
-                        <h2 className="text-xl font-poppins font-bold text-[#1C1C28]">
+                        <h2 className="text-2xl md:text-3xl font-poppins font-bold text-[#1C1C28]">
                           {activeLesson.title}
                         </h2>
                         <span
@@ -1054,13 +1090,13 @@ export default function StudentCourseDetailPage() {
                         </span>
                       </div>
                       {activeLesson.duration_minutes && (
-                        <div className="flex items-center gap-1.5 text-sm text-[#9CA3AF] mb-4">
+                        <div className="flex items-center gap-1.5 text-base text-[#9CA3AF] mb-4">
                           <Clock className="w-4 h-4" />
                           {activeLesson.duration_minutes} minutes
                         </div>
                       )}
                       {activeLesson.content && (
-                        <div className="prose prose-sm max-w-none text-[#4D4D4D] leading-relaxed whitespace-pre-wrap">
+                        <div className="prose prose-base max-w-none text-base text-[#4D4D4D] leading-relaxed whitespace-pre-wrap">
                           {activeLesson.content}
                         </div>
                       )}
@@ -1082,7 +1118,11 @@ export default function StudentCourseDetailPage() {
                         <div className="pt-4 border-t border-gray-100 space-y-2">
                           <h3 className="text-sm font-semibold text-[#1C1C28]">Homework &amp; Classwork</h3>
                           {(lessonAssignments[activeLesson.id] || []).map((a) => (
-                            <div key={a.id} className="border border-gray-100 rounded-xl p-3">
+                            <Link
+                              key={a.id}
+                              href={`/dashboard/student/assignments?assignment=${a.id}`}
+                              className="block border border-gray-100 rounded-xl p-3 hover:border-[#1F4FD8]/30 hover:bg-gray-50/50 transition-all"
+                            >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
@@ -1108,16 +1148,13 @@ export default function StudentCourseDetailPage() {
                                       </span>
                                     )
                                   ) : (
-                                    <Link
-                                      href="/dashboard/student/assignments"
-                                      className="text-xs text-[#1F4FD8] hover:underline font-medium"
-                                    >
+                                    <span className="text-xs text-[#1F4FD8] font-medium">
                                       Submit
-                                    </Link>
+                                    </span>
                                   )}
                                 </div>
                               </div>
-                            </div>
+                            </Link>
                           ))}
                         </div>
                       )}
@@ -1186,6 +1223,35 @@ export default function StudentCourseDetailPage() {
                     </div>
                   )}
 
+                  {/* Rest of this week */}
+                  {thisWeekSessions.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#1C1C28] mb-3">
+                        Rest of This Week
+                        <span className="ml-2 text-xs font-normal text-[#9CA3AF]">
+                          {sessionWeekLabel}
+                        </span>
+                      </h3>
+                      <div className="space-y-2">
+                        {thisWeekSessions.map((s) => (
+                          <div key={s.id} className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-[#1C1C28]">{s.title}</p>
+                              <p className="text-xs text-[#9CA3AF]">{formatDateTime(s.scheduled_at)} &middot; {s.duration_minutes} min</p>
+                            </div>
+                            {statusBadge(s.status)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {laterSessionCount > 0 && (
+                    <p className="text-xs text-[#9CA3AF]">
+                      {laterSessionCount} more session{laterSessionCount === 1 ? "" : "s"} scheduled after this week.
+                    </p>
+                  )}
+
                   {/* Past Sessions */}
                   {pastSessions.length > 0 && (
                     <div>
@@ -1237,7 +1303,11 @@ export default function StudentCourseDetailPage() {
                         {upcomingAssignments.map((a) => {
                           const isDueSoon = isDueSoonUtil(a.effectiveDueDate);
                           return (
-                            <div key={a.id} className="border border-gray-100 rounded-xl p-4">
+                            <Link
+                              key={a.id}
+                              href={`/dashboard/student/assignments?assignment=${a.id}`}
+                              className="block border border-gray-100 rounded-xl p-4 hover:border-[#1F4FD8]/30 hover:bg-gray-50/50 transition-all"
+                            >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
@@ -1251,14 +1321,11 @@ export default function StudentCourseDetailPage() {
                                     </p>
                                   )}
                                 </div>
-                                <Link
-                                  href="/dashboard/student/assignments"
-                                  className="text-xs text-[#1F4FD8] hover:underline font-medium flex-shrink-0"
-                                >
+                                <span className="text-xs text-[#1F4FD8] font-medium flex-shrink-0">
                                   Submit
-                                </Link>
+                                </span>
                               </div>
-                            </div>
+                            </Link>
                           );
                         })}
                       </div>
@@ -1271,7 +1338,11 @@ export default function StudentCourseDetailPage() {
                       <h3 className="text-sm font-semibold text-[#1C1C28] mb-3">Past Assignments</h3>
                       <div className="space-y-3">
                         {pastAssignments.map((a) => (
-                          <div key={a.id} className="border border-gray-100 rounded-xl p-4">
+                          <Link
+                            key={a.id}
+                            href={`/dashboard/student/assignments?assignment=${a.id}`}
+                            className="block border border-gray-100 rounded-xl p-4 hover:border-[#1F4FD8]/30 hover:bg-gray-50/50 transition-all"
+                          >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
@@ -1317,7 +1388,7 @@ export default function StudentCourseDetailPage() {
                                 )}
                               </div>
                             </div>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     </div>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Save, User, Mail, Phone, Shield, Globe, Lock } from "lucide-react";
+import { Save, User, Mail, Phone, Shield, Globe, Lock, GraduationCap, Briefcase, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function TeacherSettingsPage() {
@@ -11,12 +11,16 @@ export default function TeacherSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  // False when migration 016 hasn't been applied to this environment yet.
+  const [credentialsAvailable, setCredentialsAvailable] = useState(true);
 
   const [form, setForm] = useState({
     full_name: "",
     email: "",
     phone: "",
     country_code: "",
+    qualification: "",
+    experience: "",
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -35,17 +39,47 @@ export default function TeacherSettingsPage() {
         return;
       }
 
-      const { data: profile } = (await supabase
+      type ProfileRow = {
+        full_name: string;
+        email: string;
+        phone: string | null;
+        country_code: string | null;
+        qualification?: string | null;
+        experience?: string | null;
+      };
+
+      // Migrations in this repo are applied by hand (see
+      // supabase/migrations/016_teacher_qualification_experience.sql), so the
+      // credential columns may not exist yet on a given environment. Selecting
+      // a missing column fails the whole query, which would blank out a
+      // previously working profile form — fall back to the base columns
+      // instead of taking the rest of the page down with it.
+      let profile: ProfileRow | null = null;
+      const withCredentials = await supabase
         .from("profiles")
-        .select("full_name, email, phone, country_code")
+        .select("full_name, email, phone, country_code, qualification, experience")
         .eq("id", user.id)
-        .single()) as { data: { full_name: string; email: string; phone: string | null; country_code: string | null } | null };
+        .single();
+
+      if (withCredentials.error) {
+        setCredentialsAvailable(false);
+        const base = await supabase
+          .from("profiles")
+          .select("full_name, email, phone, country_code")
+          .eq("id", user.id)
+          .single();
+        profile = (base.data as ProfileRow) ?? null;
+      } else {
+        profile = (withCredentials.data as ProfileRow) ?? null;
+      }
 
       setForm({
         full_name: profile?.full_name || "",
         email: profile?.email || user.email || "",
         phone: profile?.phone || "",
         country_code: profile?.country_code || "",
+        qualification: profile?.qualification || "",
+        experience: profile?.experience || "",
       });
 
       setLoading(false);
@@ -74,6 +108,12 @@ export default function TeacherSettingsPage() {
         full_name: form.full_name,
         phone: form.phone || null,
         country_code: form.country_code || null,
+        ...(credentialsAvailable
+          ? {
+              qualification: form.qualification || null,
+              experience: form.experience || null,
+            }
+          : {}),
       })
       .eq("id", user.id);
 
@@ -201,6 +241,77 @@ export default function TeacherSettingsPage() {
               {saving ? "Saving..." : "Save Changes"}
             </button>
           </form>
+
+          {/* Credentials Section — teacher fills these in; only admins can
+              read them back. Row-level policies on `profiles` (migration 001)
+              already enforce that: no policy lets a student or a peer teacher
+              select another teacher's profile row. See migration 016. */}
+          {credentialsAvailable && (
+          <form onSubmit={handleSave} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-[#1F4FD8]/10 text-[#1F4FD8] flex items-center justify-center">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-poppins font-semibold text-[#1C1C28]">
+                  Qualification &amp; Experience
+                </h2>
+                <p className="text-sm text-[#4D4D4D] mt-0.5">
+                  Your teaching credentials
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+              <EyeOff className="w-4 h-4 text-[#9CA3AF] flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-[#4D4D4D]">
+                Visible to administrators only. Students and other teachers
+                cannot see this.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Qualification</label>
+              <div className="relative">
+                <GraduationCap className="absolute left-4 top-4 w-5 h-5 text-[#9CA3AF]" />
+                <textarea
+                  value={form.qualification}
+                  onChange={(e) => setForm({ ...form, qualification: e.target.value })}
+                  rows={2}
+                  className="w-full pl-12 pr-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm resize-none"
+                  placeholder="e.g. M.A. English, B.Ed"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1C1C28] mb-1.5">Experience</label>
+              <div className="relative">
+                <Briefcase className="absolute left-4 top-4 w-5 h-5 text-[#9CA3AF]" />
+                <textarea
+                  value={form.experience}
+                  onChange={(e) => setForm({ ...form, experience: e.target.value })}
+                  rows={3}
+                  className="w-full pl-12 pr-4 py-3 border border-[#D4D4D4] rounded-xl bg-white text-[#1C1C28] focus:outline-none focus:ring-2 focus:ring-[#1F4FD8] focus:border-transparent text-sm resize-none"
+                  placeholder="e.g. 6 years teaching primary phonics"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#1F4FD8] text-white font-poppins font-semibold text-sm rounded-xl hover:bg-[#1a45c2] disabled:opacity-60 transition-all shadow-md"
+            >
+              {saving ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {saving ? "Saving..." : "Save Credentials"}
+            </button>
+          </form>
+          )}
 
           {/* Change Password Section */}
           <form onSubmit={handleChangePassword} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">

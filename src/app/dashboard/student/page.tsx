@@ -79,6 +79,14 @@ export default async function StudentDashboardPage() {
   let assignments: DashboardAssignment[] = [];
 
   if (!enrollmentsError && enrolledCourseIds.length > 0) {
+    // "Upcoming" means still to come. The count used to be scoped by
+    // course_id with no date filter, which was wrong twice over: a
+    // live_sessions row is 1:1 with a single student's enrollment (see
+    // migration 004), so filtering by course_id counted every other
+    // student's classes on the same course too, and with no
+    // `scheduled_at >= now` bound, long-past classes that were never
+    // marked complete kept counting as upcoming.
+    const nowIso = new Date().toISOString();
     const [
       { count, error: upcomingClassesError },
       { data: sessionData, error: sessionsError },
@@ -87,8 +95,9 @@ export default async function StudentDashboardPage() {
       supabase
         .from("live_sessions")
         .select("*", { count: "exact", head: true })
-        .in("course_id", enrolledCourseIds)
-        .eq("status", "scheduled"),
+        .in("enrollment_id", enrollmentIds)
+        .eq("status", "scheduled")
+        .gte("scheduled_at", nowIso),
       supabase
         .from("live_sessions")
         .select("id, enrollment_id, scheduled_at, status")

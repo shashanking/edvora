@@ -25,27 +25,57 @@ export default async function TeacherDashboardPage() {
   // PostgREST to embed on, so it silently errored and always returned 0 —
   // this was the root cause of the teacher dashboard showing no assigned
   // students at all.
+  //
+  // "Pending Reviews" must be scoped by the *course* the teacher is assigned
+  // to, not by assignments.teacher_id. Lesson-linked assignments (migration
+  // 012) are authored in the admin Manage Content page and filed under
+  // whichever teacher happens to be first in course_teachers, which on a
+  // co-taught course is arbitrary — so a teacher_id filter hid real
+  // ungraded submissions from the teacher actually running the classes.
+  // Same reasoning as the course-detail Assignments tab; see
+  // src/app/dashboard/teacher/courses/[id]/page.tsx.
+  const { data: myCourseRows } = await supabase
+    .from("course_teachers")
+    .select("course_id")
+    .eq("teacher_id", user.id);
+
+  const myCourseIds = ((myCourseRows as { course_id: string }[] | null) || []).map(
+    (r) => r.course_id
+  );
+
+  const nowIso = new Date().toISOString();
+
   const [
-    { count: courseCount },
     { data: myEnrollments },
     { count: pendingSubmissions },
+    { count: upcomingSessions },
   ] = await Promise.all([
-    supabase
-      .from("course_teachers")
-      .select("*", { count: "exact", head: true })
-      .eq("teacher_id", user.id),
     supabase
       .from("enrollments")
       .select("id, student_id, course_id, enrolled_at")
       .eq("teacher_id", user.id)
       .eq("status", "active")
       .order("enrolled_at", { ascending: false }),
+    myCourseIds.length
+      ? supabase
+          .from("assignment_submissions")
+          .select("*, assignments!inner(course_id)", { count: "exact", head: true })
+          .in("assignments.course_id", myCourseIds)
+          .is("graded_at", null)
+      : Promise.resolve({ count: 0 }),
+    // "Upcoming Sessions" was hardcoded to 0 — it was never wired to a query
+    // at all. A live_sessions row is 1:1 with one student's enrollment, and
+    // live_sessions.teacher_id is the teacher actually running that class,
+    // so that column (not course_teachers) is the right scope here.
     supabase
-      .from("assignment_submissions")
-      .select("*, assignments!inner(teacher_id)", { count: "exact", head: true })
-      .eq("assignments.teacher_id", user.id)
-      .is("graded_at", null),
+      .from("live_sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("teacher_id", user.id)
+      .eq("status", "scheduled")
+      .gte("scheduled_at", nowIso),
   ]);
+
+  const courseCount = myCourseIds.length;
 
   const enrollmentRows = myEnrollments || [];
   const studentCount = enrollmentRows.length;
@@ -69,10 +99,10 @@ export default async function TeacherDashboardPage() {
   }
 
   const stats = [
-    { label: "Assigned Courses", value: courseCount ?? 0, icon: <BookOpen className="w-6 h-6" />, color: "bg-blue-50 text-[#1F4FD8]" },
+    { label: "Assigned Courses", value: courseCount, icon: <BookOpen className="w-6 h-6" />, color: "bg-blue-50 text-[#1F4FD8]" },
     { label: "Active Students", value: studentCount ?? 0, icon: <Users className="w-6 h-6" />, color: "bg-green-50 text-green-600" },
     { label: "Pending Reviews", value: pendingSubmissions ?? 0, icon: <ClipboardList className="w-6 h-6" />, color: "bg-amber-50 text-amber-600" },
-    { label: "Upcoming Sessions", value: 0, icon: <Video className="w-6 h-6" />, color: "bg-purple-50 text-purple-600" },
+    { label: "Upcoming Sessions", value: upcomingSessions ?? 0, icon: <Video className="w-6 h-6" />, color: "bg-purple-50 text-purple-600" },
   ];
 
   const greeting = () => {

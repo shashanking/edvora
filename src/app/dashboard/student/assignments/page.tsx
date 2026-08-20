@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/src/lib/supabase/client";
+import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import FileUpload from "@/src/components/shared/FileUpload";
 import {
@@ -118,6 +119,13 @@ function formatDateTime(iso: string) {
 export default function StudentAssignmentsPage() {
   const supabase = createClient() as any;
 
+  // Deep link target: `/dashboard/student/assignments?assignment=<id>`.
+  // Assignment cards elsewhere in the student portal (course detail, lesson
+  // panel) link straight to the individual assignment rather than dumping
+  // the student on an undifferentiated list.
+  const searchParams = useSearchParams();
+  const focusAssignmentId = searchParams.get("assignment") || "";
+
   const [userId, setUserId] = useState<string | null>(null);
   const [courses, setCourses] = useState<EnrolledCourse[]>([]);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string>("");
@@ -160,12 +168,38 @@ export default function StudentAssignmentsPage() {
       setCourses(mapped);
       setLoadingCourses(false);
 
-      // auto-select first course
-      if (mapped.length > 0) {
-        setSelectedEnrollmentId(mapped[0].enrollment_id);
+      if (mapped.length === 0) return;
+
+      // A deep-linked assignment may belong to a course other than the first
+      // one, so resolve its course before falling back to the default.
+      if (focusAssignmentId) {
+        const { data: target } = await supabase
+          .from("assignments")
+          .select("course_id")
+          .eq("id", focusAssignmentId)
+          .maybeSingle();
+        const targetCourseId = (target as { course_id: string } | null)?.course_id;
+        const match = targetCourseId
+          ? mapped.find((c) => c.course_id === targetCourseId)
+          : undefined;
+        if (match) {
+          setSelectedEnrollmentId(match.enrollment_id);
+          return;
+        }
       }
+
+      // auto-select first course
+      setSelectedEnrollmentId(mapped[0].enrollment_id);
     })();
-  }, []);
+  }, [focusAssignmentId]);
+
+  /* ---- 1b. scroll a deep-linked assignment into view once it renders ---- */
+  useEffect(() => {
+    if (!focusAssignmentId || loadingData) return;
+    if (!assignments.some((a) => a.id === focusAssignmentId)) return;
+    const el = document.getElementById(`assignment-${focusAssignmentId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusAssignmentId, assignments, loadingData]);
 
   /* ---- 2. fetch sessions + lessons + assignments + submissions when course changes ---- */
   const fetchCourseData = useCallback(
@@ -317,8 +351,16 @@ export default function StudentAssignmentsPage() {
   const renderAssignmentBody = (assignment: Assignment, startReference: string | null) => {
     const submission = submissions.get(assignment.id) || null;
     const dueDate = computeEffectiveDueDate(startReference, assignment.duration_days);
+    const isFocused = focusAssignmentId === assignment.id;
     return (
-      <div className="space-y-4">
+      <div
+        id={`assignment-${assignment.id}`}
+        className={`space-y-4 scroll-mt-24 ${
+          isFocused
+            ? "-mx-3 -my-2 px-3 py-2 rounded-xl ring-2 ring-[#1F4FD8]/40 bg-[#1F4FD8]/5"
+            : ""
+        }`}
+      >
         {/* Assignment info */}
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">

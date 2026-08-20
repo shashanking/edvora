@@ -4,7 +4,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import {
   ClipboardList,
-  Plus,
   Calendar,
   Users,
   ChevronDown,
@@ -45,6 +44,19 @@ interface SessionRow {
   assignment?: AssignmentRow | null;
 }
 
+interface LessonAssignmentRow {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  duration_days: number | null;
+  file_urls: string[];
+  lesson_id: string;
+  lesson_title: string;
+  submission_count: number;
+  pending_count: number;
+}
+
 interface AssignmentRow {
   id: string;
   title: string;
@@ -57,7 +69,7 @@ interface AssignmentRow {
   duration_days: number | null;
   file_urls: string[];
   allowed_file_types: string[];
-  session_id: string;
+  session_id: string | null;
   submission_count: number;
   pending_count: number;
 }
@@ -115,6 +127,7 @@ export default function TeacherAssignmentsPage() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
   // Modal state
+  const [lessonAssignments, setLessonAssignments] = useState<LessonAssignmentRow[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentRow | null>(null);
   const [modalSessionId, setModalSessionId] = useState("");
@@ -257,6 +270,69 @@ export default function TeacherAssignmentsPage() {
       }))
     );
 
+    // Lesson-linked assignments (migration 012) have session_id = NULL, so the
+    // session_id lookup above can never surface them — for a course whose
+    // homework is authored in the admin Manage Content page, that meant a
+    // teacher saw nothing here at all, and neither did their students'
+    // submissions. Load them course-scoped instead (RLS already allows any
+    // teacher on the course to read them — migration 014), matching the
+    // course-detail Assignments tab.
+    const { data: lessonAssignData } = await supabase
+      .from("assignments")
+      .select("id, title, description, type, duration_days, file_urls, lesson_id")
+      .eq("course_id", selectedCourseId)
+      .is("session_id", null)
+      .not("lesson_id", "is", null);
+
+    const lessonAssignRows = (lessonAssignData as any[]) || [];
+
+    if (lessonAssignRows.length) {
+      const laLessonIds = [
+        ...new Set(lessonAssignRows.map((a) => a.lesson_id).filter(Boolean)),
+      ] as string[];
+      const laLessonTitles = new Map<string, string>();
+      if (laLessonIds.length) {
+        const { data: laLessons } = await supabase
+          .from("course_lessons")
+          .select("id, title")
+          .in("id", laLessonIds);
+        ((laLessons as any[]) || []).forEach((l) => laLessonTitles.set(l.id, l.title));
+      }
+
+      const laIds = lessonAssignRows.map((a) => a.id);
+      const laSubs = new Map<string, { total: number; pending: number }>();
+      const { data: laSubData } = await supabase
+        .from("assignment_submissions")
+        .select("assignment_id, graded_at")
+        .in("assignment_id", laIds);
+      ((laSubData as any[]) || []).forEach((sub) => {
+        const cur = laSubs.get(sub.assignment_id) || { total: 0, pending: 0 };
+        cur.total++;
+        if (!sub.graded_at) cur.pending++;
+        laSubs.set(sub.assignment_id, cur);
+      });
+
+      setLessonAssignments(
+        lessonAssignRows.map((a) => {
+          const stats = laSubs.get(a.id) || { total: 0, pending: 0 };
+          return {
+            id: a.id,
+            title: a.title,
+            description: a.description,
+            type: a.type || "homework",
+            duration_days: a.duration_days ?? null,
+            file_urls: a.file_urls || [],
+            lesson_id: a.lesson_id,
+            lesson_title: laLessonTitles.get(a.lesson_id) || "Lesson",
+            submission_count: stats.total,
+            pending_count: stats.pending,
+          };
+        })
+      );
+    } else {
+      setLessonAssignments([]);
+    }
+
     setSessionsLoading(false);
   }, [selectedCourseId, userId]);
 
@@ -266,18 +342,13 @@ export default function TeacherAssignmentsPage() {
     }
   }, [selectedCourseId, userId, loadSessions]);
 
-  /* ---------- Open create/edit modal ---------- */
-  const openCreateModal = (sessionId: string, sessionNumber: number) => {
-    setEditingAssignment(null);
-    setModalSessionId(sessionId);
-    setModalSessionNumber(sessionNumber);
-    setForm(defaultForm);
-    setShowModal(true);
-  };
-
+  /* ---------- Open edit modal ----------
+     There is deliberately no "create" path here: authoring assignments is
+     admin-only (admin > Courses > Manage Content). Teachers edit and grade
+     what already exists. */
   const openEditModal = (assignment: AssignmentRow, sessionNumber: number) => {
     setEditingAssignment(assignment);
-    setModalSessionId(assignment.session_id);
+    setModalSessionId(assignment.session_id ?? "");
     setModalSessionNumber(sessionNumber);
     setForm({
       title: assignment.title,
@@ -551,7 +622,7 @@ export default function TeacherAssignmentsPage() {
             <div className="flex items-center justify-center py-20">
               <div className="w-8 h-8 border-2 border-[#1F4FD8]/30 border-t-[#1F4FD8] rounded-full animate-spin" />
             </div>
-          ) : sessions.length === 0 ? (
+          ) : sessions.length === 0 && lessonAssignments.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <ClipboardList className="w-8 h-8 text-gray-400" />
@@ -681,20 +752,107 @@ export default function TeacherAssignmentsPage() {
                           </Link>
                         </>
                       ) : (
-                        <button
-                          onClick={() =>
-                            openCreateModal(session.id, session.session_number)
-                          }
-                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-md"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Create Assignment
-                        </button>
+                        /* Authoring assignments is an admin-only action (see
+                           the admin Manage Content page) — teachers review
+                           and grade what admins publish. */
+                        <p className="text-xs text-[#9CA3AF] max-w-[180px] text-right">
+                          No assignment set for this session
+                        </p>
                       )}
                     </div>
                   </div>
                 </div>
               ))}
+
+              {/* Lesson-linked homework & classwork (migration 012). These
+                  have no session_id, so they never appeared in the
+                  session list above — which is why a teacher could not see
+                  their own students' submissions for them. */}
+              {lessonAssignments.length > 0 && (
+                <div className="pt-4 space-y-3">
+                  <h2 className="text-sm font-semibold text-[#1C1C28]">
+                    Lesson Homework &amp; Classwork
+                  </h2>
+                  {lessonAssignments.map((a) => (
+                    <div
+                      key={a.id}
+                      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            {typeBadge(a.type)}
+                          </div>
+                          <h3 className="font-poppins font-semibold text-[#1C1C28]">
+                            {a.title}
+                          </h3>
+                          <p className="text-xs text-[#1F4FD8] mt-0.5">
+                            Lesson: {a.lesson_title}
+                          </p>
+                          {a.description && (
+                            <p className="text-xs text-[#4D4D4D] line-clamp-2 mt-2">
+                              {a.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-4 mt-2 text-xs text-[#9CA3AF]">
+                            {a.duration_days != null && (
+                              <span className="inline-flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" />
+                                {a.duration_days} day{a.duration_days === 1 ? "" : "s"} to submit
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5" />
+                              {a.submission_count} submissions
+                            </span>
+                            {a.pending_count > 0 && (
+                              <span className="text-amber-600 font-medium">
+                                {a.pending_count} pending review
+                              </span>
+                            )}
+                            {a.file_urls.length > 0 && (
+                              <span className="inline-flex items-center gap-1">
+                                <FileText className="w-3.5 h-3.5" />
+                                {a.file_urls.length} attachment(s)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 flex-shrink-0">
+                          <button
+                            onClick={() =>
+                              openSubmissions({
+                                id: a.id,
+                                title: a.title,
+                                description: a.description,
+                                type: a.type,
+                                duration_days: a.duration_days,
+                                file_urls: a.file_urls,
+                                allowed_file_types: [],
+                                session_id: null,
+                                submission_count: a.submission_count,
+                                pending_count: a.pending_count,
+                              })
+                            }
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F4FD8]/10 text-[#1F4FD8] text-sm font-semibold rounded-xl hover:bg-[#1F4FD8]/20 transition-all"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Submissions
+                          </button>
+                          <Link
+                            href={`/dashboard/teacher/assignments/${a.id}`}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F4FD8] text-white text-sm font-semibold rounded-xl hover:bg-[#1a45c2] transition-all shadow-md text-center justify-center"
+                          >
+                            <ClipboardList className="w-4 h-4" />
+                            Details
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>

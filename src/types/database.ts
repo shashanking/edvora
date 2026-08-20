@@ -26,6 +26,10 @@ export interface Database {
           email: string;
           phone: string | null;
           country_code: string | null;
+          // Teacher-only credentials (migration 016). Admin-readable via the
+          // existing profiles row policies; never exposed to students/peers.
+          qualification: string | null;
+          experience: string | null;
           avatar_url: string | null;
           role: UserRole;
           created_at: string;
@@ -37,6 +41,8 @@ export interface Database {
           email: string;
           phone?: string | null;
           country_code?: string | null;
+          qualification?: string | null;
+          experience?: string | null;
           avatar_url?: string | null;
           role?: UserRole;
           created_at?: string;
@@ -48,6 +54,8 @@ export interface Database {
           email?: string;
           phone?: string | null;
           country_code?: string | null;
+          qualification?: string | null;
+          experience?: string | null;
           avatar_url?: string | null;
           role?: UserRole;
           updated_at?: string;

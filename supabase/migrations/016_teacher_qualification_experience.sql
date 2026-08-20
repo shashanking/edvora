@@ -1,0 +1,32 @@
+-- Teacher qualification + experience.
+--
+-- The client wants teachers to record their own credentials, with only
+-- admins able to read them back — a teacher shouldn't see a colleague's
+-- qualifications, and students shouldn't see any of it.
+--
+-- These live on `profiles` rather than a separate table because they are
+-- 1:1 with a teacher and because the existing row-level policies on
+-- `profiles` (migration 001) already give exactly the visibility the client
+-- asked for, with no new policy needed:
+--
+--   "Users can view own profile"                 -> the teacher can read/fill their own
+--   "Admins can view all profiles"               -> admins can read everyone's
+--   "Teachers can view student profiles in
+--    their courses"                              -> teacher -> *student* rows only,
+--                                                   never another teacher's row
+--   "Users can update own profile"               -> the teacher can fill theirs in
+--
+-- There is deliberately no policy letting a student or a peer teacher select
+-- another teacher's profile row, so these columns are unreadable to them.
+--
+-- Both are free text: "qualification" is a credential string (e.g. "M.A.
+-- English, B.Ed") and "experience" is a description (e.g. "6 years teaching
+-- primary phonics"), not a number — the client did not ask for a numeric
+-- years field and free text loses nothing.
+--
+-- NOTE: like prior migrations in this repo, this is NOT auto-applied — run
+-- it manually via the Supabase SQL editor. Both statements are idempotent
+-- (IF NOT EXISTS) and safe to run more than once.
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS qualification TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS experience TEXT;

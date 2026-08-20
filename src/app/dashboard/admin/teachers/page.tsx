@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Search, UserPlus, Mail, Phone, Trash2, GraduationCap, Loader2, KeyRound } from "lucide-react";
+import { Search, UserPlus, Mail, Phone, Trash2, GraduationCap, Loader2, KeyRound, Briefcase, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Teacher {
@@ -10,6 +10,11 @@ interface Teacher {
   full_name: string;
   email: string;
   phone: string | null;
+  // Filled in by the teacher on their own Settings page (migration 016).
+  // Readable here because "Admins can view all profiles" (migration 001);
+  // no policy exposes another teacher's profile row to students or peers.
+  qualification: string | null;
+  experience: string | null;
   created_at: string;
   course_count: number;
 }
@@ -26,6 +31,7 @@ export default function AdminTeachersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState<Teacher | null>(null);
+  const [showCredentials, setShowCredentials] = useState<Teacher | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
 
@@ -33,7 +39,7 @@ export default function AdminTeachersPage() {
     setLoading(true);
     let query = supabase
       .from("profiles")
-      .select("id, full_name, email, phone, created_at")
+      .select("id, full_name, email, phone, qualification, experience, created_at")
       .eq("role", "teacher")
       .order("created_at", { ascending: false });
 
@@ -194,6 +200,7 @@ export default function AdminTeachersPage() {
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Name</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Email</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Credentials</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Courses</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Joined</th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wider">Actions</th>
@@ -223,6 +230,30 @@ export default function AdminTeachersPage() {
                         <Phone className="w-3.5 h-3.5 text-[#9CA3AF]" />
                         <span className="text-sm text-[#4D4D4D]">{teacher.phone || "—"}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {teacher.qualification || teacher.experience ? (
+                        <button
+                          onClick={() => setShowCredentials(teacher)}
+                          className="text-left max-w-[220px] group"
+                          title="View qualification and experience"
+                        >
+                          {teacher.qualification && (
+                            <span className="flex items-center gap-1.5 text-sm text-[#1C1C28] group-hover:text-[#1F4FD8] transition-colors">
+                              <GraduationCap className="w-3.5 h-3.5 text-[#9CA3AF] flex-shrink-0" />
+                              <span className="truncate">{teacher.qualification}</span>
+                            </span>
+                          )}
+                          {teacher.experience && (
+                            <span className="flex items-center gap-1.5 text-xs text-[#9CA3AF] mt-0.5">
+                              <Briefcase className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="truncate">{teacher.experience}</span>
+                            </span>
+                          )}
+                        </button>
+                      ) : (
+                        <span className="text-sm text-[#9CA3AF]">Not provided</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-[#1F4FD8] text-xs font-medium rounded-full">
@@ -392,6 +423,52 @@ export default function AdminTeachersPage() {
                 {passwordSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {passwordSaving ? "Saving..." : "Update Password"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Credentials modal — the table truncates; this is the full text. */}
+      {showCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-poppins font-semibold text-[#1C1C28]">
+                  {showCredentials.full_name}
+                </h2>
+                <p className="text-xs text-[#9CA3AF] mt-0.5">Qualification &amp; experience</p>
+              </div>
+              <button
+                onClick={() => setShowCredentials(null)}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-[#4D4D4D]" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <h3 className="flex items-center gap-2 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wide mb-1.5">
+                  <GraduationCap className="w-4 h-4 text-[#1F4FD8]" />
+                  Qualification
+                </h3>
+                <p className="text-sm text-[#1C1C28] whitespace-pre-wrap">
+                  {showCredentials.qualification || "Not provided"}
+                </p>
+              </div>
+              <div>
+                <h3 className="flex items-center gap-2 text-xs font-semibold text-[#4D4D4D] uppercase tracking-wide mb-1.5">
+                  <Briefcase className="w-4 h-4 text-[#1F4FD8]" />
+                  Experience
+                </h3>
+                <p className="text-sm text-[#1C1C28] whitespace-pre-wrap">
+                  {showCredentials.experience || "Not provided"}
+                </p>
+              </div>
+              <p className="text-xs text-[#9CA3AF]">
+                Entered by the teacher in their own Settings. Visible to
+                administrators only.
+              </p>
             </div>
           </div>
         </div>

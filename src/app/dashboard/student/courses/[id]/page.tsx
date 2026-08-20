@@ -68,6 +68,17 @@ interface LessonDoc {
   title: string;
 }
 
+// File extension off a storage URL (query string stripped), lowercased.
+// Used to pick the right viewer for a lesson document whose type isn't
+// recorded anywhere — direct uploads only store a URL.
+function extFromUrl(url: string): string {
+  try {
+    return decodeURIComponent(url.split("?")[0]).split(".").pop()?.toLowerCase() || "";
+  } catch {
+    return "";
+  }
+}
+
 // A lesson can have any number of documents (migration 011). Each row is
 // either a direct upload (pdf_url) or a link to an existing
 // course_materials row (material_id).
@@ -694,11 +705,27 @@ export default function StudentCourseDetailPage() {
   // predates it).
   const getLessonDocs = (lesson: Lesson): LessonDoc[] => {
     const rows = lessonDocuments[lesson.id];
-    const resolve = (row: { pdf_url: string | null; material_id: string | null }, idx: number): LessonDoc | null => {
-      if (row.pdf_url) return { url: row.pdf_url, type: "pdf", title: `Document ${idx + 1}` };
+    const resolve = (
+      row: { title?: string | null; pdf_url: string | null; material_id: string | null },
+      idx: number
+    ): LessonDoc | null => {
+      // The admin names a document when attaching it (lesson_documents.title);
+      // fall back to a positional label only when it was left blank, rather
+      // than always showing "Document N" and hiding the real name.
+      const label = row.title?.trim() || `Document ${idx + 1}`;
+      if (row.pdf_url) {
+        // Direct uploads are usually PDFs, but the type drives which viewer
+        // MaterialViewer picks — sniff the real extension off the URL so a
+        // .docx/.jpg attachment doesn't get force-fed to the PDF iframe and
+        // render blank.
+        return { url: row.pdf_url, type: extFromUrl(row.pdf_url) || "pdf", title: label };
+      }
       if (row.material_id) {
         const mat = lessonMaterialsMap[row.material_id];
-        if (mat) return { url: mat.file_url, type: (mat.file_type || "pdf").toLowerCase(), title: `Document ${idx + 1}` };
+        if (mat) {
+          const type = (mat.file_type || extFromUrl(mat.file_url) || "pdf").toLowerCase();
+          return { url: mat.file_url, type, title: label };
+        }
       }
       return null;
     };
@@ -1030,16 +1057,31 @@ export default function StudentCourseDetailPage() {
                                           <Video className="w-3 h-3" /> Video
                                         </span>
                                       )}
-                                      {getLessonDocs(lesson).length > 0 && (
-                                        <span className="flex items-center gap-0.5 text-xs text-emerald-600">
-                                          <FileText className="w-3 h-3" />
-                                          {getLessonDocs(lesson).length > 1
-                                            ? `Documents (${getLessonDocs(lesson).length})`
-                                            : "Document"}
-                                        </span>
-                                      )}
                                     </div>
                                   </button>
+                                  {/* The document badge used to sit inside the
+                                      lesson button, so clicking it only
+                                      switched lessons — it looked like a link
+                                      to the file but never opened one. It's now
+                                      a sibling button that opens the lesson's
+                                      first document directly. */}
+                                  {getLessonDocs(lesson).length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewingLessonDoc(getLessonDocs(lesson)[0])}
+                                      title={
+                                        getLessonDocs(lesson).length > 1
+                                          ? `Open the first of ${getLessonDocs(lesson).length} documents`
+                                          : `Open ${getLessonDocs(lesson)[0].title}`
+                                      }
+                                      className="flex-shrink-0 flex items-center gap-1 px-2 py-1 text-xs text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      {getLessonDocs(lesson).length > 1
+                                        ? getLessonDocs(lesson).length
+                                        : "Doc"}
+                                    </button>
+                                  )}
                                 </div>
                               );
                             })}
@@ -1101,16 +1143,54 @@ export default function StudentCourseDetailPage() {
                         </div>
                       )}
                       {getLessonDocs(activeLesson).length > 0 && (
-                        <div className="pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+                        <div className="pt-4 border-t border-gray-100 space-y-2">
+                          <h3 className="text-sm font-semibold text-[#1C1C28]">
+                            Lesson Documents
+                          </h3>
+                          {/* Each document is its own full-width clickable row.
+                              This used to be a row of small "View Document"
+                              pills that all looked alike, so with more than one
+                              attachment there was no way to tell which was
+                              which — and nothing here opened the file outside
+                              the modal. Clicking the row opens the in-app
+                              viewer; the trailing button opens the file itself
+                              in a new tab for students whose browser can't
+                              render it inline. */}
                           {getLessonDocs(activeLesson).map((doc, idx) => (
-                            <button
+                            <div
                               key={idx}
-                              onClick={() => setViewingLessonDoc(doc)}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4FD8]/10 text-[#1F4FD8] text-sm font-medium rounded-xl hover:bg-[#1F4FD8]/20 transition-colors"
+                              className="flex items-center gap-3 border border-gray-100 rounded-xl p-3 hover:border-[#1F4FD8]/30 hover:bg-gray-50/50 transition-all"
                             >
-                              <FileText className="w-4 h-4" />
-                              {getLessonDocs(activeLesson).length > 1 ? `View ${doc.title}` : "View Document"}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => setViewingLessonDoc(doc)}
+                                className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                                aria-label={`Open ${doc.title}`}
+                              >
+                                <span className="w-9 h-9 flex-shrink-0 rounded-lg bg-[#1F4FD8]/10 flex items-center justify-center">
+                                  <FileText className="w-4 h-4 text-[#1F4FD8]" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-sm font-medium text-[#1C1C28] truncate">
+                                    {doc.title}
+                                  </span>
+                                  <span className="block text-xs text-[#9CA3AF] uppercase">
+                                    {doc.type || "file"}
+                                  </span>
+                                </span>
+                              </button>
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1F4FD8] bg-[#1F4FD8]/10 hover:bg-[#1F4FD8]/20 rounded-lg transition-colors"
+                                title={`Open ${doc.title} in a new tab`}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Open
+                              </a>
+                            </div>
                           ))}
                         </div>
                       )}

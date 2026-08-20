@@ -11,6 +11,8 @@ export default function TeacherSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  // False when migration 016 hasn't been applied to this environment yet.
+  const [credentialsAvailable, setCredentialsAvailable] = useState(true);
 
   const [form, setForm] = useState({
     full_name: "",
@@ -37,20 +39,39 @@ export default function TeacherSettingsPage() {
         return;
       }
 
-      const { data: profile } = (await supabase
+      type ProfileRow = {
+        full_name: string;
+        email: string;
+        phone: string | null;
+        country_code: string | null;
+        qualification?: string | null;
+        experience?: string | null;
+      };
+
+      // Migrations in this repo are applied by hand (see
+      // supabase/migrations/016_teacher_qualification_experience.sql), so the
+      // credential columns may not exist yet on a given environment. Selecting
+      // a missing column fails the whole query, which would blank out a
+      // previously working profile form — fall back to the base columns
+      // instead of taking the rest of the page down with it.
+      let profile: ProfileRow | null = null;
+      const withCredentials = await supabase
         .from("profiles")
         .select("full_name, email, phone, country_code, qualification, experience")
         .eq("id", user.id)
-        .single()) as {
-        data: {
-          full_name: string;
-          email: string;
-          phone: string | null;
-          country_code: string | null;
-          qualification: string | null;
-          experience: string | null;
-        } | null;
-      };
+        .single();
+
+      if (withCredentials.error) {
+        setCredentialsAvailable(false);
+        const base = await supabase
+          .from("profiles")
+          .select("full_name, email, phone, country_code")
+          .eq("id", user.id)
+          .single();
+        profile = (base.data as ProfileRow) ?? null;
+      } else {
+        profile = (withCredentials.data as ProfileRow) ?? null;
+      }
 
       setForm({
         full_name: profile?.full_name || "",
@@ -87,8 +108,12 @@ export default function TeacherSettingsPage() {
         full_name: form.full_name,
         phone: form.phone || null,
         country_code: form.country_code || null,
-        qualification: form.qualification || null,
-        experience: form.experience || null,
+        ...(credentialsAvailable
+          ? {
+              qualification: form.qualification || null,
+              experience: form.experience || null,
+            }
+          : {}),
       })
       .eq("id", user.id);
 
@@ -221,6 +246,7 @@ export default function TeacherSettingsPage() {
               read them back. Row-level policies on `profiles` (migration 001)
               already enforce that: no policy lets a student or a peer teacher
               select another teacher's profile row. See migration 016. */}
+          {credentialsAvailable && (
           <form onSubmit={handleSave} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-[#1F4FD8]/10 text-[#1F4FD8] flex items-center justify-center">
@@ -285,6 +311,7 @@ export default function TeacherSettingsPage() {
               {saving ? "Saving..." : "Save Credentials"}
             </button>
           </form>
+          )}
 
           {/* Change Password Section */}
           <form onSubmit={handleChangePassword} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">

@@ -148,6 +148,33 @@ export async function createZoomMeeting(
         }),
       }
     );
+
+    // An alternative host must itself be a licensed user on the same Zoom
+    // account — the very thing we just established the teacher is not. Zoom
+    // rejects that with 400 / code 1114, so the fallback above could never
+    // succeed in the exact case it was written for: every session for a
+    // teacher without a Zoom seat failed outright, which is how enrollments
+    // ended up with zero live_sessions rows.
+    //
+    // Last resort: schedule under the account owner with no alternative
+    // host. The teacher still gets zoom_start_url, and a class that happens
+    // beats a class that was never created. Warn loudly — the real fix is
+    // giving the teacher a Zoom seat.
+    if (!res.ok && res.status === 400) {
+      const failure = await res.clone().text();
+      console.warn(
+        `Zoom refused "${teacherHost}" as an alternative host (${failure}). ` +
+          `Scheduling under "${fallbackHost}" with no alternative host. ` +
+          `Add "${teacherHost}" as a user on the Zoom account so they can host their own sessions.`
+      );
+      res = await zoomFetch(
+        `/users/${encodeURIComponent(fallbackHost)}/meetings`,
+        {
+          method: "POST",
+          body: JSON.stringify(requestBody),
+        }
+      );
+    }
   }
 
   if (!res.ok) {

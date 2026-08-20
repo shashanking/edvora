@@ -37,17 +37,29 @@ export default function AdminTeachersPage() {
 
   const fetchTeachers = async () => {
     setLoading(true);
-    let query = supabase
-      .from("profiles")
-      .select("id, full_name, email, phone, qualification, experience, created_at")
-      .eq("role", "teacher")
-      .order("created_at", { ascending: false });
 
-    if (search) {
-      query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+    // Migrations here are applied by hand (see migration 016), so the
+    // credential columns may not exist on a given environment yet. Selecting
+    // a missing column fails the whole query, which would empty the teachers
+    // table — fall back to the base columns rather than breaking the page.
+    const buildQuery = (columns: string) => {
+      let q = supabase
+        .from("profiles")
+        .select(columns)
+        .eq("role", "teacher")
+        .order("created_at", { ascending: false });
+      if (search) {
+        q = q.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+      }
+      return q;
+    };
+
+    let { data, error } = await buildQuery(
+      "id, full_name, email, phone, qualification, experience, created_at"
+    );
+    if (error) {
+      ({ data } = await buildQuery("id, full_name, email, phone, created_at"));
     }
-
-    const { data } = await query;
     const profiles = (data || []) as any[];
 
     // Fetch course counts from course_teachers

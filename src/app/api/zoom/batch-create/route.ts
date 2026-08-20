@@ -1,5 +1,5 @@
 import { createClient } from "@/src/lib/supabase/server";
-import { createZoomMeeting } from "@/src/lib/zoom";
+import { createZoomMeeting, deleteZoomMeeting } from "@/src/lib/zoom";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -11,19 +11,35 @@ interface ScheduleDay {
 }
 
 /**
- * Batch-create Zoom meetings for all sessions in a course enrollment.
+ * Batch-create Zoom meetings + live_sessions rows for a course enrollment.
+ *
+ * Two call shapes:
+ *
+ *  1. Enrollment wizard (admin > Enrollments > Enroll Student) passes the
+ *     full payload it already has in hand.
+ *
+ *  2. Backfill / retry ("Generate sessions" on the enrollments table) passes
+ *     only `{ enrollment_id }`. Everything else — teacher, course, weekly
+ *     schedule, duration — is resolved server-side from the enrollment and
+ *     its `student_schedules` rows.
+ *
+ * The route is idempotent: session numbers that already exist for the
+ * enrollment are skipped, so a failed run can simply be re-run. It only
+ * reports success when at least one session was actually written; a run that
+ * creates nothing returns a non-2xx so the caller can't mistake a broken
+ * enrollment for a working one.
  *
  * Body: {
- *   enrollment_id: string,
- *   course_id: string,
- *   teacher_id: string,
- *   student_id: string,
- *   course_title: string,
- *   total_sessions: number,
- *   classes_per_week: number,
- *   schedule: ScheduleDay[],         // weekly recurring days+times
- *   start_date: string,              // ISO date: first possible session date
- *   duration_minutes: number,
+ *   enrollment_id: string,           // required
+ *   course_id?: string,
+ *   teacher_id?: string,
+ *   student_id?: string,
+ *   course_title?: string,
+ *   total_sessions?: number,
+ *   classes_per_week?: number,
+ *   schedule?: ScheduleDay[],        // weekly recurring days+times
+ *   start_date?: string,             // ISO date: first possible session date
+ *   duration_minutes?: number,
  * }
  */
 export async function POST(req: NextRequest) {
@@ -44,55 +60,97 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const {
-      enrollment_id,
-      course_id,
-      teacher_id,
-      student_id,
-      course_title,
-      total_sessions,
-      classes_per_week,
-      schedule,
-      start_date,
-      duration_minutes,
-    } = body as {
-      enrollment_id: string;
-      course_id: string;
-      teacher_id: string;
-      student_id: string;
-      course_title: string;
-      total_sessions?: number;
-      classes_per_week: number;
-      schedule: ScheduleDay[];
-      start_date: string;
-      duration_minutes: number;
-    };
+    const { enrollment_id } = body as { enrollment_id?: string };
 
-    if (!enrollment_id || !course_id || !teacher_id || !student_id || !schedule?.length) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!enrollment_id) {
+      return NextResponse.json({ error: "enrollment_id is required" }, { status: 400 });
     }
 
-    if (classes_per_week && schedule.length !== classes_per_week) {
+    // The enrollment row is the source of truth for who/what/which teacher.
+    // Trusting the client payload for these let a mismatched body write
+    // sessions against the wrong enrollment.
+    const { data: enrollment, error: enrErr } = await supabase
+      .from("enrollments")
+      .select("id, student_id, course_id, teacher_id, classes_per_week, enrolled_at")
+      .eq("id", enrollment_id)
+      .single();
+
+    if (enrErr || !enrollment) {
+      return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
+    }
+
+    const course_id: string = enrollment.course_id;
+    const student_id: string = enrollment.student_id;
+    const teacher_id: string = body.teacher_id || enrollment.teacher_id;
+
+    if (!teacher_id) {
       return NextResponse.json(
-        { error: `Expected ${classes_per_week} weekly schedule slot${classes_per_week > 1 ? "s" : ""}.` },
+        { error: "This enrollment has no teacher assigned. Assign a teacher before scheduling sessions." },
         { status: 400 }
       );
     }
 
-    // Get teacher email for Zoom host
-    const { data: teacher } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("id", teacher_id)
-      .single();
+    // ---- Weekly schedule: from the request, else from student_schedules ----
+    let schedule: ScheduleDay[] = Array.isArray(body.schedule) ? body.schedule : [];
+
+    if (!schedule.length) {
+      const { data: schedRows, error: schedErr } = await supabase
+        .from("student_schedules")
+        .select("day_of_week, preferred_start_time, preferred_end_time, confirmed_start_time, confirmed_end_time")
+        .eq("student_id", student_id)
+        .eq("course_id", course_id)
+        .order("day_of_week", { ascending: true });
+
+      if (schedErr) {
+        return NextResponse.json(
+          { error: "Failed to read the weekly schedule: " + schedErr.message },
+          { status: 500 }
+        );
+      }
+
+      schedule = ((schedRows as any[]) || []).map((r) => ({
+        dayOfWeek: r.day_of_week,
+        startTime: trimTime(r.confirmed_start_time || r.preferred_start_time),
+        endTime: trimTime(r.confirmed_end_time || r.preferred_end_time),
+      }));
+    }
+
+    if (!schedule.length) {
+      return NextResponse.json(
+        {
+          error:
+            "No weekly schedule found for this enrollment. Set the student's weekly days and times before generating sessions.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const classes_per_week: number | undefined =
+      body.classes_per_week ?? enrollment.classes_per_week ?? undefined;
+
+    if (classes_per_week && schedule.length !== classes_per_week) {
+      return NextResponse.json(
+        { error: `Expected ${classes_per_week} weekly schedule slot${classes_per_week > 1 ? "s" : ""}, found ${schedule.length}.` },
+        { status: 400 }
+      );
+    }
+
+    // ---- Course + teacher lookups ----
+    const [{ data: teacher }, { data: course }] = await Promise.all([
+      supabase.from("profiles").select("email").eq("id", teacher_id).single(),
+      supabase.from("courses").select("title, total_sessions").eq("id", course_id).single(),
+    ]);
+
     if (!teacher) {
       return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
     }
 
+    const course_title: string = body.course_title || course?.title || "Course";
+
     // Fetch ordered lessons for this course (via course_modules join)
     const { data: lessonsData, error: lessonsErr } = await supabase
       .from("course_lessons")
-      .select("id, title, module_id, course_modules(title, display_order)")
+      .select("id, title, module_id, display_order, course_modules(title, display_order)")
       .eq("course_modules.course_id", course_id)
       .order("display_order", { ascending: true });
 
@@ -120,7 +178,8 @@ export async function POST(req: NextRequest) {
     // created session always has a lesson_id — never create orphaned
     // sessions. Surface the shortfall to the caller instead of failing
     // silently.
-    const requestedSessionCount = total_sessions ?? lessons.length;
+    const requestedSessionCount =
+      body.total_sessions ?? course?.total_sessions ?? lessons.length;
 
     if (lessons.length === 0) {
       return NextResponse.json(
@@ -135,18 +194,46 @@ export async function POST(req: NextRequest) {
     const sessionCount = Math.min(requestedSessionCount, lessons.length);
     const lessonShortfall = requestedSessionCount > lessons.length;
 
-    // Generate session dates based on lesson count
-    const sessionDates = generateSessionDates(
-      new Date(start_date),
-      schedule,
-      sessionCount
+    // ---- Idempotency: never duplicate a session that already exists ----
+    // A retry after a partial failure must top up the missing sessions, not
+    // create a second full set. Session numbers are 1..sessionCount and are
+    // unique per enrollment.
+    const { data: existingSessions, error: existingErr } = await supabase
+      .from("live_sessions")
+      .select("session_number")
+      .eq("enrollment_id", enrollment_id);
+
+    if (existingErr) {
+      return NextResponse.json(
+        { error: "Failed to read existing sessions: " + existingErr.message },
+        { status: 500 }
+      );
+    }
+
+    const existingNumbers = new Set(
+      ((existingSessions as { session_number: number }[]) || []).map((s) => s.session_number)
     );
 
-    const createdSessions = [];
+    // Default the start date to today so the backfill/retry path schedules
+    // forward rather than into the past.
+    const startDate = body.start_date ? new Date(body.start_date) : new Date();
+
+    // Generate session dates based on lesson count
+    const sessionDates = generateSessionDates(startDate, schedule, sessionCount);
+
+    const created: any[] = [];
+    const failed: { session_number: number; error: string }[] = [];
+    let skipped = 0;
 
     for (let i = 0; i < sessionDates.length; i++) {
       const { date, daySchedule } = sessionDates[i];
       const sessionNum = i + 1;
+
+      if (existingNumbers.has(sessionNum)) {
+        skipped++;
+        continue;
+      }
+
       const lesson = lessons[i] as any | undefined;
 
       // Build scheduled_at datetime
@@ -157,8 +244,10 @@ export async function POST(req: NextRequest) {
       const topic = lesson
         ? `Session ${lesson.course_modules?.title} - ${lesson.title}`
         : `${course_title} - Session ${sessionNum}`;
-      const dur = duration_minutes || computeDuration(daySchedule.startTime, daySchedule.endTime);
+      const dur =
+        body.duration_minutes || computeDuration(daySchedule.startTime, daySchedule.endTime);
 
+      let zoomMeetingId: string | null = null;
       try {
         // Create Zoom meeting
         const zoom = await createZoomMeeting(
@@ -167,6 +256,7 @@ export async function POST(req: NextRequest) {
           dur,
           teacher.email
         );
+        zoomMeetingId = zoom.meeting_id;
 
         // Insert live_session
         const { data: session, error } = await supabase
@@ -190,25 +280,61 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (error) throw error;
-        createdSessions.push(session);
+        created.push(session);
       } catch (err: any) {
-        console.error(`Failed to create session ${sessionNum}:`, err.message);
-        // Continue creating remaining sessions even if one fails
-        createdSessions.push({ session_number: sessionNum, error: err.message });
+        console.error(`Failed to create session ${sessionNum}:`, err?.message);
+
+        // The Zoom meeting may have been created before the DB insert failed.
+        // Leaving it behind would clutter the teacher's Zoom account with
+        // meetings no session row points at, and a retry would create a
+        // second one, so drop it on the way out.
+        if (zoomMeetingId) {
+          await deleteZoomMeeting(zoomMeetingId).catch(() => {});
+        }
+
+        failed.push({ session_number: sessionNum, error: err?.message || "Unknown error" });
       }
     }
 
-    return NextResponse.json({
-      total_created: createdSessions.filter((s) => !("error" in s)).length,
+    const payload = {
+      total_created: created.length,
+      total_skipped: skipped,
       total_requested: sessionCount,
       total_sessions_target: requestedSessionCount,
       lesson_shortfall: lessonShortfall,
-      sessions: createdSessions,
-    });
+      failed,
+      sessions: created,
+    };
+
+    // An enrollment with zero sessions is a broken enrollment — the student's
+    // portal shows nothing at all. Report that as a failure so the caller
+    // surfaces a real error and can retry, rather than showing a success
+    // toast over an empty schedule.
+    if (created.length === 0 && skipped === 0) {
+      return NextResponse.json(
+        {
+          ...payload,
+          error:
+            failed.length > 0
+              ? `No sessions could be created. First error: ${failed[0].error}`
+              : "No sessions could be created for this enrollment.",
+        },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json(payload);
   } catch (err: any) {
     console.error("Batch create error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
+
+/** Postgres `time` comes back as "HH:MM:SS"; the schedule math wants "HH:MM". */
+function trimTime(value: string | null): string {
+  if (!value) return "00:00";
+  const [h, m] = value.split(":");
+  return `${h}:${m}`;
 }
 
 /**
@@ -226,6 +352,9 @@ function generateSessionDates(
   const current = new Date(startDate);
   current.setHours(0, 0, 0, 0);
 
+  const from = new Date(startDate);
+  from.setHours(0, 0, 0, 0);
+
   // Cap at 52 weeks to prevent infinite loops
   const maxIterations = 52 * 7;
   let iterations = 0;
@@ -234,7 +363,7 @@ function generateSessionDates(
     const dayOfWeek = current.getDay();
     const matchingDay = sortedDays.find((d) => d.dayOfWeek === dayOfWeek);
 
-    if (matchingDay && current >= startDate) {
+    if (matchingDay && current >= from) {
       results.push({ date: new Date(current), daySchedule: matchingDay });
     }
 

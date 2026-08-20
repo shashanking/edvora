@@ -18,6 +18,10 @@ import {
   Loader2,
   Award,
   AlertCircle,
+  Mic,
+  Video,
+  FileUp,
+  ImageIcon,
 } from "lucide-react";
 import {
   computeEffectiveDueDate,
@@ -26,6 +30,28 @@ import {
   submissionTimeliness,
 } from "@/src/lib/assignment-deadline";
 import { getWeekRange, isInWeek, formatWeekRange } from "@/src/lib/week";
+import {
+  allowedSubmissionTypes,
+  validateFileForType,
+  type SubmissionType,
+  type SubmissionTypeConfig,
+} from "@/src/lib/submission-types";
+import SubmissionFiles from "@/src/components/shared/SubmissionFiles";
+
+const SUBMISSION_TYPE_ICONS: Record<SubmissionType, React.ComponentType<{ className?: string }>> = {
+  audio: Mic,
+  video: Video,
+  doc: FileUp,
+  image: ImageIcon,
+};
+
+/** One file the student has uploaded but not yet submitted. */
+interface DraftFile {
+  url: string;
+  // Which upload slot it came from — null for the unrestricted uploader
+  // shown when the assignment ticks no types.
+  type: SubmissionType | null;
+}
 
 /* ---------- types ---------- */
 
@@ -76,6 +102,9 @@ interface Submission {
   feedback: string | null;
   submitted_at: string;
   graded_at: string | null;
+  // audio | video | doc | image (migration 017). Optional because that
+  // migration is applied by hand and pre-017 rows have no stored category.
+  submission_type?: string | null;
 }
 
 /* ---------- helpers ---------- */
@@ -89,6 +118,16 @@ function typeBadgeColor(type: string | null) {
     default:
       return "bg-[#1F4FD8]/10 text-[#1F4FD8]";
   }
+}
+
+// PostgREST reports an unknown column as PGRST204 ("Could not find the
+// 'x' column"). Used to detect that migration 017 hasn't been applied yet
+// so the submission can be retried without submission_type.
+function isMissingColumnError(error: { code?: string; message?: string }) {
+  return (
+    error?.code === "PGRST204" ||
+    /submission_type/i.test(error?.message || "")
+  );
 }
 
 function fileNameFromUrl(url: string) {
@@ -145,7 +184,9 @@ export default function StudentAssignmentsPage() {
 
   // submission form state keyed by assignment id
   const [draftContent, setDraftContent] = useState<Record<string, string>>({});
-  const [draftFiles, setDraftFiles] = useState<Record<string, string[]>>({});
+  // Uploaded-but-not-yet-submitted files, each tagged with the upload slot
+  // it came from so we know what category to record on the submission.
+  const [draftFiles, setDraftFiles] = useState<Record<string, DraftFile[]>>({});
   const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
 
   /* ---- 1. load enrolled courses ---- */
@@ -254,11 +295,28 @@ export default function StudentAssignmentsPage() {
       // Fetch student submissions for these assignments
       const assignmentIds = assignmentRows.map((a) => a.id);
       if (assignmentIds.length > 0) {
-        const { data: submissionData } = await supabase
+        // submission_type is migration 017, applied by hand — selecting it
+        // where it doesn't exist fails the whole query and would blank out
+        // every submission on the page, so fall back to the base columns.
+        const BASE_SUB_COLS =
+          "id, assignment_id, content, file_url, file_urls, grade, feedback, submitted_at, graded_at";
+        let submissionData: unknown[] | null = null;
+        const withType = await supabase
           .from("assignment_submissions")
-          .select("id, assignment_id, content, file_url, file_urls, grade, feedback, submitted_at, graded_at")
+          .select(`${BASE_SUB_COLS}, submission_type`)
           .eq("student_id", userId)
           .in("assignment_id", assignmentIds);
+
+        if (withType.error) {
+          const base = await supabase
+            .from("assignment_submissions")
+            .select(BASE_SUB_COLS)
+            .eq("student_id", userId)
+            .in("assignment_id", assignmentIds);
+          submissionData = base.data as unknown[] | null;
+        } else {
+          submissionData = withType.data as unknown[] | null;
+        }
 
         const subMap = new Map<string, Submission>();
         ((submissionData as any[]) || []).forEach((s) => subMap.set(s.assignment_id, s));
@@ -289,7 +347,13 @@ export default function StudentAssignmentsPage() {
     if (!userId) return;
 
     const content = draftContent[assignment.id]?.trim() || null;
-    const fileUrls = draftFiles[assignment.id] || [];
+    const drafts = draftFiles[assignment.id] || [];
+    const fileUrls = drafts.map((f) => f.url);
+    // One column, possibly several files. Record a category only when every
+    // uploaded file came from the same slot; a mixed submission is left NULL
+    // and the review UI falls back to sniffing each file's extension.
+    const usedTypes = [...new Set(drafts.map((f) => f.type).filter(Boolean))];
+    const submissionType = usedTypes.length === 1 ? (usedTypes[0] as SubmissionType) : null;
 
     if (!content && fileUrls.length === 0) {
       toast.error("Please add some content or upload a file before submitting.");
@@ -298,18 +362,31 @@ export default function StudentAssignmentsPage() {
 
     setSubmitting((prev) => ({ ...prev, [assignment.id]: true }));
 
-    const { data, error } = await supabase
-      .from("assignment_submissions")
-      .insert({
-        assignment_id: assignment.id,
-        student_id: userId,
-        content,
-        file_url: fileUrls[0] || null,
-        file_urls: fileUrls.length > 0 ? fileUrls : null,
-        submitted_at: new Date().toISOString(),
-      })
+    const baseRow = {
+      assignment_id: assignment.id,
+      student_id: userId,
+      content,
+      file_url: fileUrls[0] || null,
+      file_urls: fileUrls.length > 0 ? fileUrls : null,
+      submitted_at: new Date().toISOString(),
+    };
+
+    // submission_type comes from migration 017, which is applied by hand
+    // in this repo. If it hasn't been run on this environment the insert
+    // fails on the unknown column — retry without it rather than losing
+    // the student's work. The teacher UI infers the category from the file
+    // extension when the column is absent, so nothing breaks visually.
+    let { data, error } = await (supabase.from("assignment_submissions") as any)
+      .insert(submissionType ? { ...baseRow, submission_type: submissionType } : baseRow)
       .select()
       .single();
+
+    if (error && submissionType && isMissingColumnError(error)) {
+      ({ data, error } = await (supabase.from("assignment_submissions") as any)
+        .insert(baseRow)
+        .select()
+        .single());
+    }
 
     if (error) {
       toast.error("Submission failed: " + error.message);
@@ -491,39 +568,122 @@ export default function StudentAssignmentsPage() {
               className="w-full px-3 py-2.5 text-sm text-[#1C1C28] bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1F4FD8]/30 focus:border-[#1F4FD8] resize-none transition-all placeholder:text-[#9CA3AF]"
             />
 
-            {/* File upload */}
-            <FileUpload
-              bucket="submissions"
-              folder={`student-${userId}/assignment-${assignment.id}`}
-              accept={
-                assignment.allowed_file_types && assignment.allowed_file_types.length > 0
-                  ? assignment.allowed_file_types.join(",")
-                  : undefined
-              }
-              label="Upload your file"
-              onUpload={(url) => {
+            {/* Upload slots — one per submission type the assignment's
+                author ticked under "Allowed Submission File Types"
+                (assignments.allowed_file_types). Each slot carries its own
+                accept filter, size cap and validator, so a student can see
+                at a glance what this assignment will take and gets a clear
+                message instead of a failed upload when they pick the wrong
+                kind of file. Assignments that tick nothing keep the single
+                unrestricted uploader they have today. */}
+            {(() => {
+              const allowed = allowedSubmissionTypes(assignment.allowed_file_types);
+
+              const addFile = (url: string, type: SubmissionType | null) =>
                 setDraftFiles((prev) => ({
                   ...prev,
-                  [assignment.id]: [
-                    ...(prev[assignment.id] || []),
-                    url,
-                  ],
+                  [assignment.id]: [...(prev[assignment.id] || []), { url, type }],
                 }));
-              }}
-            />
+
+              if (allowed.length === 0) {
+                return (
+                  <FileUpload
+                    bucket="submissions"
+                    folder={`student-${userId}/assignment-${assignment.id}`}
+                    label="Upload your file"
+                    onUpload={(url) => addFile(url, null)}
+                  />
+                );
+              }
+
+              const uploadedFor = (t: SubmissionTypeConfig) =>
+                (draftFiles[assignment.id] || []).filter((f) => f.type === t.key).length;
+
+              return (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-[#4D4D4D] uppercase tracking-wide">
+                    {allowed.length === 1
+                      ? `This assignment accepts ${allowed[0].label.toLowerCase()} only`
+                      : "Upload one or more of the accepted types"}
+                  </p>
+                  <div
+                    className={`grid grid-cols-1 gap-2 ${
+                      allowed.length > 1 ? "sm:grid-cols-2" : ""
+                    }`}
+                  >
+                    {allowed.map((t) => {
+                      const Icon = SUBMISSION_TYPE_ICONS[t.key];
+                      const count = uploadedFor(t);
+                      return (
+                        <div
+                          key={t.key}
+                          className="border border-gray-200 rounded-xl bg-white p-3 space-y-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4 text-[#1F4FD8]" />
+                            <span className="text-sm font-semibold text-[#1C1C28]">
+                              {t.label}
+                            </span>
+                            {count > 0 && (
+                              <span className="ml-auto text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                {count} added
+                              </span>
+                            )}
+                          </div>
+                          <FileUpload
+                            // Remount once a file lands so the slot returns
+                            // to its "upload" state and stays available for
+                            // a second file of the same kind.
+                            key={`${assignment.id}-${t.key}-${count}`}
+                            bucket="submissions"
+                            folder={`student-${userId}/assignment-${assignment.id}`}
+                            accept={t.accept}
+                            maxSizeMB={t.maxSizeMB}
+                            validate={(file) => validateFileForType(file, t)}
+                            label={t.uploadLabel}
+                            onUpload={(url) => addFile(url, t.key)}
+                          />
+                          <p className="text-[10px] text-[#9CA3AF]">
+                            Up to {t.maxSizeMB}MB &middot; {t.hint}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Uploaded file list */}
             {(draftFiles[assignment.id] || []).length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {draftFiles[assignment.id].map((url, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs text-[#4D4D4D]"
-                  >
-                    <FileText className="w-3 h-3" />
-                    {fileNameFromUrl(url)}
-                  </span>
-                ))}
+                {(draftFiles[assignment.id] || []).map((f, i) => {
+                  const Icon = f.type ? SUBMISSION_TYPE_ICONS[f.type] : FileText;
+                  return (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs text-[#4D4D4D]"
+                    >
+                      <Icon className="w-3 h-3 text-[#1F4FD8]" />
+                      {fileNameFromUrl(f.url)}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${fileNameFromUrl(f.url)}`}
+                        onClick={() =>
+                          setDraftFiles((prev) => ({
+                            ...prev,
+                            [assignment.id]: (prev[assignment.id] || []).filter(
+                              (_, idx) => idx !== i
+                            ),
+                          }))
+                        }
+                        className="ml-0.5 text-[#9CA3AF] hover:text-red-500 transition-colors"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             )}
 
@@ -590,22 +750,13 @@ export default function StudentAssignmentsPage() {
               </div>
             )}
 
-            {/* Show submitted files */}
+            {/* Show submitted files, with the same player/preview the
+                teacher sees on the review page. */}
             {submission.file_urls && submission.file_urls.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {submission.file_urls.map((url, i) => (
-                  <a
-                    key={i}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs text-[#1C1C28] font-medium transition-colors"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-[#1F4FD8]" />
-                    {fileNameFromUrl(url)}
-                  </a>
-                ))}
-              </div>
+              <SubmissionFiles
+                fileUrls={submission.file_urls}
+                submissionType={submission.submission_type}
+              />
             )}
 
             {/* Grade & feedback */}

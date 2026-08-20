@@ -10,6 +10,12 @@ interface FileUploadProps {
   folder?: string; // e.g. "course-123/session-1"
   accept?: string; // e.g. "audio/*,video/*,.pdf,.doc,.docx"
   maxSizeMB?: number;
+  // Extra client-side gate run before the size check. `accept` above is
+  // only a picker filter — a student can switch the OS dialog to "All
+  // Files" and choose anything — so callers that genuinely restrict the
+  // kind of file (e.g. an audio-only submission slot) pass a validator
+  // here. Return an error message to reject the file, or null to allow it.
+  validate?: (file: File) => string | null;
   onUpload: (url: string, fileName: string, fileType: string, fileSize: number) => void;
   label?: string;
   className?: string;
@@ -44,6 +50,7 @@ export default function FileUpload({
   folder = "",
   accept = "*",
   maxSizeMB = 50,
+  validate,
   onUpload,
   label = "Upload File",
   className = "",
@@ -78,8 +85,15 @@ export default function FileUpload({
 
     if (!multiple) {
       const file = files[0];
+      const rejection = validate?.(file);
+      if (rejection) {
+        toast.error(rejection);
+        if (inputRef.current) inputRef.current.value = "";
+        return;
+      }
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast.error(`File must be smaller than ${maxSizeMB}MB`);
+        if (inputRef.current) inputRef.current.value = "";
         return;
       }
 
@@ -110,6 +124,12 @@ export default function FileUpload({
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
       setProgress({ current: i + 1, total: fileList.length });
+
+      const rejection = validate?.(file);
+      if (rejection) {
+        toast.error(`${rejection} — skipped`);
+        continue;
+      }
 
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast.error(`${file.name} is larger than ${maxSizeMB}MB — skipped`);

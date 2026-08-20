@@ -23,6 +23,8 @@ import {
   formatDueInWords,
   submissionTimeliness,
 } from "@/src/lib/assignment-deadline";
+import SubmissionFiles from "@/src/components/shared/SubmissionFiles";
+import { allowedSubmissionTypes } from "@/src/lib/submission-types";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -59,6 +61,11 @@ interface SubmissionRow {
   student_email: string;
   submitted_at: string;
   file_urls: string[];
+  // Category the student declared at submit time — "audio" | "video" |
+  // "doc" | "image" (migration 017). Null on rows submitted before that
+  // migration, or when the student mixed types in one submission; the
+  // preview then falls back to each file's own extension.
+  submission_type: string | null;
   content: string | null;
   grade: string | null;
   feedback: string | null;
@@ -211,6 +218,9 @@ export default function AssignmentDetailPage() {
           student_email: profile.email,
           submitted_at: s.submitted_at,
           file_urls: s.file_urls || [],
+          // `select("*")` above, so this is present whenever migration 017
+          // has been applied and undefined otherwise.
+          submission_type: s.submission_type ?? null,
           content: s.content || null,
           grade: s.grade || null,
           feedback: s.feedback || null,
@@ -401,17 +411,23 @@ export default function AssignmentDetailPage() {
               </span>
             </div>
 
-            {assignment.allowed_file_types.length > 0 && (
+            {/* The types students are actually offered on the submit form.
+                Labelled from the shared config rather than printing the raw
+                stored keys, which would render "doc" instead of
+                "Documents". Legacy rows hold extensions rather than type
+                keys and resolve to nothing here — those assignments accept
+                anything, same as an untick-everything assignment. */}
+            {allowedSubmissionTypes(assignment.allowed_file_types).length > 0 && (
               <div className="mt-3">
                 <span className="text-xs text-[#9CA3AF]">
                   Accepted submission types:{" "}
                 </span>
-                {assignment.allowed_file_types.map((t) => (
+                {allowedSubmissionTypes(assignment.allowed_file_types).map((t) => (
                   <span
-                    key={t}
-                    className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full mr-1 capitalize"
+                    key={t.key}
+                    className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full mr-1"
                   >
-                    {t}
+                    {t.label}
                   </span>
                 ))}
               </div>
@@ -531,26 +547,18 @@ export default function AssignmentDetailPage() {
                   </div>
                 )}
 
-                {/* Submitted files */}
+                {/* Submitted files — played/previewed in place rather than
+                    listed as links, so audio and video homework can be
+                    marked without leaving the page. */}
                 {sub.file_urls.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-medium text-[#9CA3AF] mb-2">
                       Submitted Files
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {sub.file_urls.map((url, i) => (
-                        <a
-                          key={i}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-[#1F4FD8] hover:bg-[#1F4FD8]/5 transition-colors"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          {extractFileName(url)}
-                        </a>
-                      ))}
-                    </div>
+                    <SubmissionFiles
+                      fileUrls={sub.file_urls}
+                      submissionType={sub.submission_type}
+                    />
                   </div>
                 )}
 

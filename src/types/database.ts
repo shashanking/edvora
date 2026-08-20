@@ -260,6 +260,12 @@ export interface Database {
           file_url: string | null;
           file_urls: Record<string, unknown>[];
           file_type: string | null;
+          // Student's declared submission category — "audio" | "video" |
+          // "document" (migration 017, which CHECK-constrains it to those
+          // three). Null on rows submitted before that migration;
+          // consumers fall back to sniffing each file's extension (see
+          // src/lib/submission-types.ts).
+          submission_type: string | null;
           grade: string | null;
           feedback: string | null;
           submitted_at: string;
@@ -273,6 +279,7 @@ export interface Database {
           file_url?: string | null;
           file_urls?: Record<string, unknown>[];
           file_type?: string | null;
+          submission_type?: string | null;
           grade?: string | null;
           feedback?: string | null;
           submitted_at?: string;
@@ -283,6 +290,7 @@ export interface Database {
           file_url?: string | null;
           file_urls?: Record<string, unknown>[];
           file_type?: string | null;
+          submission_type?: string | null;
           grade?: string | null;
           feedback?: string | null;
           graded_at?: string | null;

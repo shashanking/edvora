@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import {
   ArrowLeft,
@@ -166,6 +166,14 @@ interface MaterialData {
   created_at: string;
 }
 
+// Brings the right-hand lesson pane (video + content) into view. Lives at
+// module scope so the effect that calls it has no reactive dependency on it.
+function scrollLessonPaneIntoView() {
+  document
+    .getElementById("lesson-content-pane")
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 export default function StudentCourseDetailPage() {
   const params = useParams();
   const courseId = params.id as string;
@@ -209,6 +217,13 @@ export default function StudentCourseDetailPage() {
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState<MaterialData | null>(null);
   const [viewingLessonDoc, setViewingLessonDoc] = useState<LessonDoc | null>(null);
+  // Set when a sidebar chip should pull the right-hand lesson pane into
+  // view. On narrow screens that pane sits below the entire lesson list, so
+  // switching the active lesson alone would leave the student staring at
+  // the sidebar with nothing visibly happening. A ref rather than state:
+  // it only needs to survive until the next render, and flipping it back
+  // must not itself cause one.
+  const pendingLessonScroll = useRef(false);
 
   // Lesson gating: count of live_sessions that are completed or live for this enrollment
   const [completedSessionCount, setCompletedSessionCount] = useState<number>(0);
@@ -683,6 +698,13 @@ export default function StudentCourseDetailPage() {
     updateEnrollmentProgress();
   }, [progressPercent, enrollmentId, totalLessons]);
 
+  // Runs after the newly-selected lesson has rendered, so the pane exists.
+  useEffect(() => {
+    if (!pendingLessonScroll.current) return;
+    pendingLessonScroll.current = false;
+    scrollLessonPaneIntoView();
+  }, [activeLesson]);
+
   const toggleModule = (id: string) => {
     setExpandedModules((prev) => {
       const next = new Set(prev);
@@ -697,6 +719,26 @@ export default function StudentCourseDetailPage() {
   // module progression is gated on it, so it needs to be a grading
   // decision rather than something a student can toggle themselves.
   // Students can still see their own status below, just not change it.
+
+  // Chip handlers for the sidebar lesson rows. Both refuse on a locked
+  // lesson: locked rows render their own placeholder without chips, so this
+  // is belt-and-braces against a future layout change letting a chip
+  // through the gate the lesson content itself is behind.
+  const openLessonVideo = (lesson: Lesson) => {
+    if (lesson.display_order > maxUnlockedOrder) return;
+    if (activeLesson?.id === lesson.id) {
+      // Already showing — no re-render is coming, so scroll now.
+      scrollLessonPaneIntoView();
+      return;
+    }
+    pendingLessonScroll.current = true;
+    setActiveLesson(lesson);
+  };
+
+  const openLessonDoc = (lesson: Lesson, doc: LessonDoc) => {
+    if (lesson.display_order > maxUnlockedOrder) return;
+    setViewingLessonDoc(doc);
+  };
 
   // Resolve a lesson's viewable documents. Prefers the multi-document
   // lesson_documents rows (migration 011); falls back to the legacy single
@@ -941,7 +983,7 @@ export default function StudentCourseDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Sidebar */}
               <div className="lg:col-span-1 space-y-3">
-                <div className="px-1 pb-1 text-xs font-medium text-[#4D4D4D]">
+                <div className="px-1 pb-1 text-sm font-medium text-[#4D4D4D]">
                   {currentModule
                     ? `Showing Module ${modules.findIndex((m) => m.id === currentModule.id) + 1}`
                     : ""}
@@ -979,10 +1021,10 @@ export default function StudentCourseDetailPage() {
                             {modIdx + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-poppins font-semibold text-[#1C1C28] text-base truncate">
+                            <h3 className="font-poppins font-semibold text-[#1C1C28] text-xl truncate">
                               {mod.title}
                             </h3>
-                            <p className="text-sm text-[#9CA3AF] mt-0.5">
+                            <p className="text-base text-[#9CA3AF] mt-0.5">
                               {modCompleted}/{modLessons.length} lessons
                             </p>
                           </div>
@@ -1003,10 +1045,10 @@ export default function StudentCourseDetailPage() {
                                   >
                                     <Lock className="w-5 h-5 text-[#9CA3AF] flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm truncate text-[#9CA3AF]">
+                                      <p className="text-lg truncate text-[#9CA3AF]">
                                         Lesson locked
                                       </p>
-                                      <p className="text-xs text-[#C4C4C4] mt-0.5">
+                                      <p className="text-sm text-[#C4C4C4] mt-0.5">
                                         Unlocks after session {lesson.display_order}
                                       </p>
                                     </div>
@@ -1033,55 +1075,66 @@ export default function StudentCourseDetailPage() {
                                       <Circle className="w-5 h-5 text-[#D4D4D4]" />
                                     )}
                                   </span>
-                                  <button
-                                    onClick={() => setActiveLesson(lesson)}
-                                    className="flex-1 min-w-0 text-left"
-                                  >
-                                    <p
-                                      className={`text-base truncate ${
-                                        isCompleted
-                                          ? "text-[#9CA3AF] line-through"
-                                          : "text-[#1C1C28] font-medium"
-                                      }`}
+                                  <div className="flex-1 min-w-0">
+                                    <button
+                                      onClick={() => setActiveLesson(lesson)}
+                                      className="w-full min-w-0 text-left"
                                     >
-                                      {lesson.title}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <p
+                                        className={`text-lg truncate ${
+                                          isCompleted
+                                            ? "text-[#9CA3AF] line-through"
+                                            : "text-[#1C1C28] font-medium"
+                                        }`}
+                                      >
+                                        {lesson.title}
+                                      </p>
+                                    </button>
+                                    {/* Meta line. It sits outside the title
+                                        button because the Video and Document
+                                        badges are themselves buttons now, and
+                                        a button can't be nested in a button.
+                                        Both used to be inert <span>s that
+                                        looked like links: clicking "Video"
+                                        only switched lessons, and the student
+                                        still had to hunt for the player. */}
+                                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                       {lesson.duration_minutes && (
-                                        <span className="flex items-center gap-0.5 text-xs text-[#9CA3AF]">
-                                          <Clock className="w-3 h-3" /> {lesson.duration_minutes}m
+                                        <span className="flex items-center gap-1 text-sm text-[#9CA3AF]">
+                                          <Clock className="w-3.5 h-3.5" /> {lesson.duration_minutes}m
                                         </span>
                                       )}
                                       {lesson.video_url && (
-                                        <span className="flex items-center gap-0.5 text-xs text-[#1F4FD8]">
-                                          <Video className="w-3 h-3" /> Video
-                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => openLessonVideo(lesson)}
+                                          title={`Play the video for ${lesson.title}`}
+                                          className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-sm text-[#1F4FD8] bg-[#1F4FD8]/10 hover:bg-[#1F4FD8]/20 transition-colors"
+                                        >
+                                          <Video className="w-3.5 h-3.5" /> Video
+                                        </button>
+                                      )}
+                                      {getLessonDocs(lesson).length > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            openLessonDoc(lesson, getLessonDocs(lesson)[0])
+                                          }
+                                          title={
+                                            getLessonDocs(lesson).length > 1
+                                              ? `Open the first of ${getLessonDocs(lesson).length} documents`
+                                              : `Open ${getLessonDocs(lesson)[0].title}`
+                                          }
+                                          className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-sm text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                                        >
+                                          <FileText className="w-3.5 h-3.5" />
+                                          {getLessonDocs(lesson).length > 1
+                                            ? `Documents (${getLessonDocs(lesson).length})`
+                                            : "Document"}
+                                        </button>
                                       )}
                                     </div>
-                                  </button>
-                                  {/* The document badge used to sit inside the
-                                      lesson button, so clicking it only
-                                      switched lessons — it looked like a link
-                                      to the file but never opened one. It's now
-                                      a sibling button that opens the lesson's
-                                      first document directly. */}
-                                  {getLessonDocs(lesson).length > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setViewingLessonDoc(getLessonDocs(lesson)[0])}
-                                      title={
-                                        getLessonDocs(lesson).length > 1
-                                          ? `Open the first of ${getLessonDocs(lesson).length} documents`
-                                          : `Open ${getLessonDocs(lesson)[0].title}`
-                                      }
-                                      className="flex-shrink-0 flex items-center gap-1 px-2 py-1 text-xs text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
-                                    >
-                                      <FileText className="w-3 h-3" />
-                                      {getLessonDocs(lesson).length > 1
-                                        ? getLessonDocs(lesson).length
-                                        : "Doc"}
-                                    </button>
-                                  )}
+                                  </div>
                                 </div>
                               );
                             })}
@@ -1094,7 +1147,7 @@ export default function StudentCourseDetailPage() {
               </div>
 
               {/* Main Content */}
-              <div className="lg:col-span-2">
+              <div id="lesson-content-pane" className="lg:col-span-2 scroll-mt-24">
                 {activeLesson && activeLesson.display_order > maxUnlockedOrder ? null : activeLesson ? (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     {activeLesson.video_url && (

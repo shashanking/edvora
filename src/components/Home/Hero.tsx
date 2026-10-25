@@ -24,7 +24,7 @@ const Fall_BACK_CONTENT: homeHero = {
   heading: `Learn Smarter.Grow Confident.Achieve More.`,
   tag: "1-on-1 Personalized Learning For Every Age",
   description:
-    "Expert tutors. Tailored curriculum. Real results.From ages 4 to adults self. we close learning gaps and unlock your best self.",
+    "Expert tutors. Tailored curriculum. Real results. From ages 4 to adults, we close learning gaps and unlock your best self.",
   feature: [
     { icon: "./root_math.png", title: "Maths & Science" },
     { icon: "./people-speak.png", title: "Spoken English" },

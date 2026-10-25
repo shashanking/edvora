@@ -26,7 +26,7 @@ const FALL_BACK_CONTENT: Content = {
   email: "contact@addifyacademy.com",
   address:
     "KUNJAMONI, 2ND FLOOR, PANCHPOTA, RAJPUR SONARPUR (M), Kolkata, West Bengal, India",
-  instalink: "#",
+  instalink: "https://instagram.com/addify_academy",
   xlink: "#",
   facebooklink: "#",
   linkedinlink: "#",

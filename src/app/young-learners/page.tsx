@@ -2,16 +2,33 @@ import type { Metadata } from "next";
 import { createClient } from "@/src/lib/supabase/server";
 import { buildYoungCourseCatalog, type LmsLandingCourse } from "@/src/lib/course-catalog";
 import { sanityClient } from "@/src/lib/sanityClient";
+import { buildMetadata, SEO_PROJECTION, type SeoFields } from "@/src/lib/seo";
 import PageHero from "@/src/components/core/PageHero";
 import LearnerIntro, { type LearnerHighlight } from "@/src/components/pages/LearnerIntro";
 import ProgramsOverviewSection from "@/src/components/Home/ProgrammeOverviewSection";
 import Footer from "@/src/components/core/Footer";
 
-export const metadata: Metadata = {
-  title: "Young Learners",
-  description:
-    "Personalized 1-on-1 tutoring for young learners aged 4-15 — core academics, specialized programs, and exam preparation that build strong foundations.",
-};
+const FALLBACK_TITLE = "Young Learners | Addify Academy";
+const FALLBACK_DESCRIPTION =
+  "Personalized 1-on-1 tutoring for young learners aged 4-15 — core academics, specialized programs, and exam preparation that build strong foundations.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let seo: SeoFields | null = null;
+  try {
+    seo = await sanityClient.fetch(
+      `*[_type == "youngLearnersPage"][0]{ ${SEO_PROJECTION} }`
+    );
+  } catch {
+    seo = null;
+  }
+
+  return buildMetadata({
+    path: "/young-learners",
+    fallbackTitle: FALLBACK_TITLE,
+    fallbackDescription: FALLBACK_DESCRIPTION,
+    seo,
+  });
+}
 
 export const revalidate = 300;
 

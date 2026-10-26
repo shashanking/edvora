@@ -1,24 +1,30 @@
 import type { Metadata } from "next";
 import { sanityClient } from "@/src/lib/sanityClient";
+import { buildMetadata, SEO_PROJECTION, type SeoFields } from "@/src/lib/seo";
 import PageHero from "@/src/components/core/PageHero";
 import BlogList from "@/src/components/pages/BlogList";
 import Footer from "@/src/components/core/Footer";
-import { absoluteUrl } from "@/src/lib/siteConfig";
 import { breadcrumbSchema, organizationSchema } from "@/src/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Blogs",
-  description:
-    "Learning insights, study tips, and education guidance from the mentors at Addify Academy.",
-  alternates: { canonical: absoluteUrl("/blogs") },
-  openGraph: {
-    type: "website",
-    title: "Blogs | Addify Academy",
-    description:
-      "Learning insights, study tips, and education guidance from the mentors at Addify Academy.",
-    url: absoluteUrl("/blogs"),
-  },
-};
+const FALLBACK_TITLE = "Blogs | Addify Academy";
+const FALLBACK_DESCRIPTION =
+  "Learning insights, study tips, and education guidance from the mentors at Addify Academy.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let seo: SeoFields | null = null;
+  try {
+    seo = await sanityClient.fetch(`*[_type == "blogpage"][0]{ ${SEO_PROJECTION} }`);
+  } catch {
+    seo = null;
+  }
+
+  return buildMetadata({
+    path: "/blogs",
+    fallbackTitle: FALLBACK_TITLE,
+    fallbackDescription: FALLBACK_DESCRIPTION,
+    seo,
+  });
+}
 
 export const revalidate = 300;
 

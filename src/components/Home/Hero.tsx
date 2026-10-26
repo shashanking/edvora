@@ -21,15 +21,15 @@ type homeHero = {
 const Fall_BACK_CONTENT: homeHero = {
   _id: "",
   mainTag: "YOUR GLOBAL LEARNING PARTNER",
-  heading: `Learn Smarter.Grow Confident.Achieve More.`,
-  tag: "1-on-1 Personalized Learning For Every Age",
+  heading: `Confident English for Your Child, Ages 4–12`,
+  tag: "1-on-1 Live English Classes for Kids",
   description:
-    "Expert tutors. Tailored curriculum. Real results. From ages 4 to adults, we close learning gaps and unlock your best self.",
+    "Fun, live 1-on-1 classes in phonics, reading and spoken English, with caring teachers. Parents see real progress every week.",
   feature: [
-    { icon: "./root_math.png", title: "Maths & Science" },
+    { icon: "./book.png", title: "Phonics" },
     { icon: "./people-speak.png", title: "Spoken English" },
-    { icon: "./whiteBriffecase.png", title: "Business Skills" },
-    { icon: "./zigzagArrow.png", title: "Personality Dev" },
+    { icon: "./text-grammar.png", title: "Reading & Grammar" },
+    { icon: "./Star.png", title: "Confidence" },
   ],
   image: "./CARDS.png",
 };

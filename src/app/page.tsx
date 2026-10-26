@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { createClient } from "@/src/lib/supabase/server";
 import { buildAdultCourseCatalog, buildYoungCourseCatalog, type LmsLandingCourse } from "@/src/lib/course-catalog";
+import { sanityClient } from "@/src/lib/sanityClient";
+import { buildMetadata, SEO_PROJECTION, type SeoFields } from "@/src/lib/seo";
 import Navbar from "../components/core/NavBar";
 import Footer from "../components/core/Footer";
 import Hero from "../components/Home/Hero";
@@ -16,6 +19,26 @@ import FAQSection from "../components/Home/FAQSection";
 import PricingSection from "../components/Home/PricingSection";
 import ContactSection from "../components/Home/ContactSection";
 import CTASection from "../components/Home/JoinUs";
+
+const FALLBACK_TITLE = "Online English Classes for Kids (4–12) | Addify Academy";
+const FALLBACK_DESCRIPTION =
+  "Live 1-on-1 English, phonics & spoken English classes for kids aged 4–12. Expert teachers. Book a free trial.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let seo: SeoFields | null = null;
+  try {
+    seo = await sanityClient.fetch(`*[_type == "homeHero"][0]{ ${SEO_PROJECTION} }`);
+  } catch {
+    seo = null;
+  }
+
+  return buildMetadata({
+    path: "/",
+    fallbackTitle: FALLBACK_TITLE,
+    fallbackDescription: FALLBACK_DESCRIPTION,
+    seo,
+  });
+}
 
 export default async function Home() {
   const supabase = await createClient();

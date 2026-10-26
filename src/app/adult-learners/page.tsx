@@ -2,16 +2,33 @@ import type { Metadata } from "next";
 import { createClient } from "@/src/lib/supabase/server";
 import { buildAdultCourseCatalog, type LmsLandingCourse } from "@/src/lib/course-catalog";
 import { sanityClient } from "@/src/lib/sanityClient";
+import { buildMetadata, SEO_PROJECTION, type SeoFields } from "@/src/lib/seo";
 import PageHero from "@/src/components/core/PageHero";
 import LearnerIntro, { type LearnerHighlight } from "@/src/components/pages/LearnerIntro";
 import AdultLearnersSection from "@/src/components/Home/AdultLearnersSection";
 import Footer from "@/src/components/core/Footer";
 
-export const metadata: Metadata = {
-  title: "Adult Learners",
-  description:
-    "Advance your skills and career with Addify Academy — professional development and academic support through personalized 1-on-1 learning for ages 16+.",
-};
+const FALLBACK_TITLE = "Adult Learners | Addify Academy";
+const FALLBACK_DESCRIPTION =
+  "Advance your skills and career with Addify Academy — professional development and academic support through personalized 1-on-1 learning for ages 16+.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let seo: SeoFields | null = null;
+  try {
+    seo = await sanityClient.fetch(
+      `*[_type == "adultLearnersPage"][0]{ ${SEO_PROJECTION} }`
+    );
+  } catch {
+    seo = null;
+  }
+
+  return buildMetadata({
+    path: "/adult-learners",
+    fallbackTitle: FALLBACK_TITLE,
+    fallbackDescription: FALLBACK_DESCRIPTION,
+    seo,
+  });
+}
 
 export const revalidate = 300;
 

@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { buildMetadata } from "@/src/lib/seo";
 import PageHero from "@/src/components/core/PageHero";
 import ContactSection from "@/src/components/Home/ContactSection";
 import Footer from "@/src/components/core/Footer";
 
-export const metadata: Metadata = {
-  title: "Contact Us",
-  description:
-    "Get in touch with Addify Academy. Ask a question, book a free trial class, or explore how personalized 1-on-1 tutoring can help you grow.",
-};
+export const metadata: Metadata = buildMetadata({
+  path: "/contact",
+  fallbackTitle: "Contact Addify Academy | Book a Free Trial English Class",
+  fallbackDescription:
+    "Questions about online English classes for your child? Call or WhatsApp +91 93303 88153, or book a free trial class with Addify Academy.",
+});
 
 export default function ContactPage() {
   return (

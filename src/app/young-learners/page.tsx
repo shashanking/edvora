@@ -8,9 +8,9 @@ import LearnerIntro, { type LearnerHighlight } from "@/src/components/pages/Lear
 import ProgramsOverviewSection from "@/src/components/Home/ProgrammeOverviewSection";
 import Footer from "@/src/components/core/Footer";
 
-const FALLBACK_TITLE = "Young Learners | Addify Academy";
+const FALLBACK_TITLE = "English & Phonics Classes for Kids (4–12) | Addify Academy";
 const FALLBACK_DESCRIPTION =
-  "Personalized 1-on-1 tutoring for young learners aged 4-15 — core academics, specialized programs, and exam preparation that build strong foundations.";
+  "Live 1-on-1 English, phonics, reading and spoken English classes for kids aged 4–12. Expert teachers, flexible timings. Book a free trial class.";
 
 export async function generateMetadata(): Promise<Metadata> {
   let seo: SeoFields | null = null;

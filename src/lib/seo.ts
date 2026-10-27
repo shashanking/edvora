@@ -19,11 +19,14 @@ export function buildMetadata({
   fallbackTitle,
   fallbackDescription,
   seo,
+  noIndex = false,
 }: {
   path: string;
   fallbackTitle: string;
   fallbackDescription: string;
   seo?: SeoFields | null;
+  /** Keep the page live but out of search results, e.g. while content is still being finalized. */
+  noIndex?: boolean;
 }): Metadata {
   const title = seo?.metaTitle || fallbackTitle;
   const description = seo?.metaDescription || fallbackDescription;
@@ -38,6 +41,7 @@ export function buildMetadata({
     title: { absolute: title },
     description,
     alternates: { canonical: url },
+    robots: noIndex ? { index: false, follow: true } : undefined,
     openGraph: {
       type: "website",
       title,

@@ -34,8 +34,7 @@ const PersonAvatar = () => (
 
 const TestimonialAvatar = ({ testimonial }: { testimonial: Testimonial }) =>
   testimonial.imageUrl ? (
-    <img
-      src={testimonial.imageUrl}
+    <img loading="lazy"       src={testimonial.imageUrl}
       alt={testimonial.name}
       className="h-full w-full object-cover rounded-full"
     />
@@ -170,12 +169,12 @@ const handlePrev = () => {
     <div className="w-full min-h-screen bg-white py-12 md:py-16 lg:py-20 px-4 relative overflow-hidden">
       {/* Decorative graduation cap */}
       <div className="absolute top-22 md:top-10 right-0 -z-10 pointer-events-none">
-        <img src="./Hat 1.png" alt="" className="w-[90px] md:w-auto" />
+        <img loading="lazy" src="./Hat 1.png" alt="" className="w-[90px] md:w-auto" />
       </div>
 
       {/* Decorative letters */}
       <div className="absolute bottom-5 left-0 text-8xl font-bold">
-        <img src="./ABC1.png" alt="" className="w-32.5 md:w-auto" />
+        <img loading="lazy" src="./ABC1.png" alt="" className="w-32.5 md:w-auto" />
       </div>
 
       {/* Main content */}
@@ -275,7 +274,7 @@ const handlePrev = () => {
             className="w-14 h-14 rounded-full bg-[#1F4FD8] text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Previous testimonials"
           >
-            <img src="./leftArrow.png" alt="" />
+            <img loading="lazy" src="./leftArrow.png" alt="" />
           </button>
           <button
             onClick={handleNext}
@@ -283,7 +282,7 @@ const handlePrev = () => {
             className="w-14 h-14 rounded-full bg-[#1F4FD8] text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Next testimonials"
           >
-            <img src="./rightArrow.png" alt="" />
+            <img loading="lazy" src="./rightArrow.png" alt="" />
           </button>
         </div>
       </div>

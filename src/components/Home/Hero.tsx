@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Navbar from "../core/NavBar";
 import { ArrowUpRight } from "lucide-react";
 
@@ -29,7 +30,7 @@ const Fall_BACK_CONTENT: HomeHeroContent = {
     { icon: "./text-grammar.png", title: "Reading & Grammar" },
     { icon: "./Star.png", title: "Confidence" },
   ],
-  image: "./CARDS.png",
+  image: "/CARDS.png",
 };
 
 const FeaturesBar = () => {
@@ -105,10 +106,13 @@ const Hero = ({ content }: { content: HomeHeroContent | null }) => {
       </div>
       {/* Background Image */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <img
-          src="./HeroBG.png"
+        <Image
+          src="/HeroBG.png"
           alt="Background"
-          className="w-full h-full object-cover"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
       </div>
       {/* Background decorative elements */}
@@ -338,9 +342,13 @@ const Hero = ({ content }: { content: HomeHeroContent | null }) => {
                 </div>
               </div> */}
               <div>
-                <img
+                <Image
                   src={data.image}
                   alt=""
+                  width={689}
+                  height={588}
+                  priority
+                  sizes="(max-width: 1024px) 380px, 590px"
                   className="h-full w-full object-cover"
                 />
               </div>

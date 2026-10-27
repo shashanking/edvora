@@ -13,7 +13,7 @@ const CourseCard = ({ item }: { item: LandingCourseItem }) => (
   <div className="bg-white/95 rounded-[24px] border-2 border-[#ffc83d5c] p-5 flex flex-col gap-4 w-full max-w-[501px] mx-auto hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 shadow-[0_20px_60px_rgba(224,168,0,0.18)]">
     {/* Image */}
     <div className="w-full h-[240px] bg-[#FFF3C4] rounded-[12px] overflow-hidden relative">
-      <img src={item.image} alt={item.program} className="w-full h-full object-cover" />
+      <img loading="lazy" src={item.image} alt={item.program} className="w-full h-full object-cover" />
     </div>
 
     {/* Text Content */}
@@ -57,12 +57,12 @@ const AdultLearnersSection: React.FC<AdultLearnersSectionProps> = ({ coursesByCa
     <section id="adult-learners" className="relative w-full min-h-screen bg-[#FFC83D] py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">
       {/* Decorative yellow swirl - left */}
       <div className="absolute top-20 md:top-40 left-0 opacity-25">
-        <img src="./overviewSpiral.png" alt="" className="h-10 w-10 md:h-[145px] md:w-[145px]" />
+        <img loading="lazy" src="./overviewSpiral.png" alt="" className="h-10 w-10 md:h-[145px] md:w-[145px]" />
       </div>
 
       {/* Decorative yellow swirl - right */}
       <div className="absolute bottom-10 md:bottom-10 -right-5 md:-right-15 opacity-25">
-        <img src="./Cloud 1.png" alt="" className="w-15 h-10 md:w-[175px] md:h-[120px]" />
+        <img loading="lazy" src="./Cloud 1.png" alt="" className="w-15 h-10 md:w-[175px] md:h-[120px]" />
       </div>
 
       <div className="max-w-[1400px] mx-auto relative z-10">

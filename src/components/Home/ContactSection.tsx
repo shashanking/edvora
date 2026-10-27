@@ -252,7 +252,7 @@ export default function ContactSection() {
                       <span className="font-poppins font-semibold text-[#2B2B2B] text-xl leading-6">
                         Send
                       </span>
-                      <img src="paper-plane.png" alt="" />
+                      <img loading="lazy" src="paper-plane.png" alt="" />
                     </div>
                   )}
                 </button>
@@ -276,7 +276,7 @@ export default function ContactSection() {
 
                 <a className="flex items-center gap-2 md:gap-3 text-[#1F4FD8] font-semibold text-[12px] sm:text-[14px] md:text-lg lg:text-xl">
                   <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center font-poppins font-bold text-sm leading-tight">
-                    <img src="./phone-fill.png" alt="" />
+                    <img loading="lazy" src="./phone-fill.png" alt="" />
                   </div>
                   <span className="text-[#1F4FD8]">
                     {FALL_BACK_CONTENT?.phone}
@@ -297,7 +297,7 @@ export default function ContactSection() {
 
                 <a className="flex items-center gap-2 md:gap-3 text-blue-600 font-semibold text-[12px] sm:text-[14px] md:text-lg lg:text-xl hover:text-blue-700">
                   <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center font-poppins font-bold text-sm leading-tight">
-                    <img src="./outline-email.png" alt="" />
+                    <img loading="lazy" src="./outline-email.png" alt="" />
                   </div>
                   <span className="text-[#1F4FD8]">
                     {content?.email ?? FALL_BACK_CONTENT?.email}
@@ -320,7 +320,7 @@ export default function ContactSection() {
                   <span className="font-poppins font-semibold text-[#2B2B2B] text-[16px] md:text-xl leading-6">
                     Send
                   </span>
-                  <img src="paper-plane.png" alt="" />
+                  <img loading="lazy" src="paper-plane.png" alt="" />
                 </div>
               )}
             </button>

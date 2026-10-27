@@ -89,16 +89,14 @@ const AdvantageSection: React.FC = () => {
     <section className="relative w-full bg-white py-12 md:py-16 lg:py-20 px-4 md:px-8 lg:px-12">
       {/*bottom left paper plane*/}
       <div className="absolute bottom-10 md:bottom-0 md:left-40 -z-10 pointer-events-none">
-        <img
-          src="./Paper plane 1.png"
+        <img loading="lazy"           src="./Paper plane 1.png"
           alt=""
           className="w-[90px] h-[60px] md:h-100 md:w-77"
         />
       </div>
       {/*top right star*/}
       <div className="absolute top-60 right-5 md:top-50 right-0 -z-10 pointer-events-none">
-        <img
-          src="./star 1.png"
+        <img loading="lazy"           src="./star 1.png"
           alt=""
           className="h-12.5 w-12.5 md:h-32.5 md:w-32.5"
         />
@@ -147,8 +145,7 @@ const AdvantageSection: React.FC = () => {
                 <div className="group relative flex flex-col items-center text-center ">
                   {/* Icon circle */}
                   <div className="h-16 w-16 sm:h-20 sm:w-20 md:w-28 md:h-28 lg:w-32 lg:h-32 bg-white rounded-full flex items-center justify-center mb-3 md:mb-6 lg:mb-8 shadow-lg">
-                    <img
-                      src={card?.imageUrl}
+                    <img loading="lazy"                       src={card?.imageUrl}
                       alt=""
                       className="h-6 w-6 sm:h-8 sm:w-8 md:h-20 md:w-20 lg:h-25 lg:w-25"
                     />

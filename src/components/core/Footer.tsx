@@ -75,8 +75,7 @@ const Footer: React.FC<FooterProps> = ({ className = "" }) => {
             <div className=" flex items-center lg:justify-end flex-shrink-0">
               {/* Logo */}
               <Link href="/" className="flex-shrink-0 h-9 w-30 md:h-[60px] md:w-[200px] lg:h-[110px] lg:w-[350px]">
-                <img
-                  src="/LogoHeader.png"
+                <img loading="lazy"                   src="/LogoHeader.png"
                   alt="logo"
                   className="h-full w-full object-cover"
                 />

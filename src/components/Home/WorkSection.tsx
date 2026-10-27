@@ -89,7 +89,7 @@ const HowItWorksSection: React.FC = () => {
     <section className="relative w-full min-h-screen py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">
       {/* Decorative ruler - top right */}
       <div className="absolute top-4 md:top-4 -right-8 sm:-right-12 md:right-6 z-0 pointer-events-none">
-        <img src="./scale 1.png" alt="" className='w-[80px] sm:w-[120px] md:w-[160px] lg:w-auto' />
+        <img src="./Scale 1.png" alt="" className='w-[80px] sm:w-[120px] md:w-[160px] lg:w-auto' />
       </div>
 
       {/* Decorative paperclip - bottom left */}

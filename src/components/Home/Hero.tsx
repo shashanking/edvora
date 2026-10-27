@@ -1,5 +1,3 @@
-"use client";
-import React, { useEffect } from "react";
 import Navbar from "../core/NavBar";
 import { ArrowUpRight } from "lucide-react";
 
@@ -8,7 +6,7 @@ type FEATURE_TAG = {
   title: string;
 };
 
-type homeHero = {
+export type HomeHeroContent = {
   _id: string;
   mainTag: string;
   heading: string;
@@ -18,7 +16,7 @@ type homeHero = {
   image: string;
 };
 
-const Fall_BACK_CONTENT: homeHero = {
+const Fall_BACK_CONTENT: HomeHeroContent = {
   _id: "",
   mainTag: "YOUR GLOBAL LEARNING PARTNER",
   heading: `Confident English for Your Child, Ages 4–12`,
@@ -90,37 +88,12 @@ const FeaturesBar = () => {
   );
 };
 
-const Hero = () => {
-  const [content, setContent] = React.useState<homeHero | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
+// Rendered server-side with data fetched in page.tsx — avoids a client-side
+// fetch that briefly shows the fallback copy before swapping to Sanity's
+// content after hydration.
+const Hero = ({ content }: { content: HomeHeroContent | null }) => {
+  const data = content ?? Fall_BACK_CONTENT;
 
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      try {
-        const contentRes = await fetch("/api/home-hero");
-        if (!contentRes.ok) {
-          throw new Error("Failed to load podcast hero content");
-        }
-
-        const contentData = (await contentRes.json()) as homeHero;
-
-        if (!mounted) return;
-        setContent(contentData);
-      } catch (e: any) {
-        if (!mounted) return;
-        setContent(null);
-      }
-    };
-
-    void load();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
   return (
     <section
       id="home"
@@ -196,7 +169,7 @@ const Hero = () => {
                   className="text-white/90 font-inter font-light text-[10px] md:text-[16px] lg:text-[20px] leading-tight tracking-normal whitespace-nowrap
 "
                 >
-                  {content?.mainTag ?? Fall_BACK_CONTENT?.mainTag}
+                  {data.mainTag}
                 </span>
               </div>
             </div>
@@ -205,69 +178,44 @@ const Hero = () => {
                 className="font-poppins font-extrabold leading-tight md:leading-none tracking-normal text-white
 "
               >
-                {content?.heading
-                    ?.trim()
-                    .split(".")
-                    ?.map((line, index) => {
-                      const words = line.trim().split(" ");
-                      const lastWordIndex = words.length - 1;
+                {data.heading
+                  .trim()
+                  .split(".")
+                  .map((line, index, lines) => {
+                    const words = line.trim().split(" ");
+                    const lastWordIndex = words.length - 1;
 
-                      return (
-                        <div key={index}>
-                          {words.map((word, i) => (
-                            <span
-                              key={i}
-                              className={`${
-                                index === 1 && i === lastWordIndex
-                                  ? "text-[#FFC83D]"
-                                  : "text-white"
-                              } leading-8 md:leading-20 `}
-                            >
-                              {word}{" "}
-                            </span>
-                          ))}
-                          <br className={`${index === Fall_BACK_CONTENT?.heading.split(".").length - 1 ? "hidden" : "block"}`}  />
-                        </div>
-                      );
-                    }) ??
-                  Fall_BACK_CONTENT?.heading
-                    ?.trim()
-                    .split(".")
-                    ?.map((line, index) => {
-                      const words = line.trim().split(" ");
-                      const lastWordIndex = words.length - 1;
-
-                      return (
-                        <div key={index}>
-                          {words.map((word, i) => (
-                            <span
-                              key={i}
-                              className={`${
-                                index === 1 && i === lastWordIndex
-                                  ? "text-[#FFC83D]"
-                                  : "text-white"
-                              } leading-8 md:leading-20 `}
-                            >
-                              {word}{" "}
-                            </span>
-                          ))}
-                          <br className={`${index === Fall_BACK_CONTENT?.heading.split(".").length - 1 ? "hidden" : "block"}`} />
-                        </div>
-                      );
-                    })}
+                    return (
+                      <div key={index}>
+                        {words.map((word, i) => (
+                          <span
+                            key={i}
+                            className={`${
+                              index === 1 && i === lastWordIndex
+                                ? "text-[#FFC83D]"
+                                : "text-white"
+                            } leading-8 md:leading-20 `}
+                          >
+                            {word}{" "}
+                          </span>
+                        ))}
+                        <br className={index === lines.length - 1 ? "hidden" : "block"} />
+                      </div>
+                    );
+                  })}
               </div>
             </h1>
 
             <p className="text-[#FFC83D] text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
-              {content?.tag ?? Fall_BACK_CONTENT?.tag}
+              {data.tag}
             </p>
 
             <p className="text-[#FFFFFF] text-[14px] md:text-[16px] lg:text-[18px] font-normal max-w-[560px] leading-relaxed">
-              {content?.description ?? Fall_BACK_CONTENT?.description}
+              {data.description}
             </p>
 
             <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
-              {content?.feature?.map((feature, index) => (
+              {data.feature.map((feature, index) => (
                 <div
                   key={index}
                   className="flex items-center gap-2 bg-[#FFFFFF33] border border-[#FFFFFF] rounded-full px-4 py-3"
@@ -281,22 +229,7 @@ const Hero = () => {
                     {`${feature?.title}`}
                   </p>
                 </div>
-              )) ??
-                Fall_BACK_CONTENT?.feature?.map((feature, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-1 md:gap-2 bg-[#FFFFFF33] border border-[#FFFFFF] rounded-full px-3 md:px-4 py-3"
-                  >
-                    <img
-                      src={feature?.icon}
-                      alt=""
-                      className="w-3 h-3 md:w-4 md:h-4"
-                    />
-                    <p className="text-[#FFFFFF]  max-w-[560px] font-inter font-light text-xs md:text-base leading-none whitespace-nowrap">
-                      {`${feature?.title}`}
-                    </p>
-                  </div>
-                ))}
+              ))}
             </div>
 
             <div className="flex flex-col sm:flex-row flex-wrap gap-3 md:gap-4 pt-2">
@@ -406,7 +339,7 @@ const Hero = () => {
               </div> */}
               <div>
                 <img
-                  src={content?.image ?? Fall_BACK_CONTENT?.image}
+                  src={data.image}
                   alt=""
                   className="h-full w-full object-cover"
                 />

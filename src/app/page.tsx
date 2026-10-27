@@ -5,7 +5,7 @@ import { sanityClient } from "@/src/lib/sanityClient";
 import { buildMetadata, SEO_PROJECTION, type SeoFields } from "@/src/lib/seo";
 import Navbar from "../components/core/NavBar";
 import Footer from "../components/core/Footer";
-import Hero from "../components/Home/Hero";
+import Hero, { type HomeHeroContent } from "../components/Home/Hero";
 import AboutSection from "../components/Home/About";
 import AdvantageSection from "../components/Home/Advantage";
 import ProgramsOverviewSection from "../components/Home/ProgrammeOverviewSection";
@@ -40,6 +40,16 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
+const heroQuery = `*[_type == "homeHero"][0]{
+  _id,
+  mainTag,
+  heading,
+  tag,
+  description,
+  feature[]{ "icon": icon.asset->url, title },
+  "image": image.asset->url
+}`;
+
 export default async function Home() {
   const supabase = await createClient();
   const { data } = (await supabase
@@ -53,11 +63,18 @@ export default async function Home() {
   const youngCourses = buildYoungCourseCatalog(catalogCourses);
   const adultCourses = buildAdultCourseCatalog(catalogCourses);
 
+  let heroContent: HomeHeroContent | null = null;
+  try {
+    heroContent = await sanityClient.fetch(heroQuery);
+  } catch {
+    heroContent = null;
+  }
+
   return (
     <div >
       <main className="min-h-screen bg-[#FAF9F8]">
         {/* <Navbar /> */}
-        <Hero />
+        <Hero content={heroContent} />
         <AboutSection />
         <AdvantageSection />
         <ProgramsOverviewSection coursesByCategory={youngCourses} />

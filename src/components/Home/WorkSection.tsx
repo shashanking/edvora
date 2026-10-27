@@ -89,12 +89,12 @@ const HowItWorksSection: React.FC = () => {
     <section className="relative w-full min-h-screen py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">
       {/* Decorative ruler - top right */}
       <div className="absolute top-4 md:top-4 -right-8 sm:-right-12 md:right-6 z-0 pointer-events-none">
-        <img src="./Scale 1.png" alt="" className='w-[80px] sm:w-[120px] md:w-[160px] lg:w-auto' />
+        <img loading="lazy" src="./Scale 1.png" alt="" className='w-[80px] sm:w-[120px] md:w-[160px] lg:w-auto' />
       </div>
 
       {/* Decorative paperclip - bottom left */}
       <div className="absolute bottom-20 sm:bottom-32 md:bottom-16 left-0">
-       <img src="./clip 1.png" alt="" className='w-[60px] sm:w-[90px] md:w-[120px] lg:w-auto' />
+       <img loading="lazy" src="./clip 1.png" alt="" className='w-[60px] sm:w-[90px] md:w-[120px] lg:w-auto' />
       </div>
 
       <div className="max-w-[1400px] mx-auto relative z-10">

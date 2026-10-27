@@ -6,13 +6,13 @@ import { buildMetadata, SEO_PROJECTION, type SeoFields } from "@/src/lib/seo";
 import Navbar from "../components/core/NavBar";
 import Footer from "../components/core/Footer";
 import Hero, { type HomeHeroContent } from "../components/Home/Hero";
-import AboutSection from "../components/Home/About";
+import AboutSection, { type AboutHomeContent } from "../components/Home/About";
 import AdvantageSection from "../components/Home/Advantage";
 import ProgramsOverviewSection from "../components/Home/ProgrammeOverviewSection";
 import AdultLearnersSection from "../components/Home/AdultLearnersSection";
 import HowItWorksSection from "../components/Home/WorkSection";
-import OurEducatorsSection from "../components/Home/Educators";
-import DemoCardSection from "../components/Home/Demo";
+import OurEducatorsSection, { type OurEducatorsContent } from "../components/Home/Educators";
+import DemoCardSection, { type DemoCardContent } from "../components/Home/Demo";
 import TestimonialSection from "../components/Home/SuccessStory";
 import LearningResourcesSection from "../components/Home/ResourceSection";
 import FAQSection from "../components/Home/FAQSection";
@@ -50,6 +50,23 @@ const heroQuery = `*[_type == "homeHero"][0]{
   "image": image.asset->url
 }`;
 
+const aboutHomeQuery = `*[_type == "aboutHome"][0]{ heading, description, "image": image.asset->url }`;
+const educatorsQuery = `*[_type == "ourEducators"][0]{
+  heading, description, "imageUrl": image.asset->url,
+  qualificationTitle, qualification, criteriaTitle, criteria
+}`;
+const demoCardQuery = `*[_type == "demoCard"][0]{ heading, description, "imageUrl": image.asset->url, features }`;
+
+// Fetches a Sanity singleton doc, returning null (so the component falls
+// back to its own default copy) if the CMS is unreachable or empty.
+async function fetchSanityDoc<T>(query: string): Promise<T | null> {
+  try {
+    return await sanityClient.fetch(query);
+  } catch {
+    return null;
+  }
+}
+
 export default async function Home() {
   const supabase = await createClient();
   const { data } = (await supabase
@@ -63,25 +80,25 @@ export default async function Home() {
   const youngCourses = buildYoungCourseCatalog(catalogCourses);
   const adultCourses = buildAdultCourseCatalog(catalogCourses);
 
-  let heroContent: HomeHeroContent | null = null;
-  try {
-    heroContent = await sanityClient.fetch(heroQuery);
-  } catch {
-    heroContent = null;
-  }
+  const [heroContent, aboutContent, educatorsContent, demoContent] = await Promise.all([
+    fetchSanityDoc<HomeHeroContent>(heroQuery),
+    fetchSanityDoc<AboutHomeContent>(aboutHomeQuery),
+    fetchSanityDoc<OurEducatorsContent>(educatorsQuery),
+    fetchSanityDoc<DemoCardContent>(demoCardQuery),
+  ]);
 
   return (
     <div >
       <main className="min-h-screen bg-[#FAF9F8]">
         {/* <Navbar /> */}
         <Hero content={heroContent} />
-        <AboutSection />
+        <AboutSection content={aboutContent} />
         <AdvantageSection />
         <ProgramsOverviewSection coursesByCategory={youngCourses} />
         <AdultLearnersSection coursesByCategory={adultCourses} />
         <HowItWorksSection />
-        <OurEducatorsSection />
-        <DemoCardSection />
+        <OurEducatorsSection content={educatorsContent} />
+        <DemoCardSection content={demoContent} />
         <TestimonialSection />
         {/* <LearningResourcesSection /> */}
         <FAQSection />

@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import Navbar from "./NavBar";
 
 type PageHeroProps = {
@@ -18,10 +19,13 @@ const PageHero: React.FC<PageHeroProps> = ({ eyebrow, heading, subheading }) => 
     <section className="relative overflow-hidden bg-gradient-to-b from-[#102A72] to-[#1F4FD8] px-4 md:px-8 lg:px-16 pb-16 md:pb-24 lg:pb-28">
       {/* Background image (same as homepage hero) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <img
+        <Image
           src="/HeroBG.png"
           alt=""
-          className="w-full h-full object-cover opacity-60"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover opacity-60"
         />
       </div>
 
@@ -30,6 +34,7 @@ const PageHero: React.FC<PageHeroProps> = ({ eyebrow, heading, subheading }) => 
         <img
           src="/Hat 1.png"
           alt=""
+          loading="lazy"
           className="h-[50px] w-[55px] md:h-[70px] md:w-[76px]"
         />
       </div>
@@ -37,6 +42,7 @@ const PageHero: React.FC<PageHeroProps> = ({ eyebrow, heading, subheading }) => 
         <img
           src="/Puzzle 1.png"
           alt=""
+          loading="lazy"
           className="h-[50px] w-[45px] md:h-[120px] md:w-[105px]"
         />
       </div>

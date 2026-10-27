@@ -1,7 +1,6 @@
-'use client';
-import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 
-type DemoCardContent = {
+export type DemoCardContent = {
   heading: string;
   description: string;
   imageUrl: string;
@@ -17,40 +16,14 @@ const features = [
   const FALL_BACK_CONTENT: DemoCardContent = {
     heading: 'Not Sure If It\'s Right for Your Child? Try a Free Demo.',
     description: 'Experience our teaching style and see how comfortable your child feels speaking English.',
-    imageUrl: './DemoImage.png',
+    imageUrl: '/DemoImage.png',
     features: features,
   }
 
-const DemoCardSection: React.FC = () => {
-  const [content,setContent] = useState<DemoCardContent | null>(null);
-
-  useEffect(() => {
-      let mounted = true;
-  
-      const load = async () => {
-        try {
-          const contentRes = await fetch("/api/demoCard");
-          if (!contentRes.ok) {
-            throw new Error("Failed to load Overview content");
-          }
-  
-          const contentData = (await contentRes.json()) as DemoCardContent;
-  
-          if (!mounted) return;
-          setContent(contentData);
-        } catch (e: any) {
-          if (!mounted) return;
-          setContent(null);
-        }
-      };
-  
-      void load();
-  
-      return () => {
-        mounted = false;
-      };
-    }, []);
-
+// Rendered with data fetched server-side in page.tsx — avoids a client-side
+// fetch that briefly loads the fallback image before swapping to Sanity's.
+const DemoCardSection = ({ content }: { content: DemoCardContent | null }) => {
+  const data = content ?? FALL_BACK_CONTENT;
   return (
     <section className="w-full relative bg-gradient-to-br from-gray-50 to-white py-12 md:py-16 px-4 md:px-6 lg:px-12">
       <div className="max-w-[1400px] mx-auto">
@@ -66,7 +39,14 @@ const DemoCardSection: React.FC = () => {
 
               {/* Image placeholder */}
               <div className="absolute -top-8 sm:-top-12 md:-top-20 lg:-top-33.5 -left-4 sm:-left-8 md:-left-12 lg:-left-20 flex items-end justify-center lg:justify-start px-4 sm:px-6 md:px-8 lg:px-12 py-4 md:py-8 overflow-hidden rounded-br-[200px] sm:rounded-br-[280px] md:rounded-br-[350px]">
-                <img src={`${content?.imageUrl ?? FALL_BACK_CONTENT?.imageUrl}`} alt="" className='h-[320px] sm:h-[400px] md:h-[480px] lg:h-[590px] rounded-br-[200px] sm:rounded-br-[280px] md:rounded-br-[350px] object-cover' />
+                <Image
+                  src={data.imageUrl}
+                  alt=""
+                  width={1112}
+                  height={741}
+                  sizes="(max-width: 1024px) 400px, 590px"
+                  className='h-[320px] sm:h-[400px] md:h-[480px] lg:h-[590px] rounded-br-[200px] sm:rounded-br-[280px] md:rounded-br-[350px] object-cover'
+                />
               </div>
             </div>
 
@@ -76,12 +56,8 @@ const DemoCardSection: React.FC = () => {
                 {/* Heading */}
                 <h2 className="text-poppins font-bold text-[20px] sm:text-[24px] md:text-[36px] lg:text-5xl leading-tight tracking-normal">
                   {
-                    content?.heading?.split(" ")?.map((word, index) => (
-                      <span key={index} className={`${index < content?.heading?.split(" ").length-2 ? 'text-[#2B2B2B]' : 'text-[#1F4FD8]'}`}>
-                        {word}{" "}
-                      </span>
-                    )) ?? FALL_BACK_CONTENT?.heading?.split(" ")?.map((word, index) => (
-                      <span key={index} className={`${index < FALL_BACK_CONTENT?.heading?.split(" ").length-2 ? 'text-[#2B2B2B]' : 'text-[#1F4FD8]'}`}>
+                    data.heading.split(" ").map((word, index, words) => (
+                      <span key={index} className={index < words.length - 2 ? 'text-[#2B2B2B]' : 'text-[#1F4FD8]'}>
                         {word}{" "}
                       </span>
                     ))
@@ -90,19 +66,12 @@ const DemoCardSection: React.FC = () => {
 
                 {/* Description */}
                 <p className="text-[#4D4D4D] text-nunito font-normal text-[12px] sm:text-[13px] md:text-sm leading-relaxed tracking-tight">
-                  {content?.description ?? FALL_BACK_CONTENT?.description}
+                  {data.description}
                 </p>
 
                 {/* Feature tags */}
                 <div className="flex flex-wrap gap-2 md:gap-3">
-                  {content?.features?.map((feature, index) => (
-                    <span
-                      key={index}
-                      className="px-4 sm:px-5 py-1.5 sm:py-2 bg-white text-[#2B2B2B] rounded-full shadow-sm text-poppins font-medium text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-normal"
-                    >
-                      {feature}
-                    </span>
-                  )) ?? FALL_BACK_CONTENT?.features?.map((feature, index) => (
+                  {data.features.map((feature, index) => (
                     <span
                       key={index}
                       className="px-4 sm:px-5 py-1.5 sm:py-2 bg-white text-[#2B2B2B] rounded-full shadow-sm text-poppins font-medium text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-normal"
@@ -122,7 +91,7 @@ const DemoCardSection: React.FC = () => {
                 <div
                   className="w-6.5 h-6.5 z-10 bg-[#FFFFFF] rounded-full flex items-center justify-center"
                 >
-                  <img src="./arrow-up-line.png" alt="" className='group-hover:rotate-45 transition-all duration-300' />
+                  <img loading="lazy" src="./arrow-up-line.png" alt="" className='group-hover:rotate-45 transition-all duration-300' />
                 </div>
               </a>
                 </div>

@@ -1,7 +1,6 @@
-"use client";
-import React, { useEffect, useState } from "react";
+import Image from "next/image";
 
-type ourEducators = {
+export type OurEducatorsContent = {
   heading: string;
   description: string;
   imageUrl: string;
@@ -26,45 +25,20 @@ const matchingCriteria = [
   "Schedule compatibility",
 ];
 
-const FALL_BACK_CONTENT = {
+const FALL_BACK_CONTENT: OurEducatorsContent = {
   heading: "OUR EDUCATORS",
   description: "Learn from Subject-Matter Experts",
-  imageUrl: "./Educators.png",
+  imageUrl: "/Educators.png",
   qualificationTitle: "Every Addify Academy instructor is",
   qualification: qualifications,
   criteriaTitle: "Matching Criteria",
   criteria: matchingCriteria,
 };
 
-const OurEducatorsSection: React.FC = () => {
-  const [content, setContent] = useState<ourEducators | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      try {
-        const contentRes = await fetch("/api/ourEducators");
-        if (!contentRes.ok) {
-          throw new Error("Failed to load Overview content");
-        }
-
-        const contentData = (await contentRes.json()) as ourEducators;
-
-        if (!mounted) return;
-        setContent(contentData);
-      } catch (e: any) {
-        if (!mounted) return;
-        setContent(null);
-      }
-    };
-
-    void load();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+// Rendered with data fetched server-side in page.tsx — avoids a client-side
+// fetch that briefly loads the fallback image before swapping to Sanity's.
+const OurEducatorsSection = ({ content }: { content: OurEducatorsContent | null }) => {
+  const data = content ?? FALL_BACK_CONTENT;
 
   return (
     <section className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 to-white py-12 md:py-16 lg:py-20 px-4 md:px-6 lg:px-12 overflow-hidden">
@@ -78,76 +52,51 @@ const OurEducatorsSection: React.FC = () => {
             {/* Title */}
             <div>
               <h2 className="mb-2 md:mb-3 text-poppins font-bold text-[24px] sm:text-[28px] md:text-[36px] lg:text-5xl leading-tight tracking-normal">
-                {content?.heading?.split(" ")?.map((word, index) => (
+                {data.heading.split(" ").map((word, index) => (
                   <span
                     key={index}
-                    className={`${index === 0 ? "text-[#2B2B2B]" : "text-[#1F4FD8]"}`}
+                    className={index === 0 ? "text-[#2B2B2B]" : "text-[#1F4FD8]"}
                   >
                     {word}{" "}
                   </span>
-                )) ??
-                  FALL_BACK_CONTENT?.heading?.split(" ")?.map((word, index) => (
-                    <span
-                      key={index}
-                      className={`${index === 0 ? "text-[#2B2B2B]" : "text-[#1F4FD8]"}`}
-                    >
-                      {word}{" "}
-                    </span>
-                  ))}
+                ))}
               </h2>
               <p className="text-[#4D4D4D] text-nunito font-normal text-[12px] sm:text-[13px] md:text-sm leading-relaxed tracking-normal">
-                {content?.description ?? FALL_BACK_CONTENT?.description}
+                {data.description}
               </p>
             </div>
 
             {/* Qualifications Section */}
             <div>
               <h3 className="text-[#4D4D4D] mb-3 md:mb-4 text-poppins font-bold text-[14px] sm:text-[16px] md:text-lg leading-tight tracking-normal">
-                {content?.qualificationTitle ??
-                  FALL_BACK_CONTENT?.qualificationTitle}
+                {data.qualificationTitle}
               </h3>
               <div className="flex flex-wrap gap-2 md:gap-3">
-                {content?.qualification?.map((qual, index) => (
+                {data.qualification.map((qual, index) => (
                   <span
                     key={index}
                     className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 bg-[#1F4FD8] text-white rounded-full shadow-md hover:bg-[#1D4ED8] transition-colors duration-300 text-nunito font-normal text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-tight"
                   >
                     {qual}
                   </span>
-                )) ??
-                  FALL_BACK_CONTENT?.qualification?.map((qual, index) => (
-                    <span
-                      key={index}
-                      className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 bg-[#1F4FD8] text-white rounded-full shadow-md hover:bg-[#1D4ED8] transition-colors duration-300 text-nunito font-normal text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-tight"
-                    >
-                      {qual}
-                    </span>
-                  ))}
+                ))}
               </div>
             </div>
 
             {/* Matching Criteria Section */}
             <div>
               <h3 className="text-[#4D4D4D] mb-3 md:mb-4 text-poppins font-bold text-[14px] sm:text-[16px] md:text-lg leading-tight tracking-normal">
-                {content?.criteriaTitle ?? FALL_BACK_CONTENT?.criteriaTitle}
+                {data.criteriaTitle}
               </h3>
               <div className="flex flex-wrap gap-2 md:gap-3">
-                {content?.criteria?.map((criterion, index) => (
+                {data.criteria.map((criterion, index) => (
                   <span
                     key={index}
                     className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 bg-white border-2 border-[#1F4FD8] text-[#1F4FD8] rounded-full shadow-sm hover:bg-blue-50 transition-colors duration-300 text-nunito font-normal text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-tight"
                   >
                     {criterion}
                   </span>
-                )) ??
-                  FALL_BACK_CONTENT?.criteria?.map((criterion, index) => (
-                    <span
-                      key={index}
-                      className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 bg-white border-2 border-[#1F4FD8] text-[#1F4FD8] rounded-full shadow-sm hover:bg-blue-50 transition-colors duration-300 text-nunito font-normal text-[10px] sm:text-[11px] md:text-sm leading-tight tracking-tight"
-                    >
-                      {criterion}
-                    </span>
-                  ))}
+                ))}
               </div>
             </div>
 
@@ -171,9 +120,12 @@ const OurEducatorsSection: React.FC = () => {
             <div className="relative rounded-[20px] sm:rounded-[24px] md:rounded-[32px] p-[4px] sm:p-[5px] md:p-[6px] bg-gradient-to-br from-[#3CA7E9] to-[#2C52BF]">
               {/* Image container */}
               <div className="rounded-[16px] sm:rounded-[20px] md:rounded-[26px] overflow-hidden bg-white">
-                <img
-                  src={content?.imageUrl ?? FALL_BACK_CONTENT?.imageUrl}
+                <Image
+                  src={data.imageUrl}
                   alt="Group discussion"
+                  width={500}
+                  height={500}
+                  sizes="(max-width: 768px) 320px, 500px"
                   className="h-[250px] w-[250px] sm:h-[320px] sm:w-[320px] md:h-[400px] md:w-[400px] lg:h-[500px] lg:w-[500px] object-cover"
                 />
               </div>

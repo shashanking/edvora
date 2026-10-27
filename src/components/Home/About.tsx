@@ -1,69 +1,45 @@
-'use client';
-import React, { useEffect, useState } from "react";
+import { optimizedImageUrl } from "@/src/lib/image";
 
-type AboutHome = {
+export type AboutHomeContent = {
   heading: string;
   description: string;
   image: string;
 };
 
-const Fall_BACK_CONTENT: AboutHome = {
+const Fall_BACK_CONTENT: AboutHomeContent = {
   heading: "ABOUT ADDIFY ACADEMY",
-  description: `Addify Academy is your dedicated partner in academic and professional growth. We specialize in closing learning gaps across multiple subjects and unlocking the most confident version of you through customized, one-on-one instruction. 
+  description: `Addify Academy is your dedicated partner in academic and professional growth. We specialize in closing learning gaps across multiple subjects and unlocking the most confident version of you through customized, one-on-one instruction.
 
-Whether you're mastering English, Mathematics, Science, refining your communication skills, building executive presence, or preparing for critical exams—we provide expert guidance tailored to your unique learning needs at every milestone of your educational journey. 
+Whether you're mastering English, Mathematics, Science, refining your communication skills, building executive presence, or preparing for critical exams—we provide expert guidance tailored to your unique learning needs at every milestone of your educational journey.
 
-Our Promise: No generic courses. No crowded classrooms. Just you, your goals, and a subject-specialist mentor committed to your success.`, 
-  image: "./About.jpg",
+Our Promise: No generic courses. No crowded classrooms. Just you, your goals, and a subject-specialist mentor committed to your success.`,
+  image: "/About.jpg",
 }
 
-const AboutSection: React.FC = () => {
-  const [content, setContent] = useState<AboutHome | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-  
-    useEffect(() => {
-      let mounted = true;
-  
-      const load = async () => {
-        try {
-          const contentRes = await fetch("/api/about-home");
-          if (!contentRes.ok) {
-            throw new Error("Failed to load podcast hero content");
-          }
-  
-          const contentData = (await contentRes.json()) as AboutHome;
-  
-          if (!mounted) return;
-          setContent(contentData);
-        } catch (e: any) {
-          if (!mounted) return;
-          setContent(null);
-        }
-      };
-  
-      void load();
-  
-      return () => {
-        mounted = false;
-      };
-    }, []);
+// Rendered with data fetched server-side in page.tsx — avoids a client-side
+// fetch that briefly loads the fallback image before swapping to Sanity's.
+const AboutSection = ({ content }: { content: AboutHomeContent | null }) => {
+  const data = content ?? Fall_BACK_CONTENT;
+  // The 4 panels below are CSS background-image crops of one image, not
+  // <img> tags, so next/image can't wrap them directly — route the URL
+  // through Next's own image optimizer instead to still get WebP/AVIF + resizing.
+  const optimizedImage = optimizedImageUrl(data.image, 420);
   return (
     <section id="about" className="relative w-full min-h-screen bg-[#1F4FD8] overflow-hidden pt-20 md:pt-24 lg:pt-28 pb-12 md:pb-16 lg:pb-20 px-4 md:px-6 lg:px-16">
       {/* Decorative Elements */}
       {/* Top-left puzzle pieces */}
       <div className="absolute top-4 md:top-8 left-0">
-        <img src="./Puzzle 1.png" alt="" className="h-[50px] w-[45px] md:h-[120px] md:w-[105px] lg:h-[169px] lg:w-[147px]" />
+        <img loading="lazy" src="./Puzzle 1.png" alt="" className="h-[50px] w-[45px] md:h-[120px] md:w-[105px] lg:h-[169px] lg:w-[147px]" />
       </div>
 
       {/* Top-right graduation cap outline */}
       <div className="absolute top-8 md:top-12 right-3 md:right-4 lg:-right-2 block">
-        <img src="./Hat 1.png" alt="" className="h-[50px] w-[55px] md:h-[60px] md:w-[65px] lg:h-[70px] lg:w-[76px]"  />
+        <img loading="lazy" src="./Hat 1.png" alt="" className="h-[50px] w-[55px] md:h-[60px] md:w-[65px] lg:h-[70px] lg:w-[76px]"  />
       </div>
 
       {/* Bottom-right atom/science icon */}
       <div className="absolute bottom-24 md:bottom-32 -right-6 md:-right-10">
-        <img src="./Atom 1.png" alt="" className="w-[70px] h-[70px] md:w-[140px] md:h-[140px] lg:h-[209px] lg:w-[209px]" />
+        <img loading="lazy" src="./Atom 1.png" alt="" className="w-[70px] h-[70px] md:w-[140px] md:h-[140px] lg:h-[209px] lg:w-[209px]" />
       </div>
 
       <div className="max-w-[1400px] mx-auto relative z-10">
@@ -84,7 +60,7 @@ const AboutSection: React.FC = () => {
       ${i === 1 || i === 3 ? "translate-y-[30px] sm:translate-y-[40px]" : ""}
     `}
                   style={{
-                    backgroundImage: `url(${content?.image ?? Fall_BACK_CONTENT.image})`,
+                    backgroundImage: `url(${optimizedImage})`,
                     backgroundPosition: `${i * 33}% center`,
                   }}
                 />
@@ -99,21 +75,10 @@ const AboutSection: React.FC = () => {
 "
             >
               {
-                content?.heading?.split(" ")?.map((word, index) => (
+                data.heading.split(" ").map((word, index) => (
                   <span
                     key={index}
-                    className={`${
-                      index === 0 ? "text-white" : "text-[#FFC83D]"
-                    }`}
-                  >
-                    {word}{" "}
-                  </span>
-                )) ?? Fall_BACK_CONTENT.heading?.split(" ")?.map((word, index) => (
-                  <span
-                    key={index}
-                    className={`${
-                      index === 0 ? "text-white" : "text-[#FFC83D]"
-                    }`}
+                    className={index === 0 ? "text-white" : "text-[#FFC83D]"}
                   >
                     {word}{" "}
                   </span>
@@ -127,12 +92,7 @@ const AboutSection: React.FC = () => {
 "
               >
                 {
-                  content?.description?.split("\n")?.map((line, index) => (
-                    <span key={index}>
-                      {line}
-                      <br />
-                    </span>
-                  )) ?? Fall_BACK_CONTENT.description?.split("\n")?.map((line, index) => (
+                  data.description.split("\n").map((line, index) => (
                     <span key={index}>
                       {line}
                       <br />

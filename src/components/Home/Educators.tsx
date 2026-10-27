@@ -29,7 +29,7 @@ const matchingCriteria = [
 const FALL_BACK_CONTENT = {
   heading: "OUR EDUCATORS",
   description: "Learn from Subject-Matter Experts",
-  imageUrl: "./educators.png",
+  imageUrl: "./Educators.png",
   qualificationTitle: "Every Addify Academy instructor is",
   qualification: qualifications,
   criteriaTitle: "Matching Criteria",

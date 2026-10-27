@@ -27,6 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
     fallbackTitle: FALLBACK_TITLE,
     fallbackDescription: FALLBACK_DESCRIPTION,
     seo,
+    noIndex: true,
   });
 }
 

@@ -7,11 +7,12 @@ export const revalidate = 3600;
 // Static, public marketing routes worth advertising to crawlers.
 // Auth, dashboard, studio and API routes are intentionally excluded
 // (see robots.ts) and don't belong here either.
+// /adult-learners is deliberately left out: noindexed for now (see its
+// generateMetadata), so it shouldn't be listed for crawlers either.
 const STATIC_PATHS = [
   "/",
   "/about",
   "/young-learners",
-  "/adult-learners",
   "/contact",
   "/blogs",
   "/privacy-policy",

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import PageHero from "@/src/components/core/PageHero";
 import PortableText from "@/src/components/pages/PortableText";
 import BlogFaqSection from "@/src/components/pages/BlogFaqSection";
@@ -29,7 +29,8 @@ type PageProps = { params: Promise<{ slug: string }> };
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
   const post = await getBlogPost(slug);
 
   if (!post) {
@@ -88,8 +89,25 @@ const formatDate = (value?: string) => {
   });
 };
 
+// Old post slugs that moved to a clean URL. The "British accent" post used
+// to be slugged as its full raw title (with spaces and a "?"), which broke
+// when interpolated into a plain href — the browser treats the unescaped
+// "?" as the start of a query string, so the slug Next.js actually receives
+// here is the title truncated right before it.
+const LEGACY_SLUG_REDIRECTS: Record<string, string> = {
+  "Does Your Child Need a British Accent to Succeed Abroad?": "british-accent-to-succeed-abroad",
+  "Does Your Child Need a British Accent to Succeed Abroad": "british-accent-to-succeed-abroad",
+};
+
 export default async function BlogPostPage({ params }: PageProps) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  // Next doesn't always decode this segment for us (observed un-decoded,
+  // e.g. "...Abroad" arriving as literal "...Abroad" with %20s intact).
+  const slug = decodeURIComponent(rawSlug);
+
+  const newSlug = LEGACY_SLUG_REDIRECTS[slug];
+  if (newSlug) permanentRedirect(`/blogs/${newSlug}`);
+
   const post = await getBlogPost(slug);
 
   if (!post) notFound();

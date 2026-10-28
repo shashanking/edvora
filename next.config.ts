@@ -14,6 +14,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/blogs/Does%20Your%20Child%20Need%20a%20British%20Accent%20to%20Succeed%20Abroad%3F",
+        destination: "/blogs/british-accent-to-succeed-abroad",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

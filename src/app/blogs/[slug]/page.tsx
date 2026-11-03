@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import PageHero from "@/src/components/core/PageHero";
 import PortableText from "@/src/components/pages/PortableText";
 import BlogFaqSection from "@/src/components/pages/BlogFaqSection";
+import BlogWhatsAppCta from "@/src/components/pages/BlogWhatsAppCta";
 import Footer from "@/src/components/core/Footer";
 import { getBlogPost, getBlogSlugs } from "@/src/lib/blog";
 import { SITE_NAME, absoluteUrl } from "@/src/lib/siteConfig";
@@ -191,6 +192,8 @@ export default async function BlogPostPage({ params }: PageProps) {
         <PortableText value={post.content as never} />
 
         <BlogFaqSection faqs={post.faqs} />
+
+        <BlogWhatsAppCta />
 
         <div className="mt-12 pt-8 border-t border-[#0F3CB4]/15 flex flex-wrap items-center justify-between gap-4">
           <Link

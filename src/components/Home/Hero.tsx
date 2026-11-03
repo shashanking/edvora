@@ -108,9 +108,8 @@ const Hero = ({ content }: { content: HomeHeroContent | null }) => {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <Image
           src="/HeroBG.png"
-          alt="Background"
+          alt=""
           fill
-          priority
           sizes="100vw"
           className="object-cover"
         />
@@ -344,10 +343,11 @@ const Hero = ({ content }: { content: HomeHeroContent | null }) => {
               <div>
                 <Image
                   src={data.image}
-                  alt=""
+                  alt="Addify Academy student in a live 1-on-1 English class"
                   width={689}
                   height={588}
                   priority
+                  fetchPriority="high"
                   sizes="(max-width: 1024px) 380px, 590px"
                   className="h-full w-full object-cover"
                 />

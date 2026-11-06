@@ -25,11 +25,14 @@ type ContactContent = {
 };
 
 const subjects = [
+  "Phonics",
+  "Spoken English",
+  "English for Kids (4-12)",
+  "Math",
+  "Science",
+  "Business English (Adults)",
+  "IELTS Preparation",
   "General Inquiry",
-  "Tutoring Services",
-  "Pricing Information",
-  "Technical Support",
-  "Partnership Opportunities",
   "Other",
 ];
 

@@ -6,9 +6,9 @@ import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 interface ContactFormData {
-  firstName: string;
-  lastName: string;
+  childName: string;
   phone: string;
+  whatsapp: string;
   email: string;
   age: string;
   subject: string;
@@ -50,9 +50,9 @@ const FALL_BACK_CONTENT = {
 
 export default function ContactSection() {
   const [formData, setFormData] = useState<ContactFormData>({
-    firstName: "",
-    lastName: "",
+    childName: "",
     phone: "",
+    whatsapp: "",
     email: "",
     age: "",
     subject: "",
@@ -115,15 +115,14 @@ export default function ContactSection() {
 
       setSuccess(true);
       setFormData({
-        firstName: "",
-        lastName: "",
+        childName: "",
         phone: "",
+        whatsapp: "",
         email: "",
         age: "",
         subject: "",
         message: "",
       });
-      toast.success("Message sent successfully!");
       formRef.current?.reset();
     } catch (err) {
       setError("Something went wrong. Please try again.");
@@ -163,103 +162,121 @@ export default function ContactSection() {
                 {content?.description ?? FALL_BACK_CONTENT?.description}
               </p>
 
-              <form ref={formRef} onSubmit={sendEmail} className="space-y-4 md:space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    placeholder="First Name"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
-                    required
-                  />
-                  <input
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    placeholder="Last Name"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
-                    required
-                  />
+              {success ? (
+                <div className="rounded-2xl md:rounded-3xl border-2 border-[#D4D4D4] px-6 py-10 md:py-14 text-center">
+                  <p className="font-poppins font-bold text-[#1F4FD8] text-xl md:text-2xl mb-2">
+                    Thank you!
+                  </p>
+                  <p className="text-[#4D4D4D] font-nunito-sans text-sm md:text-base leading-relaxed mb-6">
+                    We've received your enquiry and will get back to you within 24 hours.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSuccess(false)}
+                    className="font-poppins font-semibold text-[#1F4FD8] hover:text-[#102A72] transition-colors text-sm md:text-base"
+                  >
+                    Send another message
+                  </button>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ) : (
+                <form ref={formRef} onSubmit={sendEmail} className="space-y-4 md:space-y-5">
                   <input
-                    name="phone"
-                    value={formData.phone}
+                    name="childName"
+                    value={formData.childName}
                     onChange={handleChange}
-                    placeholder="Phone number"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
+                    placeholder="Child's Full Name"
+                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D] w-full"
                     required
                   />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="Parent's Phone Number"
+                      className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
+                      required
+                    />
+                    <input
+                      name="whatsapp"
+                      value={formData.whatsapp}
+                      onChange={handleChange}
+                      placeholder="WhatsApp Number"
+                      className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      name="age"
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={formData.age}
+                      onChange={handleChange}
+                      placeholder="Child's Age"
+                      className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
+                      required
+                    />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="Email ID"
+                      className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
+                      required
+                    />
+                  </div>
+
+                  <select
+                    name="subject"
+                    value={formData.subject}
                     onChange={handleChange}
-                    placeholder="Email ID"
-                    className="input-field border border-[#D4D4D4] rounded-full outline-none py-2.5 md:py-2 pl-4 md:pl-5 pr-1.5 font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
+                    className="input-field border border-[#D4D4D4] rounded-full outline-none p-2 flex justify-between items-center font-nunito-sans text-sm leading-none text-[#4D4D4D] opacity-50 w-full"
                     required
+                  >
+                    <option value="" disabled>
+                      Subject
+                    </option>
+                    {subjects.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+
+                  <textarea
+                    name="message"
+                    value={formData.message}
+                    onChange={handleChange}
+                    rows={6}
+                    placeholder="Message (optional)"
+                    className="w-full px-4 md:px-6 py-3 md:py-4 border-2 rounded-2xl md:rounded-3xl focus:outline-none resize-none border-[#D4D4D4] outline-none font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
                   />
-                </div>
 
-                <input
-                  name="age"
-                  type="number"
-                  min="1"
-                  max="120"
-                  value={formData.age}
-                  onChange={handleChange}
-                  placeholder="Age"
-                  className="input-field border border-[#D4D4D4] rounded-full outline-none py-2 pl-5 pr-1.5 font-nunito-sans text-sm leading-none text-[#4D4D4D] w-full"
-                  required
-                />
+                  {error ? (
+                    <p className="text-red-600 font-nunito-sans text-xs md:text-sm">{error}</p>
+                  ) : null}
 
-                <select
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  className="input-field border border-[#D4D4D4] rounded-full outline-none p-2 flex justify-between items-center font-nunito-sans text-sm leading-none text-[#4D4D4D] opacity-50 w-full"
-                  required
-                >
-                  <option value="" disabled>
-                    Subject
-                  </option>
-                  {subjects.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  rows={6}
-                  placeholder="Message"
-                  className="w-full px-4 md:px-6 py-3 md:py-4 border-2 rounded-2xl md:rounded-3xl focus:outline-none resize-none border-[#D4D4D4] outline-none font-nunito-sans text-xs md:text-sm leading-tight text-[#4D4D4D]"
-                  required
-                />
-
-                <button
-                  type="submit"
-                  className="group bg-[#FFC83D] hover:bg-yellow-500 px-10 py-4 rounded-full shadow-lg md:flex items-center gap-3 hidden "
-                >
-                  {loading ? (
-                    <div>
-                      <span className="w-full opacity-100 rotate-0 flex items-center justify-center">
-                        <Loader className="text-[#023047] animate-spin" />
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-3">
-                      <span className="font-poppins font-semibold text-[#2B2B2B] text-xl leading-6">
-                        Send
-                      </span>
-                      <img loading="lazy" src="paper-plane.png" alt="" />
-                    </div>
-                  )}
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="group w-full md:w-auto bg-[#FFC83D] hover:bg-yellow-500 px-10 py-4 rounded-full shadow-lg flex items-center justify-center gap-3 disabled:opacity-70"
+                  >
+                    {loading ? (
+                      <Loader className="text-[#023047] animate-spin" />
+                    ) : (
+                      <>
+                        <span className="font-poppins font-semibold text-[#2B2B2B] text-[16px] md:text-xl leading-6">
+                          Send
+                        </span>
+                        <img loading="lazy" src="paper-plane.png" alt="" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
 
             <div className="h-0.5 w-full max-w-[320px] md:w-0.5 md:h-105 rounded-[6px] md:bg-linear-to-t bg-linear-to-l from-[#FFFFFF00] to-[#1F4FD8]"></div>
@@ -308,25 +325,6 @@ export default function ContactSection() {
                 </a>
               </div>
             </div>
-            <button
-              type="submit"
-              className="group w-full bg-[#FFC83D] hover:bg-yellow-500 px-10 py-4 rounded-full shadow-lg flex items-center justify-center gap-3 md:hidden "
-            >
-              {loading ? (
-                <div>
-                  <span className="w-full opacity-100 rotate-0 flex items-center justify-center">
-                    <Loader className="text-[#023047] animate-spin" />
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-3">
-                  <span className="font-poppins font-semibold text-[#2B2B2B] text-[16px] md:text-xl leading-6">
-                    Send
-                  </span>
-                  <img loading="lazy" src="paper-plane.png" alt="" />
-                </div>
-              )}
-            </button>
           </div>
         </div>
       </div>
